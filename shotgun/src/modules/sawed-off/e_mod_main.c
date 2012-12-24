@@ -121,17 +121,7 @@ _e_mod_sos_config_load(void)
           _e_mod_sos_config_free();
      }
 
-   if (sos_config)
-     {
-#define IFMODCFG(v) \
-  if ((sos_config->config_version & 0xffff) < (v))
-
-        IFMODCFG(0x02)
-        sos_config->set_last_active = 1;
-        IFMODCFG(0x04)
-        sos_config->fetch_past_links = 1;
-        return;
-     }
+   if (sos_config) return;
    sos_config = E_NEW(Config, 1);
    sos_config->config_version = (MOD_CONFIG_FILE_EPOCH << 16);
    sos_config->position = E_GADCON_ORIENT_FLOAT;
