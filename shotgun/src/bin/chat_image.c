@@ -247,7 +247,14 @@ chat_image_complete(void *d __UNUSED__, int type __UNUSED__, Ecore_Con_Event_Url
         i->buf = NULL;
         if (++i->tries < IMAGE_FETCH_TRIES)
           {
-             if (!ecore_con_url_get(ev->url_con)) abort();
+             if (!ecore_con_url_get(ev->url_con))
+               {
+                  ERR("fetch retry failed: img(%s)!", i->addr);
+                  ui_eet_dummy_add(i->addr);
+                  i->dummy = EINA_TRUE;
+                  ecore_con_url_free(i->url);
+                  i->url = NULL;
+               }
           }
         return ECORE_CALLBACK_RENEW;
      }
