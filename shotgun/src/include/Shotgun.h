@@ -258,6 +258,7 @@ EAPI void shotgun_iq_gsettings_mailnotify_ping(Shotgun_Auth *auth);
 EAPI Eina_Bool shotgun_iq_ibb_error(Shotgun_Event_Iq *ev);
 EAPI Eina_Bool shotgun_iq_si_result(Shotgun_Event_Iq *ev);
 EAPI Eina_Bool shotgun_iq_vcard_send(Shotgun_Auth *auth);
+EAPI Eina_Bool shotgun_iq_activity_query(Shotgun_Auth *auth, const char *jid);
 EAPI Eina_Bool shotgun_message_send(Shotgun_Auth *auth, const char *to, const char *msg, Shotgun_Message_Status status, Eina_Bool xhtml_im);
 EAPI Shotgun_User_Status shotgun_presence_status_get(Shotgun_Auth *auth);
 EAPI void shotgun_presence_status_set(Shotgun_Auth *auth, Shotgun_User_Status status);
