@@ -52,7 +52,7 @@ shotgun_strtohex(unsigned char *digest, size_t len, char *ret)
 {
    char hexchars[] = "0123456789abcdef";
    size_t x, y;
-   for (x = y = 0; x < len + 1; x++, y++)
+   for (x = y = 0; x < len; x++, y++)
      {
         ret[x++] = hexchars[digest[y] >> 4];
         ret[x] = hexchars[digest[y] & 15];
