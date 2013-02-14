@@ -144,13 +144,36 @@ _event_presence_steal(Shotgun_Event_Presence *p)
    return pres;
 }
 
+static void
+_event_presence_update(Shotgun_Event_Presence *to, Shotgun_Event_Presence *from)
+{
+   to->priority = from->priority;
+   to->status = from->status;
+   to->vcard = from->vcard;
+   to->idle = from->idle;
+   to->timestamp = from->timestamp;
+   if (to->description != from->description)
+     {
+        eina_stringshare_del(to->description);
+        to->description = from->description;
+        from->description = NULL;
+     }
+   if (to->photo != from->photo)
+     {
+        eina_stringshare_del(to->photo);
+        to->photo = from->photo;
+        from->photo = NULL;
+     }
+   to->vcard = from->vcard;
+}
+
 Eina_Bool
 event_presence_cb(Contact_List *cl, int type __UNUSED__, Shotgun_Event_Presence *ev)
 {
    Contact *c;
-   Shotgun_Event_Presence *pres;
+   Shotgun_Event_Presence *pres = NULL;
    char *jid, *p;
-   Eina_List *l;
+   Eina_List *l = NULL;
 
    p = strchr(ev->jid, '/');
    if (p) jid = strndupa(ev->jid, p - ev->jid);
@@ -198,67 +221,29 @@ event_presence_cb(Contact_List *cl, int type __UNUSED__, Shotgun_Event_Presence 
              break;
           }
      }
-   /* if current resource is not event resource */
-   if ((!c->cur) || (ev->jid != c->cur->jid))
+   if (c->cur && (c->cur->jid == ev->jid))
+     pres = c->cur;
+   else
      {
         EINA_LIST_FOREACH(c->plist, l, pres)
           {
              /* update existing resource if found */
              if (ev->jid != pres->jid) continue;
-
-             pres->priority = ev->priority;
-             pres->status = ev->status;
-
-             eina_stringshare_del(pres->description);
-             if (ev->description && ev->description[0])
-               {
-                  pres->description = ev->description;
-                  ev->description = NULL;
-               }
-             else
-               pres->description = NULL;
-
-             eina_stringshare_del(pres->photo);
-             if (ev->photo && ev->photo[0])
-               {
-                  pres->photo = ev->photo;
-                  ev->photo = NULL;
-               }
-             else
-               pres->photo = NULL;
-
-             pres->vcard = ev->vcard;
+             /* if found, update */
+             _event_presence_update(pres, ev);
              break;
-          }
-        /* if not found, copy */
-        if ((!pres) || (pres->jid != ev->jid))
-          {
-             pres = _event_presence_steal(ev);
-          }
-        /* if found, update */
-        else if (pres && (pres->jid == ev->jid))
-          {
-             pres->priority = ev->priority;
-             pres->status = ev->status;
-             pres->vcard = ev->vcard;
-             pres->idle = ev->idle;
-             pres->timestamp = ev->timestamp;
-             if (pres->description != ev->description)
-               {
-                  eina_stringshare_del(pres->description);
-                  pres->description = ev->description;
-                  ev->description = NULL;
-               }
-             if (pres->photo != ev->photo)
-               {
-                  eina_stringshare_del(pres->photo);
-                  pres->photo = ev->photo;
-                  ev->photo = NULL;
-               }
-             pres->vcard = ev->vcard;
              /* must sort! */
              c->plist = eina_list_sort(c->plist, 0, (Eina_Compare_Cb)_list_sort_cb);
           }
+     }
+   /* if not found, copy */
+   if ((!pres) || (pres->jid != ev->jid))
+     {
+        pres = _event_presence_steal(ev);
+     }
+   /* if current resource is not event resource */
+   if (pres != c->cur)
+     {
         /* if not the current resource, update current */
         if (c->cur)
           {
@@ -266,13 +251,14 @@ event_presence_cb(Contact_List *cl, int type __UNUSED__, Shotgun_Event_Presence 
              if (pres->photo && (!c->cur->photo))
                c->cur->photo = eina_stringshare_ref(pres->photo);
              c->cur->vcard |= pres->vcard;
+             c->tooltip_changed = EINA_TRUE;
              /* if lower priority, add to plist */
              if (ev->priority < c->cur->priority)
                {
-                  if ((!l) || (l->data != pres))
+                  if (eina_list_data_get(l) != pres)
                     c->plist = eina_list_sorted_insert(c->plist, (Eina_Compare_Cb)_list_sort_cb, pres);
-                  /* if vcard available and (not retrieved || not most recent) */
                   if (c->vcard_request) return ECORE_CALLBACK_RENEW;
+                  /* if vcard available and (not retrieved || not most recent) */
                   if (ev->vcard && (((!c->info) && (!c->info_thread)) || (c->cur && c->info &&
                       ((c->info->photo.sha1 != c->cur->photo) ||
                        (c->cur->photo && (!c->info->photo.size))))))
@@ -283,10 +269,29 @@ event_presence_cb(Contact_List *cl, int type __UNUSED__, Shotgun_Event_Presence 
                     }
                   return ECORE_CALLBACK_RENEW;
                }
+             /* current resource isn't in plist, so remove new current and insert old current */
              c->plist = eina_list_remove(c->plist, pres);
              c->plist = eina_list_sorted_insert(c->plist, (Eina_Compare_Cb)_list_sort_cb, c->cur);
           }
+        /* set new current */
         c->cur = pres;
+     }
+   else
+     {
+        /* update for current presence */
+        _event_presence_update(c->cur, ev);
+        if (c->plist)
+          {
+             /* using a sorted list here ensures that the last presence always has the highest priority */
+             pres = eina_list_data_get(eina_list_last(c->plist));
+             if (c->cur->priority < pres->priority)
+               {
+                  /* current presence just had its priority lowered and is no longer current */
+                  c->plist = eina_list_sorted_insert(c->plist, (Eina_Compare_Cb)_list_sort_cb, c->cur);
+                  c->plist = eina_list_remove(c->plist, pres);
+                  c->cur = pres;
+               }
+          }
      }
 
    if (!c->force_resource)
