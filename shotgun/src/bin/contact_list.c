@@ -731,6 +731,7 @@ _contact_list_item_tooltip_cb(Contact *c, Evas_Object *obj __UNUSED__, Evas_Obje
    Eina_List *l;
    Shotgun_Event_Presence *p;
    unsigned int timer = 0, t2;
+   int w, h;
 
    if (!c->tooltip_changed) goto out;
    if (c->status && c->cur)
@@ -808,6 +809,8 @@ out:
    EXPAND(o);
    FILL(o);
    elm_layout_theme_set(o, "shotgun", "tooltip", "contact");
+   evas_object_size_hint_min_get(label, &w, &h);
+   edje_extern_object_min_size_set(label, w + 5, h + 5);
    elm_object_part_content_set(o, "shotgun.content.swallow", label);
    return o;
 }

@@ -47,7 +47,7 @@ collections
                rel1.to: "base";
                rel1.offset: 4 4;
                rel2.to: "base";
-               rel2.offset: -4 -4;
+               rel2.offset: -10 -10;
             }
          }
       }
