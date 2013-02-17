@@ -608,6 +608,7 @@ chat_window_new(Contact_List *cl)
    elm_toolbar_shrink_mode_set(tb, ELM_TOOLBAR_SHRINK_SCROLL);
    elm_toolbar_select_mode_set(tb, ELM_OBJECT_SELECT_MODE_ALWAYS);
    elm_toolbar_homogeneous_set(tb, 0);
+   elm_object_focus_allow_set(tb, 0);
    elm_object_style_set(tb, "item_horizontal");
    evas_object_smart_callback_add(tb, "longpressed", (Evas_Smart_Cb)_chat_window_longpress, cw);
    ALIGN(tb, EVAS_HINT_FILL, 0.5);
