@@ -418,6 +418,8 @@ settings_toggle(UI_WIN *ui, Evas_Object *obj __UNUSED__, void *event_info)
      }
    if (elm_flip_front_visible_get(ui->flip))
      settings_new(ui);
+   else
+     ui_eet_settings_set(ui->account, ui->settings);
    elm_flip_go(ui->flip, ELM_FLIP_ROTATE_Y_CENTER_AXIS);
 }
 
