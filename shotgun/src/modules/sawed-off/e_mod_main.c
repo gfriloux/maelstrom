@@ -83,7 +83,7 @@ _set_active(Eina_Bool active)
      {
         if (mod->popup)
           {
-             e_grabinput_release(0, mod->popup->evas_win);
+             e_grabinput_release(0, e_comp_get(mod->popup)->ee_win);
              e_popup_hide(mod->popup);
           }
         E_FN_DEL(e_object_del, mod->popup);
@@ -332,7 +332,7 @@ _sawedoff_key_cb(void *data EINA_UNUSED, Evas *e EINA_UNUSED, Evas_Object *obj, 
 {
    if (!strcmp(ev->keyname, "Escape"))
      {
-        e_grabinput_release(0, mod->popup->evas_win);
+        e_grabinput_release(0, e_comp_get(mod->popup)->ee_win);
         e_popup_hide(mod->popup);
         return;
      }
@@ -342,7 +342,7 @@ _sawedoff_key_cb(void *data EINA_UNUSED, Evas *e EINA_UNUSED, Evas_Object *obj, 
           mod->contact_active->jid, e_entry_text_get(obj), 0);
         e_entry_clear(mod->popup_entry);
         if (!sos_config->close_on_send) return;
-        e_grabinput_release(0, mod->popup->evas_win);
+        e_grabinput_release(0, e_comp_get(mod->popup)->ee_win);
         e_popup_hide(mod->popup);
         return;
      }
@@ -368,9 +368,11 @@ _sawedoff_activate(Mod_Contact *mc)
         o = mod->popup_bg, entry = mod->popup_entry, img = mod->popup_img;
         if (mc != mod->contact_active)
           {
+             e_popup_object_remove(mod->popup, mod->popup_img);
              evas_object_del(mod->popup_img);
              edje_object_part_text_set(o, "shotgun.text", "");
              mod->popup_img = img = e_icon_add(mod->popup->evas);
+             e_popup_object_add(mod->popup, img);
              e_entry_clear(entry);
           }
      }
@@ -378,21 +380,22 @@ _sawedoff_activate(Mod_Contact *mc)
      {
         mod->popup = e_popup_new(zone, 0, 0, 1, 1);
 
-        mod->popup_bg = o = edje_object_add(mod->popup->evas);
+        mod->popup_bg = o = edje_object_add(e_comp_get(zone)->evas);
         if (!e_theme_edje_object_set(o, "base/theme/shotgun", "e/shotgun/module/sawedoff"))
           edje_object_file_set(o, mod->edj, "e/shotgun/module/sawedoff");
-        e_popup_edje_bg_object_set(mod->popup, o);
+        e_popup_content_set(mod->popup, o);
 
         mod->popup_entry = entry = e_entry_add(mod->popup->evas);
+        e_popup_object_add(mod->popup, entry);
         e_entry_nomenu(entry);
         edje_extern_object_min_size_set(entry, 80 * e_scale, 16 * e_scale);
         edje_object_part_swallow(o, "shotgun.swallow.entry", entry);
         evas_object_event_callback_add(entry, EVAS_CALLBACK_KEY_DOWN, (Evas_Object_Event_Cb)_sawedoff_key_cb, NULL);
 
         mod->popup_img = img = e_icon_add(mod->popup->evas);
+        e_popup_object_add(mod->popup, img);
      }
    mod->contact_active = mc;
-   e_entry_focus(entry);
    edje_object_part_text_set(o, "shotgun.text", mc->name);
    if (mc->icon)
      e_icon_file_key_set(img, eet_file_get(mod->ef), mc->icon);
@@ -485,11 +488,11 @@ _sawedoff_activate(Mod_Contact *mc)
       default:
         break;
      }
-   evas_object_show(o);
    e_popup_move_resize(mod->popup, x, y, mw, mh);
-   evas_object_resize(o, mw, mh);
+   if (!mod->popup->visible)
+     e_grabinput_get(0, 0, e_comp_get(mod->popup)->ee_win);
    e_popup_show(mod->popup);
-   e_grabinput_get(0, 0, mod->popup->evas_win);
+   e_entry_focus(entry);
 }
 
 static void
@@ -537,7 +540,7 @@ _action_entry_toggle_cb(E_Object *obj EINA_UNUSED, const char *params EINA_UNUSE
      {
         if (mod->popup->visible)
           {
-             e_grabinput_release(0, mod->popup->evas_win);
+             e_grabinput_release(0, e_comp_get(mod->popup)->ee_win);
              e_popup_hide(mod->popup);
           }
         else
@@ -599,11 +602,20 @@ _eio_open_cb(void *d EINA_UNUSED, Eio_File *f EINA_UNUSED, Eet_File *ef)
 }
 
 static Eina_Bool
+_focus_cb(void *d EINA_UNUSED, int type EINA_UNUSED, Ecore_X_Event_Window_Focus_In *ev)
+{
+   if (!mod->popup) return ECORE_CALLBACK_RENEW;
+   if ((ev->mode == ECORE_X_EVENT_MODE_GRAB) && (ev->win != e_comp_get(mod->popup)->ee_win) && (ev->detail != ECORE_X_EVENT_DETAIL_POINTER))
+     e_popup_hide(mod->popup);
+   return ECORE_CALLBACK_RENEW;
+}
+
+static Eina_Bool
 _desklock_cb(void *d EINA_UNUSED, int type EINA_UNUSED, E_Event_Desklock *ev)
 {
    if (ev->on && mod->popup && mod->popup->visible)
      {
-        e_grabinput_release(0, mod->popup->evas_win); // this shouldn't be necessary
+        e_grabinput_release(0, e_comp_get(mod->popup)->ee_win); // this shouldn't be necessary
         e_popup_hide(mod->popup);
      }
      
@@ -687,6 +699,7 @@ e_modapi_init(E_Module *m)
    mod->contacts = eina_hash_string_superfast_new((Eina_Free_Cb)mod_contact_free);
 
    E_LIST_HANDLER_APPEND(handlers, E_EVENT_DESKLOCK, _desklock_cb, NULL);
+   E_LIST_HANDLER_APPEND(handlers, ECORE_X_EVENT_WINDOW_FOCUS_IN, _focus_cb, NULL);
 
    return m;
 }
@@ -702,7 +715,7 @@ e_modapi_shutdown(E_Module *m EINA_UNUSED)
    E_FN_DEL(e_object_del, mod->cfd);
    if (mod->popup)
      {
-        e_grabinput_release(0, mod->popup->evas_win);
+        e_grabinput_release(0, e_comp_get(mod->popup)->ee_win);
         e_popup_hide(mod->popup);
      }
    E_FN_DEL(e_object_del, mod->popup);
