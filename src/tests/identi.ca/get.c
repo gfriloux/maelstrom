@@ -122,7 +122,7 @@ main(void)
    EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_connect(cli, EINA_TRUE), 1);
 
    azy_net_uri_set(azy_client_net_get(cli), "/api/statuses/public_timeline.json");
-   azy_net_version_set(azy_client_net_get(cli), 0);
+   azy_net_protocol_set(azy_client_net_get(cli), AZY_NET_PROTOCOL_HTTP_1_0);
 
    ecore_event_handler_add(AZY_CLIENT_CONNECTED, (Ecore_Event_Handler_Cb)connected, NULL);
    ecore_event_handler_add(AZY_CLIENT_RETURN, (Ecore_Event_Handler_Cb)ret_, NULL);

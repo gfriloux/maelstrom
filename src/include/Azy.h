@@ -183,6 +183,15 @@ typedef enum
    AZY_SERVER_TLS = (1 << 4) /**< If bitwise ORed into the type, server will use TLS */
 } Azy_Server_Type;
 
+/**
+ */
+typedef enum
+{
+   AZY_NET_PROTOCOL_HTTP_1_0,
+   AZY_NET_PROTOCOL_HTTP_1_1,
+   AZY_NET_PROTOCOL_LAST,
+} Azy_Net_Protocol;
+
 typedef struct
 {
    unsigned char *data;
@@ -377,8 +386,8 @@ EAPI Eina_Bool                 azy_net_auth_set(Azy_Net *net, const char *userna
 EAPI Eina_Bool                 azy_net_auth_get(Azy_Net *net, const char **username, const char **password);
 EAPI const char               *azy_net_uri_get(Azy_Net *net);
 EAPI Eina_Bool                 azy_net_uri_set(Azy_Net *net, const char *path);
-EAPI int                       azy_net_version_get(Azy_Net *net);
-EAPI Eina_Bool                 azy_net_version_set(Azy_Net *net, int version);
+EAPI Azy_Net_Protocol        azy_net_protocol_get(Azy_Net *net);
+EAPI Eina_Bool                 azy_net_protocol_set(Azy_Net *net, Azy_Net_Protocol proto);
 EAPI int                       azy_net_code_get(Azy_Net *net);
 EAPI void                      azy_net_code_set(Azy_Net *net, int code);
 EAPI const char               *azy_net_ip_get(Azy_Net *net);

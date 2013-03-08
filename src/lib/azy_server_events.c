@@ -260,7 +260,7 @@ _azy_server_client_method_run(Azy_Server_Client *client,
              client->current->http.req.http_path = NULL;
              net->type = client->current->type;
              net->transport = client->current->transport;
-             net->http.version = client->current->http.version;
+             net->proto = client->current->proto;
              azy_net_free(client->current);
              client->current = net;
              azy_content_error_faultmsg_set(content, -1, "Unknown module %s.", module_name);
@@ -277,7 +277,7 @@ _azy_server_client_method_run(Azy_Server_Client *client,
              client->current->http.req.http_path = NULL;
              net->type = client->current->type;
              net->transport = client->current->transport;
-             net->http.version = client->current->http.version;
+             net->proto = client->current->proto;
              azy_net_free(client->current);
              client->current = net;
              azy_content_error_faultmsg_set(content, -1, "Module initialization failed.");
@@ -329,7 +329,7 @@ _azy_server_client_method_run(Azy_Server_Client *client,
                   module->client->current->http.req.http_path = NULL;
                   module->new_net->type = client->current->type;
                   module->new_net->transport = client->current->transport;
-                  module->new_net->http.version = client->current->http.version;
+                  module->new_net->proto = client->current->proto;
                   azy_net_free(module->client->current);
                   module->client->current = module->new_net;
                   MODULE_STATE(ERR);
@@ -346,7 +346,7 @@ _azy_server_client_method_run(Azy_Server_Client *client,
                {
                   module->new_net->type = client->current->type;
                   module->new_net->transport = client->current->transport;
-                  module->new_net->http.version = client->current->http.version;
+                  module->new_net->proto = client->current->proto;
                   azy_net_free(module->client->current);
                   module->client->current = module->new_net;
                   module->new_net = NULL;
@@ -632,7 +632,7 @@ _azy_server_client_get_put(Azy_Server_Client *client)
                   client->current->http.req.http_path = NULL;
                   module->new_net->type = client->current->type;
                   module->new_net->transport = client->current->transport;
-                  module->new_net->http.version = client->current->http.version;
+                  module->new_net->proto = client->current->proto;
                   azy_net_free(client->current);
                   client->current = module->new_net;
                   MODULE_STATE(ERR);
@@ -650,7 +650,7 @@ _azy_server_client_get_put(Azy_Server_Client *client)
                {
                   module->new_net->type = client->current->type;
                   module->new_net->transport = client->current->transport;
-                  module->new_net->http.version = client->current->http.version;
+                  module->new_net->proto = client->current->proto;
                   azy_net_free(module->client->current);
                   module->client->current = module->new_net;
                   module->new_net = NULL;
@@ -771,7 +771,7 @@ _azy_server_client_send(Azy_Server_Client *client,
      }
    ecore_con_client_flush(net->conn);
    /* http 1.0 requires that we disconnect after every request has been served */
-   if (net->http.version == 0)
+   if (net->proto == AZY_NET_PROTOCOL_HTTP_1_0)
      {
         INFO("Disconnecting for HTTP/1.0 compliance");
         client->dead = EINA_TRUE;
@@ -839,7 +839,7 @@ _azy_server_client_handler_request(Azy_Server_Client *client)
         net = azy_net_new(client->net->conn);
         net->server_client = EINA_TRUE;
         net->transport = client->net->transport;
-        net->http.version = client->net->http.version;
+        net->proto = client->net->proto;
         net->type = client->net->type;
         client->current = client->net;
         client->net = net;
@@ -1084,7 +1084,7 @@ _azy_server_client_handler_del(Azy_Server_Client          *client,
      _azy_server_client_handler_data(NULL, -500, NULL);
 
    client->del = NULL;
-   if ((!client->net->http.version) && (!client->handled) && client->net->buffer)
+   if ((!client->net->proto) && (!client->handled) && client->net->buffer)
      _azy_server_client_handler_request(client);
 
    _azy_server_client_free(client);
@@ -1207,7 +1207,7 @@ azy_server_module_events_resume(Azy_Server_Module *module, Eina_Bool ret)
         client->current->http.req.http_path = NULL;
         module->new_net->type = client->current->type;
         module->new_net->transport = client->current->transport;
-        module->new_net->http.version = client->current->http.version;
+        module->new_net->proto = client->current->proto;
         azy_net_free(client->current);
         client->resume = client->current = module->new_net;
         module->new_net = NULL;

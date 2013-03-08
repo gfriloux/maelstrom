@@ -16,6 +16,27 @@
  */
 
 #include "azy_private.h"
+
+static const char *
+_azy_net_proto_str(Azy_Net_Protocol proto)
+{
+   static char buf[128];
+
+   switch (proto)
+     {
+      case AZY_NET_PROTOCOL_HTTP_1_0:
+        strcpy(buf, "HTTP/1.0");
+        break;
+      case AZY_NET_PROTOCOL_HTTP_1_1:
+        strcpy(buf, "HTTP/1.1");
+        break;
+      default:
+        buf[0] = 0;
+        break;
+     }
+   return buf;
+}
+
 /**
  * @defgroup Azy_Net Network Functions
  * @brief Functions which interact with the network transport
@@ -23,7 +44,7 @@
  */
 /* append a header hash to a strbuf */
 static void
-azy_net_header_hash_(Eina_Hash *hash __UNUSED__,
+_azy_net_header_hash(Eina_Hash *hash __UNUSED__,
                      const char     *key,
                      const char     *data,
                      Eina_Strbuf    *header)
@@ -35,7 +56,7 @@ azy_net_header_hash_(Eina_Hash *hash __UNUSED__,
  * @brief Create a new #Azy_Net object
  *
  * This function is used to create an object which will store/manipulate
- * all network-related information.  HTTP version defaults to 1.1.
+ * all network-related information.  Protocol defaults to HTTP 1.1.
  * @param conn Either an #Ecore_Con_Client or an #Ecore_Con_Server (NOT NULL)
  * @return A new #Azy_Net object, or NULL on failure/error
  */
@@ -49,7 +70,7 @@ azy_net_new(void *conn)
    net = calloc(1, sizeof(Azy_Net));
    EINA_SAFETY_ON_NULL_RETURN_VAL(net, NULL);
    net->conn = conn;
-   net->http.version = 1;
+   net->proto = AZY_NET_PROTOCOL_HTTP_1_1;
 
    AZY_MAGIC_SET(net, AZY_MAGIC_NET);
    return net;
@@ -337,23 +358,22 @@ azy_net_uri_set(Azy_Net    *net,
 }
 
 /**
- * @brief Returns the http protocol version used
+ * @brief Returns the protocol used
  *
- * This function returns 0 for http v1.0 or 1 for http v1.1.
  * @param net The network object (NOT NULL)
- * @return 0 or 1 for version, else -1 on error
+ * @return #Azy_Net_Protocol, or AZY_NET_PROTOCOL_LAST on error
  */
-int
-azy_net_version_get(Azy_Net *net)
+Azy_Net_Protocol
+azy_net_protocol_get(Azy_Net *net)
 {
    DBG("(net=%p)", net);
    if (!AZY_MAGIC_CHECK(net, AZY_MAGIC_NET))
      {
         AZY_MAGIC_FAIL(net, AZY_MAGIC_NET);
-        return -1;
+        return AZY_NET_PROTOCOL_LAST;
      }
 
-   return net->http.version;
+   return net->proto;
 }
 
 /**
@@ -366,8 +386,7 @@ azy_net_version_get(Azy_Net *net)
  * @return EINA_TRUE on success, else EINA_FALSE
  */
 Eina_Bool
-azy_net_version_set(Azy_Net *net,
-                    int      version)
+azy_net_protocol_set(Azy_Net *net, Azy_Net_Protocol proto)
 {
    DBG("(net=%p)", net);
    if (!AZY_MAGIC_CHECK(net, AZY_MAGIC_NET))
@@ -375,9 +394,9 @@ azy_net_version_set(Azy_Net *net,
         AZY_MAGIC_FAIL(net, AZY_MAGIC_NET);
         return EINA_FALSE;
      }
-   EINA_SAFETY_ON_TRUE_RETURN_VAL((version != 0) && (version != 1), EINA_FALSE);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL((proto >= AZY_NET_PROTOCOL_LAST), EINA_FALSE);
 
-   net->http.version = version;
+   net->proto = proto;
    return EINA_TRUE;
 }
 
@@ -681,23 +700,23 @@ azy_net_header_create(Azy_Net *net)
    switch (net->type)
      {
       case AZY_NET_TYPE_GET:
-        eina_strbuf_append_printf(header, "GET %s HTTP/1.%i\r\n",
-                                  net->http.req.http_path, net->http.version);
+        eina_strbuf_append_printf(header, "GET %s %s\r\n",
+                                  net->http.req.http_path, _azy_net_proto_str(net->proto));
         break;
 
       case AZY_NET_TYPE_POST:
-        eina_strbuf_append_printf(header, "POST %s HTTP/1.%i\r\n",
-                                  net->http.req.http_path, net->http.version);
+        eina_strbuf_append_printf(header, "POST %s %s\r\n",
+                                  net->http.req.http_path, _azy_net_proto_str(net->proto));
         break;
 
       case AZY_NET_TYPE_PUT:
-        eina_strbuf_append_printf(header, "PUT %s HTTP/1.%i\r\n",
-                                  net->http.req.http_path, net->http.version);
+        eina_strbuf_append_printf(header, "PUT %s %s\r\n",
+                                  net->http.req.http_path, _azy_net_proto_str(net->proto));
         break;
 
       default:
-        eina_strbuf_append_printf(header, "HTTP/1.%i %d %s\r\n",
-                                  net->http.version, net->http.res.http_code, net->http.res.http_msg);
+        eina_strbuf_append_printf(header, "%s %d %s\r\n",
+                                  _azy_net_proto_str(net->proto), net->http.res.http_code, net->http.res.http_msg);
         if ((net->http.res.http_code == 426) || (net->http.res.http_code == 101))
           {
              azy_net_header_set(net, "upgrade", "TLS/1.0, HTTP/1.1");
@@ -707,7 +726,7 @@ azy_net_header_create(Azy_Net *net)
 
 
    if (net->http.headers)
-     eina_hash_foreach(net->http.headers, (Eina_Hash_Foreach)azy_net_header_hash_, header);
+     eina_hash_foreach(net->http.headers, (Eina_Hash_Foreach)_azy_net_header_hash, header);
 
    eina_strbuf_append(header, "\r\n");
    return header;

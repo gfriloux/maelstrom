@@ -43,7 +43,7 @@ _azy_client_handler_call_free(Azy_Client  *client,
           }
      }
    /* http 1.0 requires that we disconnect after every response */
-   if ((!content->recv_net->http.version) || (client && client->net && (!client->net->http.version)))
+   if ((!content->recv_net->proto) || (client && client->net && (!client->net->proto)))
      {
         ecore_con_server_del(client->net->conn);
         client->net->conn = content->recv_net->conn = NULL;
@@ -344,7 +344,7 @@ _azy_client_handler_redirect(Azy_Client_Handler_Data *hd)
 
    hd->nodelete = EINA_TRUE;
 
-   if ((!hd->client->net->http.version) || (!hd->recv->http.version)) /* handle http 1.0 */
+   if ((!hd->client->net->proto) || (!hd->recv->proto)) /* handle http 1.0 */
      {
         azy_events_connection_kill(hd->client->net->conn, EINA_FALSE, NULL);
         azy_client_connect(hd->client, hd->client->secure);

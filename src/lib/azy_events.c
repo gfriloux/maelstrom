@@ -61,9 +61,10 @@ _azy_events_valid_response(Azy_Net *net,
    switch (start[0])
      {
       case '0':
+        net->proto = AZY_NET_PROTOCOL_HTTP_1_0;
         break;
       case '1':
-        net->http.version = 1;
+        net->proto = AZY_NET_PROTOCOL_HTTP_1_1;
         break;
       default:
         return 0;
@@ -203,9 +204,10 @@ _azy_events_valid_request(Azy_Net *net,
                      switch (end[0])
                        {
                         case '0':
+                          net->proto = AZY_NET_PROTOCOL_HTTP_1_0;
                           break;
                         case '1':
-                          net->http.version = 1;
+                          net->proto = AZY_NET_PROTOCOL_HTTP_1_1;
                           break;
                         default:
                           return 0;

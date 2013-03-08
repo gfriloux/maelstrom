@@ -199,6 +199,7 @@ struct Azy_Net
 
    Azy_Net_Type      type;
    Azy_Net_Transport transport;
+   Azy_Net_Protocol proto;
    struct
    {
       struct
@@ -211,7 +212,6 @@ struct Azy_Net
          const char *http_msg;
          int         http_code;
       } res;
-      int        version;
       Eina_Hash *headers;
       int64_t    content_length;
    } http;
