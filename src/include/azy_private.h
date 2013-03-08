@@ -1,5 +1,5 @@
 /*
- * Copyright 2010, 2011, 2012 Mike Blumenkrantz <michael.blumenkrantz@gmail.com>
+ * Copyright 2010, 2011, 2012, 2013 Mike Blumenkrantz <michael.blumenkrantz@gmail.com>
  */
 
 #ifndef AZY_PRIV_H
