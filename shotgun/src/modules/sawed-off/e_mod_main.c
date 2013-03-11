@@ -48,7 +48,7 @@ mod_contact_free(Mod_Contact *mc)
    mod->contacts_list = eina_inlist_remove(mod->contacts_list, EINA_INLIST_GET(mc));
    if (mod->contact_active == mc)
      {
-        E_FN_DEL(e_object_del, mod->popup);
+        E_FREE_FUNC(mod->popup, e_object_del);
         mod->popup_bg = mod->popup_entry = mod->popup_img = NULL;
         mod->contact_active = NULL;
      }
@@ -86,7 +86,7 @@ _set_active(Eina_Bool active)
              e_grabinput_release(0, e_comp_get(mod->popup)->ee_win);
              e_popup_hide(mod->popup);
           }
-        E_FN_DEL(e_object_del, mod->popup);
+        E_FREE_FUNC(mod->popup, e_object_del);
         mod->popup_bg = mod->popup_entry = mod->popup_img = NULL;
         mod->contact_active = NULL;
         return;
@@ -712,13 +712,13 @@ e_modapi_shutdown(E_Module *m EINA_UNUSED)
 
    e_configure_registry_category_del("extensions");
 
-   E_FN_DEL(e_object_del, mod->cfd);
+   E_FREE_FUNC(mod->cfd, e_object_del);
    if (mod->popup)
      {
         e_grabinput_release(0, e_comp_get(mod->popup)->ee_win);
         e_popup_hide(mod->popup);
      }
-   E_FN_DEL(e_object_del, mod->popup);
+   E_FREE_FUNC(mod->popup, e_object_del);
    e_config_domain_save("module.sawed-off_shotgun", conf_edd, sos_config);
    _e_mod_sos_config_free();
    E_CONFIG_DD_FREE(conf_edd);
@@ -736,7 +736,7 @@ e_modapi_shutdown(E_Module *m EINA_UNUSED)
    eina_hash_free(mod->contacts);
    if (mod->ef) eet_close(mod->ef);
    E_FREE(mod);
-   E_FN_DEL(eio_file_cancel, eio_file);
+   E_FREE_FUNC(eio_file, eio_file_cancel);
    edbus_shutdown();
    E_FREE_LIST(handlers, ecore_event_handler_del);
    return 1;
