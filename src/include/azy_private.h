@@ -77,6 +77,9 @@ extern int azy_rpc_log_dom;
 # define strndupa(str, len) strncpy(alloca(len + 1), str, len)
 #endif
 
+#define EBUF(X) ((X) ? eina_binbuf_string_get(X) : NULL)
+#define EBUFLEN(X) ((X) ? eina_binbuf_length_get(X) : 0)
+
 extern Eina_Error AZY_ERROR_REQUEST_JSON_OBJECT;
 extern Eina_Error AZY_ERROR_REQUEST_JSON_METHOD;
 extern Eina_Error AZY_ERROR_REQUEST_JSON_PARAM;
@@ -114,7 +117,6 @@ struct Azy_Content
    Eina_List            *params;
    Azy_Value            *retval;
    void                 *ret;
-   int64_t               retsize;
    Azy_Client_Call_Id    id;
    Azy_Net              *recv_net;
    Azy_Content_Retval_Cb retval_cb;
@@ -189,13 +191,13 @@ struct Azy_Net
    void             *conn;
    Eina_Bool         server_client : 1;
 
-   int64_t           size;
-   unsigned char    *buffer;
-   unsigned char    *overflow;
-   int64_t           overflow_length;
+   Eina_Binbuf      *buffer;
+   size_t             progress; //for tracking current call progress in RAW mode
+   Eina_Binbuf      *overflow;
 
    Ecore_Timer      *timer;
    Eina_Bool         nodata : 1;
+   Eina_Bool         buffer_stolen : 1;
 
    Azy_Net_Type      type;
    Azy_Net_Transport transport;
@@ -247,6 +249,7 @@ typedef struct Azy_Server_Client
    Azy_Net             *current;
    Azy_Server          *server;
    Eina_List           *modules;
+   Eina_Binbuf         *overflow;
 
    Eina_Bool            handled : 1;
    Eina_Bool            dead : 1;
@@ -312,6 +315,7 @@ struct Azy_Client
    AZY_MAGIC;
    void                *data;
    Azy_Net             *net;
+   Eina_Binbuf        *overflow;
 
    Ecore_Event_Handler *add;
    Ecore_Event_Handler *del;
@@ -385,6 +389,10 @@ Eina_Bool     azy_value_multi_line_get_(Azy_Value *v, unsigned int max_strlen);
 int           azy_events_type_parse(Azy_Net *net, int type, const unsigned char *header, int len);
 Eina_Bool     azy_events_header_parse(Azy_Net *net, unsigned char *event_data, size_t event_len, int offset);
 Eina_Bool     azy_events_connection_kill(void *conn, Eina_Bool server_client, const char *msg);
+
+inline void azy_events_recv_progress(Azy_Net *net, void *data, size_t len);
+inline void azy_events_transfer_progress_event(const Azy_Client_Handler_Data *hd, size_t size);
+inline Eina_Bool azy_events_length_overflows(int64_t current, int64_t max);
 
 Eina_Bool     _azy_client_handler_add(Azy_Client *client, int type, Ecore_Con_Event_Server_Add *add);
 Eina_Bool     _azy_client_handler_del(Azy_Client *client, int type, Ecore_Con_Event_Server_Del *del);

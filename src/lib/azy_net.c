@@ -98,21 +98,45 @@ azy_net_buffer_new(void *buf, size_t size, Azy_Net_Transport transport, Eina_Boo
    if (buf && size)
      {
         if (steal)
-          net->buffer = buf;
+          net->buffer = eina_binbuf_manage_new_length(buf, size);
         else
           {
-             net->buffer = malloc(size);
+             net->buffer = eina_binbuf_new();
              if (!net->buffer)
                {
                   free(net);
                   return NULL;
                }
-             memcpy(net->buffer, buf, size);
+             eina_binbuf_append_length(net->buffer, buf, size);
           }
-        net->size = size;
      }
    net->transport = transport;
    return net;
+}
+
+/**
+ * @brief Steal the contents of a network buffer
+ *
+ * This function can be used to clear the current buffer of a network
+ * object. It is intended for use with AZY_EVENT_TRANSFER_PROGRESS events.
+ * @param net The network object
+ * @param size Pointer to store the size of the stolen buffer
+ * @return the current content of the network buffer
+ */
+void *
+azy_net_buffer_steal(Azy_Net *net, size_t *size)
+{
+   DBG("(net=%p)", net);
+
+   if (!AZY_MAGIC_CHECK(net, AZY_MAGIC_NET))
+     {
+        AZY_MAGIC_FAIL(net, AZY_MAGIC_NET);
+        return NULL;
+     }
+   if (size) *size = EBUFLEN(net->buffer);
+   if (!net->buffer) return NULL;
+   net->buffer_stolen = EINA_TRUE;
+   return eina_binbuf_string_steal(net->buffer);
 }
 
 /**
@@ -136,11 +160,10 @@ azy_net_free(Azy_Net *net)
    AZY_MAGIC_SET(net, AZY_MAGIC_NONE);
    if (net->http.headers)
      eina_hash_free(net->http.headers);
-   if (net->http.req.http_path)
-     eina_stringshare_del(net->http.req.http_path);
-   if (net->http.res.http_msg)
-     eina_stringshare_del(net->http.res.http_msg);
-   free(net->buffer);
+   eina_stringshare_del(net->http.req.http_path);
+   eina_stringshare_del(net->http.res.http_msg);
+   if (net->buffer) eina_binbuf_free(net->buffer);
+   if (net->overflow) eina_binbuf_free(net->overflow);
    memset(net, 0, sizeof(Azy_Net)); /* zero out data for security */
    if (net->timer) ecore_timer_del(net->timer);
    free(net);

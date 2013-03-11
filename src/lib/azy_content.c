@@ -70,16 +70,15 @@ azy_content_deserialize(Azy_Content *content,
         return EINA_FALSE;
      }
    EINA_SAFETY_ON_NULL_RETURN_VAL(net->buffer, EINA_FALSE);
-   EINA_SAFETY_ON_TRUE_RETURN_VAL(!net->buffer[0], EINA_FALSE);
    DBG("(content=%p, net=%p, net->type=%u)", content, net, net->transport);
    if (net->transport == AZY_NET_TRANSPORT_JSON)
-     return azy_content_deserialize_json(content, (char *)net->buffer, net->size);
+     return azy_content_deserialize_json(content, (char *)EBUF(net->buffer), EBUFLEN(net->buffer));
 
 
    if (net->transport == AZY_NET_TRANSPORT_XML)
      {
 #ifdef HAVE_XML
-        return azy_content_deserialize_xml(content, (char*)net->buffer, net->size);
+        return azy_content_deserialize_xml(content, (char *)EBUF(net->buffer), EBUFLEN(net->buffer));
 #else
         ERR("%s", eina_error_msg_get(AZY_ERROR_XML_UNSUPPORTED));
         return NULL;
@@ -939,27 +938,6 @@ azy_content_return_get(Azy_Content *content)
         return NULL;
      }
    return content->ret;
-}
-
-/**
- * @brief Get the size of the return value of a transmission
- *
- * This function gets the size of the return value of a method call, and is only
- * functional for clients in return callbacks/events.
- * Note that the returned content is owned by @p content and should not
- * be manually freed.
- * @param content The content object (NOT NULL)
- * @return The method response return value, or NULL on failure
- */
-uint64_t
-azy_content_return_size_get(Azy_Content *content)
-{
-   if (!AZY_MAGIC_CHECK(content, AZY_MAGIC_CONTENT))
-     {
-        AZY_MAGIC_FAIL(content, AZY_MAGIC_CONTENT);
-        return -1;
-     }
-   return content->retsize;
 }
 
 /**

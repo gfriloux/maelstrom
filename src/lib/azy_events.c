@@ -260,7 +260,7 @@ azy_events_type_parse(Azy_Net             *net,
                       int                  len)
 {
    const unsigned char *start = NULL;
-   int size;
+   size_t size;
 
    DBG("(net=%p, header=%p, len=%i)", net, header, len);
    if (!AZY_MAGIC_CHECK(net, AZY_MAGIC_NET))
@@ -269,24 +269,24 @@ azy_events_type_parse(Azy_Net             *net,
         return 0;
      }
 
-   if (net->size && net->buffer)
+   if (net->buffer)
      {
         unsigned char *buf_start;
 
         /* previous buffer */
-        size = (net->size + len > MAX_HEADER_SIZE) ? MAX_HEADER_SIZE : net->size + len;
+        size = (eina_binbuf_length_get(net->buffer) + len > MAX_HEADER_SIZE) ? MAX_HEADER_SIZE : eina_binbuf_length_get(net->buffer) + len;
         buf_start = alloca(size);
         /* grab and combine buffers */
         if (header)
           {
-             memcpy(buf_start, net->buffer, size);
-             if (net->size < size)
-               memcpy(buf_start + net->size, header, size - net->size);
+             memcpy(buf_start, eina_binbuf_string_get(net->buffer), size);
+             if (eina_binbuf_length_get(net->buffer) < size)
+               memcpy(buf_start + eina_binbuf_length_get(net->buffer), header, size - eina_binbuf_length_get(net->buffer));
              len = size;
           }
         else
           {
-             memcpy(buf_start, net->buffer, size);
+             memcpy(buf_start, eina_binbuf_string_get(net->buffer), size);
              len = size;
           }
 
@@ -336,13 +336,13 @@ azy_events_header_parse(Azy_Net       *net,
      return EINA_TRUE;
    EINA_SAFETY_ON_TRUE_RETURN_VAL((!net->buffer) && (!data), EINA_FALSE);
 
-   if (net->size && net->buffer)
+   if (net->buffer)
      {
         if (event_data && (azy_rpc_log_dom >= 0))
           {
              char buf[64];
-             snprintf(buf, sizeof(buf), "STORED:\n<<<<<<<<<<<<<\n%%.%"PRIi64"s\n<<<<<<<<<<<<<", net->size);
-             RPC_INFO(buf, net->buffer);
+             snprintf(buf, sizeof(buf), "STORED:\n<<<<<<<<<<<<<\n%%.%"PRIi64"s\n<<<<<<<<<<<<<", eina_binbuf_length_get(net->buffer));
+             RPC_INFO(buf, eina_binbuf_string_get(net->buffer));
              snprintf(buf, sizeof(buf), "RECEIVED:\n<<<<<<<<<<<<<\n%%.%"PRIi64"s\n<<<<<<<<<<<<<", len - offset);
              RPC_INFO(buf, data);
           }
@@ -351,22 +351,20 @@ azy_events_header_parse(Azy_Net       *net,
          * and even if no headers were found previously, the entire
          * buffer would not be copied
          */
-        buf_start = alloca(len + net->size - offset);
+        buf_start = alloca(len + eina_binbuf_length_get(net->buffer) - offset);
         /* grab and combine buffers */
         if (event_data)
           {
-             memcpy(buf_start, net->buffer + offset, net->size - offset);
-             memcpy(buf_start + net->size, event_data, len);
+             memcpy(buf_start, eina_binbuf_string_get(net->buffer) + offset, eina_binbuf_length_get(net->buffer) - offset);
+             memcpy(buf_start + eina_binbuf_length_get(net->buffer), event_data, len);
           }
         else
-          memcpy(buf_start, net->buffer + offset, net->size - offset);
+          memcpy(buf_start, eina_binbuf_string_get(net->buffer) + offset, eina_binbuf_length_get(net->buffer) - offset);
 
-        free(net->buffer);
+        prev_size = eina_binbuf_length_get(net->buffer);
+        len += prev_size - offset;
+        eina_binbuf_free(net->buffer);
         net->buffer = NULL;
-        len += net->size - offset;
-
-        prev_size = net->size;
-        net->size = 0;
         start = buf_start;
         AZY_SKIP_BLANK(start);
      }
@@ -389,26 +387,8 @@ azy_events_header_parse(Azy_Net       *net,
    /* find a header or append to buffer */
    if ((!(r = memchr(start, '\r', len)) && !(r = memchr(start, '\n', len)))) /* append to a buffer and use net->overflow */
      {
-        unsigned char *tmp;
-
-        if (net->size)
-          {
-             tmp = realloc(net->buffer, net->size + len);
-             EINA_SAFETY_ON_NULL_RETURN_VAL(tmp, EINA_FALSE);
-
-             net->buffer = tmp;
-             memcpy(net->buffer + net->size, start, len);
-             net->size += len;
-          }
-        else
-          {
-             tmp = realloc(net->buffer, len);
-             EINA_SAFETY_ON_NULL_RETURN_VAL(tmp, EINA_FALSE);
-
-             net->buffer = tmp;
-             memcpy(net->buffer, start, len);
-             net->size = len;
-          }
+        if (!net->buffer) net->buffer = eina_binbuf_new();
+        azy_events_recv_progress(net, start, len);
         return EINA_TRUE;
      }
 
@@ -517,19 +497,18 @@ skip_header:
              if (len > net->http.content_length)
                {
                   rlen = net->http.content_length;
-                  net->overflow_length = len - rlen;
-                  WARN("Extra content length of %"PRIi64"!", net->overflow_length);
-                  net->overflow = malloc(net->overflow_length);
-     /* FIXME: uhhhh fuck? */
-                  EINA_SAFETY_ON_NULL_RETURN_VAL(net->overflow, EINA_FALSE);
-                  memcpy(net->overflow, p + rlen, net->overflow_length);
+                  net->overflow = eina_binbuf_new();
+                  eina_binbuf_append_length(net->overflow, p + rlen, len - rlen);
+                  WARN("Extra content length of %"PRIi64"!", eina_binbuf_length_get(net->overflow));
 #ifdef ISCOMFITOR
                 if (azy_rpc_log_dom >= 0)
                   {
                      int64_t x;
+                     unsigned char *buf;
                      RPC_INFO("OVERFLOW:\n<<<<<<<<<<<<<");
-                     for (x = 0; x < net->overflow_length; x++)
-                       putc(net->overflow[x], stdout);
+                     buf = eina_binbuf_string_get(net->overflow);
+                     for (x = 0; x < eina_binbuf_length_get(net->overflow); x++)
+                       putc(buf[x], stdout);
                      fflush(stdout);
                   }
 #endif
@@ -542,12 +521,8 @@ skip_header:
           rlen = len;
 
         INFO("Set recv size to %"PRIi64" (previous %"PRIi64")", rlen, prev_size);
-        net->size = rlen;
-        net->buffer = malloc(rlen);
-        /* FIXME: cleanup */
-        EINA_SAFETY_ON_NULL_RETURN_VAL(net->buffer, EINA_FALSE);
-
-        memcpy(net->buffer, p, rlen);
+        net->buffer = eina_binbuf_new();
+        azy_events_recv_progress(net, p, rlen);
      }
 
    return EINA_TRUE;
@@ -572,6 +547,34 @@ azy_events_connection_kill(void       *conn,
    else
      ecore_con_server_del(conn);
    return ECORE_CALLBACK_RENEW;
+}
+
+inline void
+azy_events_recv_progress(Azy_Net *net, void *data, size_t len)
+{
+   eina_binbuf_append_length(net->buffer, data, len);
+   net->progress = eina_binbuf_length_get(net->buffer);
+}
+
+inline Eina_Bool
+azy_events_length_overflows(int64_t current, int64_t max)
+{
+   if (max < 1) return EINA_FALSE;
+   return current > max;
+}
+
+inline void
+azy_events_transfer_progress_event(const Azy_Client_Handler_Data *hd, size_t size)
+{
+   Azy_Event_Transfer_Progress *dse;
+
+   dse = malloc(sizeof(Azy_Event_Transfer_Progress));
+   EINA_SAFETY_ON_NULL_RETURN(dse);
+   dse->id = hd->id;
+   dse->size = size;
+   dse->client = hd->client;
+   dse->net = hd->recv;
+   ecore_event_add(AZY_EVENT_TRANSFER_PROGRESS, dse, NULL, NULL);
 }
 
 void

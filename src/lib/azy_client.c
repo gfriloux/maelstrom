@@ -23,7 +23,7 @@ static Azy_Client_Call_Id azy_client_send_id__ = 0;
 EAPI int AZY_CLIENT_DISCONNECTED;
 EAPI int AZY_CLIENT_CONNECTED;
 EAPI int AZY_CLIENT_UPGRADE;
-EAPI int AZY_CLIENT_RETURN;
+EAPI int AZY_CLIENT_TRANSFER_COMPLETE;
 EAPI int AZY_CLIENT_RESULT;
 EAPI int AZY_CLIENT_ERROR;
 
@@ -372,7 +372,7 @@ azy_client_close(Azy_Client *client)
  * @brief Set a callback for an #Azy_Client_Call_Id
  *
  * This function is used to setup a callback to be called for the response of
- * a transmission with @p id, overriding (disabling) the AZY_CLIENT_RETURN event
+ * a transmission with @p id, overriding (disabling) the AZY_CLIENT_TRANSFER_COMPLETE event
  * for that call.  If a previous callback was set for @p id, this will overwrite it.
  * @param client The client (NOT NULL)
  * @param id The transmission id (> 0)
@@ -827,10 +827,10 @@ azy_client_free(Azy_Client *client)
    if (client->connected)
      azy_client_close(client);
    AZY_MAGIC_SET(client, AZY_MAGIC_NONE);
-   if (client->addr)
-     eina_stringshare_del(client->addr);
-   if (client->session_id)
-     eina_stringshare_del(client->session_id);
+   eina_stringshare_del(client->addr);
+   eina_stringshare_del(client->session_id);
+   if (client->overflow)
+     eina_binbuf_free(client->overflow);
    if (client->add)
      ecore_event_handler_del(client->add);
    if (client->del)

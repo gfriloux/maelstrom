@@ -51,7 +51,7 @@
 EAPI extern int AZY_CLIENT_DISCONNECTED; /**< Event emitted upon client disconnecting, sends #Azy_Client object */
 EAPI extern int AZY_CLIENT_CONNECTED; /**< Event emitted upon client connecting, sends #Azy_Client object */
 EAPI extern int AZY_CLIENT_UPGRADE; /**< Event emitted upon client successfully upgrading to TLS, sends #Azy_Client object */
-EAPI extern int AZY_CLIENT_RETURN; /**< Event emitted upon client method returning if
+EAPI extern int AZY_CLIENT_TRANSFER_COMPLETE; /**< Event emitted upon client method returning if
                                       no callback was set, sends #Azy_Content */
 EAPI extern int AZY_CLIENT_RESULT; /**< Event emitted upon client method returning if
                                       a callback for the method has been set, sends #Eina_Error */
@@ -64,7 +64,7 @@ EAPI extern int AZY_SERVER_CLIENT_UPGRADE; /**< Event emitted upon client succes
 EAPI extern int AZY_SERVER_CLIENT_DEL; /**< Event emitted upon client disconnecting from server,
                                           sends #Azy_Server object */
 
-EAPI extern int AZY_EVENT_DOWNLOAD_STATUS; /**< Event emitted when a GET request makes progress, sends #Azy_Event_Download_Status */
+EAPI extern int AZY_EVENT_TRANSFER_PROGRESS; /**< Event emitted when a GET request makes progress, sends #Azy_Event_Transfer_Progress */
 /**@}*/
 /**
  * @defgroup Azy_Typedefs Azy types
@@ -160,16 +160,16 @@ typedef struct Azy_Content Azy_Content;
 typedef unsigned int       Azy_Client_Call_Id;
 
 /**
- * @typedef Azy_Event_Download_Status
- * The event object for AZY_EVENT_DOWNLOAD_STATUS
+ * @typedef Azy_Event_Transfer_Progress
+ * The event object for AZY_EVENT_TRANSFER_PROGRESS
  */
-typedef struct Azy_Event_Download_Status
+typedef struct Azy_Event_Transfer_Progress
 {
    Azy_Client_Call_Id id; /**< The id of the transfer */
    size_t             size; /**< The number of bytes transferred in the event */
    Azy_Net           *net; /**< The receiving net object */
    Azy_Client        *client; /**< The client making the transfer */
-} Azy_Event_Download_Status;
+} Azy_Event_Transfer_Progress;
 
 /**
  * @typedef Azy_Server_Type
@@ -184,12 +184,14 @@ typedef enum
 } Azy_Server_Type;
 
 /**
+ * @typedef Azy_Net_Protocol
+ * An enum for determining which net protocol is used
  */
 typedef enum
 {
-   AZY_NET_PROTOCOL_HTTP_1_0,
-   AZY_NET_PROTOCOL_HTTP_1_1,
-   AZY_NET_PROTOCOL_LAST,
+   AZY_NET_PROTOCOL_HTTP_1_0,  /**< HTTP 1.0 */
+   AZY_NET_PROTOCOL_HTTP_1_1, /**< HTTP 1.1 */
+   AZY_NET_PROTOCOL_LAST /**< Dummy value used for setting errors and iterating */
 } Azy_Net_Protocol;
 
 typedef struct
@@ -380,6 +382,7 @@ EAPI Eina_Bool                 azy_server_module_upgrade(Azy_Server_Module *modu
 /* net */
 EAPI Azy_Net                  *azy_net_new(void *conn);
 EAPI Azy_Net                  *azy_net_buffer_new(void *buf, size_t size, Azy_Net_Transport transport, Eina_Bool steal);
+EAPI void                     *azy_net_buffer_steal(Azy_Net *net, size_t *size);
 EAPI void                      azy_net_free(Azy_Net *net);
 EAPI const char               *azy_net_header_get(Azy_Net *net, const char *name);
 EAPI Eina_Bool                 azy_net_auth_set(Azy_Net *net, const char *username, const char *password);
@@ -443,7 +446,6 @@ EAPI Azy_Value                *azy_content_param_get(Azy_Content *content, unsig
 EAPI Eina_List                *azy_content_params_get(Azy_Content *content);
 EAPI void                      azy_content_retval_set(Azy_Content *content, Azy_Value *val);
 EAPI void                     *azy_content_return_get(Azy_Content *content);
-EAPI uint64_t                  azy_content_return_size_get(Azy_Content *content);
 EAPI Azy_Client_Call_Id        azy_content_id_get(Azy_Content *content);
 EAPI Azy_Value                *azy_content_retval_get(Azy_Content *content);
 EAPI void                      azy_content_error_code_set(Azy_Content *content, Eina_Error code);

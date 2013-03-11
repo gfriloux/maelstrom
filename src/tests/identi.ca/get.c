@@ -70,7 +70,7 @@ azy_value_to_Array_identica_Ident(Azy_Value *_array, Eina_List **_narray)
 }
 
 static Eina_Bool
-download_status(void *data __UNUSED__, int type __UNUSED__, Azy_Event_Download_Status *ev)
+download_status(void *data __UNUSED__, int type __UNUSED__, Azy_Event_Transfer_Progress *ev)
 {
    int total = -1;
 
@@ -125,9 +125,9 @@ main(void)
    azy_net_protocol_set(azy_client_net_get(cli), AZY_NET_PROTOCOL_HTTP_1_0);
 
    ecore_event_handler_add(AZY_CLIENT_CONNECTED, (Ecore_Event_Handler_Cb)connected, NULL);
-   ecore_event_handler_add(AZY_CLIENT_RETURN, (Ecore_Event_Handler_Cb)ret_, NULL);
+   ecore_event_handler_add(AZY_CLIENT_TRANSFER_COMPLETE, (Ecore_Event_Handler_Cb)ret_, NULL);
    ecore_event_handler_add(AZY_CLIENT_DISCONNECTED, (Ecore_Event_Handler_Cb)disconnected, NULL);
-   ecore_event_handler_add(AZY_EVENT_DOWNLOAD_STATUS, (Ecore_Event_Handler_Cb)download_status, NULL);
+   ecore_event_handler_add(AZY_EVENT_TRANSFER_PROGRESS, (Ecore_Event_Handler_Cb)download_status, NULL);
 
    ecore_main_loop_begin();
 
