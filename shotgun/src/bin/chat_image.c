@@ -197,7 +197,13 @@ chat_image_add(Contact_List *cl, const char *url)
      {
         i->url = ecore_con_url_new(url);
         ecore_con_url_data_set(i->url, i);
-        if (!ecore_con_url_get(i->url)) abort(); /* don't even know how to deal with this */
+        if (!ecore_con_url_get(i->url))
+          {
+             /* don't even know how to deal with this */
+             ERR("IMAGE FETCHING FAILURE: %s", url);
+             free(i);
+             return;
+          }
      }
    i->cl = cl;
    i->addr = url;
