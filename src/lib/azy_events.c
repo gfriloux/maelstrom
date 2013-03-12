@@ -32,6 +32,12 @@ _azy_events_skip_blank(const unsigned char *p, int64_t *len)
    return (unsigned char*)p;
 }
 
+inline Eina_Bool
+azy_events_chunks_done(const Azy_Net *net)
+{
+   return ((!net->http.chunk_size) && (!net->need_chunk_size));
+}
+
 static unsigned int
 _azy_events_valid_header_name(const char  *start,
                               unsigned int len)
@@ -376,12 +382,17 @@ _azy_events_separator_parse(const unsigned char *start, int64_t len, const unsig
 static void
 _azy_events_header_add(Azy_Net *net, const char *key, const char *value)
 {
-   INFO("Found header: key='%s'", key);
-   INFO("Found header: value='%s'", value);
+   INFO("Found %sheader: key='%s'", net->http.post_headers ? "post " : "", key);
+   INFO("Found %sheader: value='%s'", net->http.post_headers ? "post " : "", value);
    if (!strcasecmp(key, "transfer-encoding"))
      {
-        net->transfer_encoding = _azy_events_transfer_encoding(value);
-        switch (net->transfer_encoding)
+        if (net->http.post_headers)
+          {
+             ERR("INVALID POST HEADER: %s", key);
+             return;
+          }
+        net->http.transfer_encoding = _azy_events_transfer_encoding(value);
+        switch (net->http.transfer_encoding)
           {
            case AZY_NET_TRANSFER_ENCODING_CHUNKED:
              INFO("TRANSFER ENCODING: CHUNKED");
@@ -390,15 +401,70 @@ _azy_events_header_add(Azy_Net *net, const char *key, const char *value)
           }
         net->http.content_length = -1;
      }
+   else if (!strcasecmp(key, "trailer"))
+     {
+        char *s, *p;
+
+        if (net->http.post_headers)
+          {
+             ERR("INVALID POST HEADER: %s", key);
+             return;
+          }
+        net->http.post_headers = eina_hash_string_small_new(NULL);
+        p = strchr(value, ' ');
+        for (s = (char*)value; p; p = strchr(s, ' '))
+          {
+             char *name;
+
+             while (isspace(s[0])) s++;
+             name = strndupa(s, p - s);
+             eina_str_tolower(&name);
+             INFO("TRAILER: %s", name);
+             eina_hash_add(net->http.post_headers, name, (void*)1);
+          }
+        INFO("TRAILER: %s", s);
+        eina_str_tolower(&s);
+        eina_hash_add(net->http.post_headers, s, (void*)1);
+     }
    else if (!strcasecmp(key, "content-length"))
      {
-        if (net->transfer_encoding)
+        if (net->http.post_headers)
+          {
+             ERR("INVALID POST HEADER: %s", key);
+             return;
+          }
+        if (net->http.transfer_encoding)
           INFO("Ignoring content-length: transfer encoding is set :(");
         else
           net->http.content_length = strtol((const char *)value, NULL, 10);
      }
    else
      azy_net_header_set(net, key, value);
+}
+
+static unsigned char *
+_azy_events_chunk_size_parser(Azy_Net *net, const unsigned char *start, int64_t *len)
+{
+   unsigned char *r;
+
+   if (!(*len)) return NULL;
+   r = azy_memstr(start, (unsigned char*)ESBUF(net->separator), *len, ESBUFLEN(net->separator));
+   if (!r) return NULL;
+   net->progress = 0;
+   /* chunk size is hex */
+   net->http.chunk_size = strtoul((char*)start, NULL, 16);
+   /* FIXME: chunk can have an extension but I don't know what that is right now */
+   INFO("CURRENT CHUNK SIZE: %zu", net->http.chunk_size);
+   net->need_chunk_size = EINA_FALSE;
+   *len -= (r - start);
+   if (azy_events_chunks_done(net))
+     {
+        net->headers_read = !net->http.post_headers;
+        net->progress = net->http.content_length = EBUFLEN(net->buffer);
+        if (!net->headers_read)
+          net->http.post_headers_buf = eina_binbuf_new();
+     }
+   return r;
 }
 
 static unsigned char *
@@ -414,8 +480,8 @@ _azy_events_headers_parser(Azy_Net *net, unsigned char *start, int64_t *length, 
    r = start + line_len;
    len = *length;
    p = start;
-   slen = eina_strbuf_length_get(net->separator);
-   s = eina_strbuf_string_get(net->separator);
+   slen = ESBUFLEN(net->separator);
+   s = ESBUF(net->separator);
    while (len && r)
      {
         unsigned char *ptr, *semi = p;
@@ -448,7 +514,18 @@ skip_header:
         if (!strncmp((char*)p, s, slen))
           {
              INFO("HEADERS PARSED!");
-             net->headers_read = EINA_TRUE;
+             if (net->http.post_headers_buf || (!net->http.transfer_encoding))
+               {
+                  net->headers_read = EINA_TRUE;
+                  break;
+               }
+             p = _azy_events_skip_blank(p, &len);
+             r = _azy_events_chunk_size_parser(net, p, &len);
+             if (r)
+               {
+                  net->headers_read = EINA_TRUE;
+                  p = r;
+               }
              break;
           }
         r = azy_memstr(p, (const unsigned char *)s, len, slen);
@@ -463,6 +540,67 @@ skip_header:
    return p;
 }
 
+static int64_t
+_azy_events_chunk_parse(Azy_Net *net, unsigned char *start, int64_t len)
+{
+   int64_t rlen;
+   unsigned char *p, *r;
+
+   p = start;
+   if (net->need_chunk_size)
+     {
+        p = _azy_events_chunk_size_parser(net, p, &len);
+        if (!p) p = start;
+        else if (net->http.post_headers_buf)
+          {
+             if ((size_t)len > ESBUFLEN(net->separator))
+               {
+                  p += ESBUFLEN(net->separator), len -= ESBUFLEN(net->separator);
+                  r = azy_memstr(p, (unsigned char*)ESBUF(net->separator), len, ESBUFLEN(net->separator));
+                  if (r)
+                    r = _azy_events_headers_parser(net, p, &len, r - p);
+
+                  if (net->headers_read) return r - start;
+                  rlen = len;
+               }
+          }
+     }
+   if (!net->buffer) net->buffer = eina_binbuf_new();
+   if (net->need_chunk_size || (net->progress + len <= net->http.chunk_size))
+     rlen = len;
+   else if (!net->http.post_headers_buf)
+     rlen = net->http.chunk_size - net->progress;
+   azy_events_recv_progress(net, p, rlen);
+   if ((!net->http.chunk_size) || (net->progress < net->http.chunk_size)) return rlen;
+   net->http.chunk_size = 0;
+   net->need_chunk_size = 1;
+   if (net->progress == net->http.chunk_size) return rlen;
+   len -= rlen;
+   if ((size_t)len < ESBUFLEN(net->separator)) return rlen;
+   p = _azy_events_skip_blank(start + rlen, &len);
+   r = _azy_events_chunk_size_parser(net, p, &len);
+   if (!r) return start - p;
+   if ((size_t)len < ESBUFLEN(net->separator)) return start - p;
+   r += ESBUFLEN(net->separator), len -= ESBUFLEN(net->separator);
+   if (((size_t)len == ESBUFLEN(net->separator)) && (!memcmp(r, eina_strbuf_string_get(net->separator), ESBUFLEN(net->separator))))
+     /* transfer over! */
+     return 0;
+   return _azy_events_chunk_parse(net, r, len);
+   
+}
+
+size_t
+azy_events_transfer_decode(Azy_Net *net, unsigned char *start, int len)
+{
+   switch (net->http.transfer_encoding)
+     {
+      case AZY_NET_TRANSFER_ENCODING_CHUNKED:
+        return _azy_events_chunk_parse(net, start, len);
+      default: break;
+     }
+   return 0;
+}
+
 Eina_Bool
 azy_events_header_parse(Azy_Net       *net,
                         unsigned char *event_data,
@@ -471,26 +609,30 @@ azy_events_header_parse(Azy_Net       *net,
 {
    unsigned char *r = NULL, *p = NULL, *start = NULL, *buf_start = NULL;
    unsigned char *data = (event_data) ? event_data + offset : NULL;
-   int64_t len = (event_len) ? event_len - offset : 0;
+   int64_t rlen = 0, len = (event_len) ? event_len - offset : 0;
    int64_t prev_size = 0;
+   Eina_Binbuf *buffer;
 
    DBG("(net=%p, event_data=%p, len=%zu, offset=%i)", net, event_data, event_len, offset);
+/*
    if (!AZY_MAGIC_CHECK(net, AZY_MAGIC_NET))
      {
         AZY_MAGIC_FAIL(net, AZY_MAGIC_NET);
         return EINA_FALSE;
      }
-   if (net->headers_read)
-     return EINA_TRUE;
+*/
+   if (net->headers_read) return EINA_TRUE;
    EINA_SAFETY_ON_TRUE_RETURN_VAL((!net->buffer) && (!data), EINA_FALSE);
 
-   if (net->buffer)
+   buffer = net->http.post_headers_buf;
+   if (!buffer) buffer = net->buffer;
+   if (buffer)
      {
         if (event_data && (azy_rpc_log_dom >= 0))
           {
              char buf[64];
-             snprintf(buf, sizeof(buf), "STORED:\n<<<<<<<<<<<<<\n%%.%"PRIi64"s\n<<<<<<<<<<<<<", eina_binbuf_length_get(net->buffer));
-             RPC_INFO(buf, eina_binbuf_string_get(net->buffer));
+             snprintf(buf, sizeof(buf), "STORED:\n<<<<<<<<<<<<<\n%%.%"PRIi64"s\n<<<<<<<<<<<<<", eina_binbuf_length_get(buffer));
+             RPC_INFO(buf, eina_binbuf_string_get(buffer));
              snprintf(buf, sizeof(buf), "RECEIVED:\n<<<<<<<<<<<<<\n%%.%"PRIi64"s\n<<<<<<<<<<<<<", len - offset);
              RPC_INFO(buf, data);
           }
@@ -499,20 +641,23 @@ azy_events_header_parse(Azy_Net       *net,
          * and even if no headers were found previously, the entire
          * buffer would not be copied
          */
-        buf_start = alloca(len + eina_binbuf_length_get(net->buffer) - offset);
+        buf_start = alloca(len + EBUFLEN(buffer) - offset);
         /* grab and combine buffers */
         if (event_data)
           {
-             memcpy(buf_start, eina_binbuf_string_get(net->buffer) + offset, eina_binbuf_length_get(net->buffer) - offset);
-             memcpy(buf_start + eina_binbuf_length_get(net->buffer), event_data, len);
+             memcpy(buf_start, EBUF(buffer) + offset, EBUFLEN(buffer) - offset);
+             memcpy(buf_start + EBUFLEN(buffer), event_data, len);
           }
         else
-          memcpy(buf_start, eina_binbuf_string_get(net->buffer) + offset, eina_binbuf_length_get(net->buffer) - offset);
+          memcpy(buf_start, EBUF(buffer) + offset, EBUFLEN(buffer) - offset);
 
-        prev_size = eina_binbuf_length_get(net->buffer);
+        prev_size = EBUFLEN(buffer);
         len += prev_size - offset;
-        eina_binbuf_free(net->buffer);
-        net->buffer = NULL;
+        eina_binbuf_free(buffer);
+        if (net->http.post_headers_buf)
+          net->http.post_headers_buf = NULL;
+        else
+          net->buffer = NULL;
         start = buf_start;
         start = _azy_events_skip_blank(start, &len);
      }
@@ -539,8 +684,16 @@ azy_events_header_parse(Azy_Net       *net,
    /* apparently this can happen? */
    EINA_SAFETY_ON_NULL_RETURN_VAL(start, EINA_FALSE);
    /* find a header or append to buffer */
-   if ((!(r = memchr(start, '\r', len)) && !(r = memchr(start, '\n', len)))) /* append to a buffer and use net->overflow */
+   if (net->separator)
+     r = azy_memstr(start, (unsigned char*)ESBUF(net->separator), len, ESBUFLEN(net->separator));
+   else
      {
+        r = memchr(start, '\r', len);
+        if (!r) r = memchr(start, '\n', len);
+     }
+   if (!r)
+     {
+        /* append to a buffer and use net->overflow */
         if (!net->buffer)
           {
              net->buffer = eina_binbuf_new();
@@ -550,54 +703,49 @@ azy_events_header_parse(Azy_Net       *net,
         return EINA_TRUE;
      }
 
-   net->separator = _azy_events_separator_parse(start, len, r);
+   if (!net->separator)
+     net->separator = _azy_events_separator_parse(start, len, r);
 
-   p = _azy_events_headers_parser(net, start, &len, r - start);
+   if (net->need_chunk_size)
+     p = _azy_events_chunk_size_parser(net, start, &len);
+   else
+     p = _azy_events_headers_parser(net, start, &len, r - start);
 
-   p = _azy_events_skip_blank(p, &len);
+   if (net->http.post_headers_buf && net->headers_read) return EINA_TRUE;
+   /* FIXME: length check and failure */
+   p += ESBUFLEN(net->separator), len -= ESBUFLEN(net->separator);
 
-   if (!net->headers_read)
-     return EINA_TRUE;
+   if (!net->headers_read) return EINA_TRUE;
 
    if (!net->http.content_length) net->http.content_length = -1;
-   if (len)
+   if (!len) return EINA_TRUE;
+   /* if we get here, we need to append to the buffers */
+
+   if (azy_events_length_overflows(len, net->http.content_length))
      {
-        int64_t rlen;
-        /* if we get here, we need to append to the buffers */
-
-        if (net->http.content_length > 0)
-          {
-             if (len > net->http.content_length)
-               {
-                  rlen = net->http.content_length;
-                  net->overflow = eina_binbuf_new();
-                  eina_binbuf_append_length(net->overflow, p + rlen, len - rlen);
-                  WARN("Extra content length of %"PRIi64"!", eina_binbuf_length_get(net->overflow));
+        rlen = net->http.content_length;
+        net->overflow = eina_binbuf_new();
+        eina_binbuf_append_length(net->overflow, p + rlen, len - rlen);
+        WARN("Extra content length of %"PRIi64"!", eina_binbuf_length_get(net->overflow));
 #ifdef ISCOMFITOR
-                if (azy_rpc_log_dom >= 0)
-                  {
-                     int64_t x;
-                     unsigned char *buf;
-                     RPC_INFO("OVERFLOW:\n<<<<<<<<<<<<<");
-                     buf = eina_binbuf_string_get(net->overflow);
-                     for (x = 0; x < eina_binbuf_length_get(net->overflow); x++)
-                       putc(buf[x], stdout);
-                     fflush(stdout);
-                  }
-#endif
-               }
-             else
-               rlen = len;
+        if (azy_rpc_log_dom >= 0)
+          {
+             int64_t x;
+             unsigned char *buf;
+             RPC_INFO("OVERFLOW:\n<<<<<<<<<<<<<");
+             buf = eina_binbuf_string_get(net->overflow);
+             for (x = 0; x < eina_binbuf_length_get(net->overflow); x++)
+               putc(buf[x], stdout);
+             fflush(stdout);
           }
-        else
-          /* this shouldn't be possible unless someone is violating spec */
-          rlen = len;
-
-        INFO("Set recv size to %"PRIi64" (previous %"PRIi64")", rlen, prev_size);
-        net->buffer = eina_binbuf_new();
-        net->progress = 0;
-        azy_events_recv_progress(net, p, rlen);
+#endif
      }
+   if (!rlen) rlen = len;
+
+   INFO("Set recv size to %"PRIi64" (previous %"PRIi64")", rlen, prev_size);
+   net->buffer = eina_binbuf_new();
+   net->progress = 0;
+   azy_events_recv_progress(net, p, rlen);
 
    return EINA_TRUE;
 }
@@ -623,18 +771,30 @@ azy_events_connection_kill(void       *conn,
    return ECORE_CALLBACK_RENEW;
 }
 
-inline void
-azy_events_recv_progress(Azy_Net *net, void *data, size_t len)
+void
+azy_events_recv_progress(Azy_Net *net, const void *data, size_t len)
 {
-   eina_binbuf_append_length(net->buffer, data, len);
+   if (!len) return;
+   if (net->http.post_headers_buf)
+     eina_binbuf_append_length(net->http.post_headers_buf, data, len);
+   else
+     eina_binbuf_append_length(net->buffer, data, len);
    net->progress += len;
-   INFO("(net=%p) PROGRESS: %zu/%"PRIi64, net, net->progress, net->http.content_length);
+   if (net->http.transfer_encoding)
+     {
+        if (net->http.post_headers_buf)
+          INFO("(net=%p) POST-CHUNK HEADERS: %zu", net, net->progress);
+        else
+          INFO("(net=%p) CHUNK PROGRESS: %zu/%"PRIi64, net, net->progress, net->http.chunk_size);
+     }
+   else
+     INFO("(net=%p) PROGRESS: %zu/%"PRIi64, net, net->progress, net->http.content_length);
    if (azy_rpc_log_dom != -1) 
-   {
-      char buf[64];
-      snprintf(buf, sizeof(buf), "RECEIVED:\n<<<<<<<<<<<<<\n%%.%"PRIi64"s\n<<<<<<<<<<<<<", len);
-      RPC_INFO(buf, data);
-   }
+     {
+        char buf[64];
+        snprintf(buf, sizeof(buf), "RECEIVED:\n<<<<<<<<<<<<<\n%%.%"PRIi64"s\n<<<<<<<<<<<<<", len);
+        RPC_INFO(buf, data);
+     }
 }
 
 inline Eina_Bool
@@ -656,6 +816,38 @@ azy_events_transfer_progress_event(const Azy_Client_Handler_Data *hd, size_t siz
    dse->client = hd->client;
    dse->net = hd->recv;
    ecore_event_add(AZY_EVENT_TRANSFER_PROGRESS, dse, NULL, NULL);
+}
+
+Eina_Binbuf *
+azy_events_overflow_add(Azy_Net *net, const unsigned char *data, size_t len)
+{
+   int64_t overflow_length = 0;
+   Eina_Binbuf *buffer;
+
+   overflow_length = net->progress + len - net->http.content_length;
+   buffer = eina_binbuf_new();
+   if (data)
+     {
+        azy_events_recv_progress(net, data, len - overflow_length);
+        eina_binbuf_append_length(buffer, data + (len - overflow_length), overflow_length);
+        WARN("Extra content length of %"PRIi64"! Set recv size to %"PRIi64" (previous %"PRIi64")",
+             overflow_length, net->progress, net->progress - (len - overflow_length));
+     }
+   else if (azy_events_length_overflows(net->progress, net->http.content_length))
+     {
+        size_t blen;
+        void *buf;
+
+        eina_binbuf_append_length(buffer, EBUF(net->buffer) + (EBUFLEN(net->buffer) - overflow_length), overflow_length);
+        blen = EBUFLEN(net->buffer);
+        buf = eina_binbuf_string_steal(net->buffer);
+        eina_binbuf_free(net->buffer);
+        memset(buf + blen - overflow_length, 0, overflow_length);
+        net->buffer = eina_binbuf_manage_new_length(buf, net->http.content_length);
+        WARN("Extra content length of %"PRIi64"! Set recv size to %"PRIi64" (previous %zu)",
+             overflow_length, net->http.content_length, blen);
+     }
+   return buffer;
 }
 
 void

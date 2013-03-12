@@ -80,6 +80,9 @@ extern int azy_rpc_log_dom;
 #define EBUF(X) ((X) ? eina_binbuf_string_get(X) : NULL)
 #define EBUFLEN(X) ((X) ? eina_binbuf_length_get(X) : 0)
 
+#define ESBUF(X) ((X) ? eina_strbuf_string_get(X) : NULL)
+#define ESBUFLEN(X) ((X) ? eina_strbuf_length_get(X) : 0)
+
 extern Eina_Error AZY_ERROR_REQUEST_JSON_OBJECT;
 extern Eina_Error AZY_ERROR_REQUEST_JSON_METHOD;
 extern Eina_Error AZY_ERROR_REQUEST_JSON_PARAM;
@@ -203,7 +206,7 @@ struct Azy_Net
    Azy_Net_Type      type;
    Azy_Net_Transport transport;
    Azy_Net_Protocol proto;
-   Azy_Net_Transfer_Encoding transfer_encoding;
+
    struct
    {
       struct
@@ -217,9 +220,14 @@ struct Azy_Net
          int         http_code;
       } res;
       Eina_Hash *headers;
+      Eina_Hash *post_headers;
+      Eina_Binbuf *post_headers_buf; // headers after last chunk
       int64_t    content_length;
+      Azy_Net_Transfer_Encoding transfer_encoding;
+      size_t chunk_size;
    } http;
    Eina_Bool headers_read : 1;
+   Eina_Bool need_chunk_size : 1; // waiting for size of next chunk for transfer encoding
 };
 
 struct Azy_Server
@@ -392,9 +400,12 @@ int           azy_events_type_parse(Azy_Net *net, int type, const unsigned char 
 Eina_Bool     azy_events_header_parse(Azy_Net *net, unsigned char *event_data, size_t event_len, int offset);
 Eina_Bool     azy_events_connection_kill(void *conn, Eina_Bool server_client, const char *msg);
 
-inline void azy_events_recv_progress(Azy_Net *net, void *data, size_t len);
+void azy_events_recv_progress(Azy_Net *net, const void *data, size_t len);
 inline void azy_events_transfer_progress_event(const Azy_Client_Handler_Data *hd, size_t size);
 inline Eina_Bool azy_events_length_overflows(int64_t current, int64_t max);
+size_t azy_events_transfer_decode(Azy_Net *net, unsigned char *start, int len);
+inline Eina_Bool azy_events_chunks_done(const Azy_Net *net);
+Eina_Binbuf *azy_events_overflow_add(Azy_Net *net, const unsigned char *data, size_t len);
 
 Eina_Bool     _azy_client_handler_add(Azy_Client *client, int type, Ecore_Con_Event_Server_Add *add);
 Eina_Bool     _azy_client_handler_del(Azy_Client *client, int type, Ecore_Con_Event_Server_Del *del);

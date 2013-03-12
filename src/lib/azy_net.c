@@ -163,6 +163,9 @@ azy_net_free(Azy_Net *net)
    eina_stringshare_del(net->http.req.http_path);
    eina_stringshare_del(net->http.res.http_msg);
    if (net->buffer) eina_binbuf_free(net->buffer);
+   
+   if (net->http.post_headers) eina_hash_free(net->http.post_headers);
+   if (net->http.post_headers_buf) eina_binbuf_free(net->http.post_headers_buf);
    if (net->overflow) eina_binbuf_free(net->overflow);
    if (net->separator) eina_strbuf_free(net->separator);
    memset(net, 0, sizeof(Azy_Net)); /* zero out data for security */
@@ -576,11 +579,9 @@ azy_net_message_length_set(Azy_Net *net,
  * @param value The header's value
  */
 void
-azy_net_header_set(Azy_Net    *net,
-                   const char *name,
-                   const char *value)
+azy_net_header_set(Azy_Net *net, const char *name, const char *value)
 {
-   DBG("(net=%p)", net);
+   DBG("(net=%p,name=%s,value=%s)", net, name, value);
    const char *old, *n;
    char *tmp;
 
@@ -611,9 +612,15 @@ azy_net_header_set(Azy_Net    *net,
    n = eina_stringshare_add(value);
    if ((old = eina_hash_set(net->http.headers, tmp, n)))
      {
-        eina_hash_set(net->http.headers, tmp, eina_stringshare_printf("%s;%s", old, value));
+        /* FIXME: technically this is only legal for comma-separated lists... */
+        eina_hash_set(net->http.headers, tmp, eina_stringshare_printf("%s,%s", old, value));
         eina_stringshare_del(old);
         eina_stringshare_del(n);
+     }
+   if (net->http.post_headers)
+     {
+        if (!eina_hash_del_by_key(net->http.post_headers, tmp))
+          WARN("TRAILER HEADER (%s: %s) NOT SPECIFIED IN STARTING HEADERS!!!!!", name, value);
      }
 }
 

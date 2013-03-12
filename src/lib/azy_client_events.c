@@ -433,16 +433,9 @@ _azy_client_handler_data(Azy_Client_Handler_Data     *hd,
    else if (data) /* otherwise keep appending to buffer */
      {
         if (azy_events_length_overflows(hd->recv->progress + len, hd->recv->http.content_length))
-          {
-             int64_t overflow_length = 0;
-
-             overflow_length = hd->recv->progress + len - hd->recv->http.content_length;
-             azy_events_recv_progress(hd->recv, data, len - overflow_length);
-             hd->client->overflow = eina_binbuf_new();
-             eina_binbuf_append_length(hd->client->overflow, data + (len - overflow_length), overflow_length);
-             WARN("%s: Extra content length of %"PRIi64"! Set recv size to %"PRIi64" (previous %"PRIi64")",
-                  hd->method, overflow_length, hd->recv->progress, hd->recv->progress - (len - overflow_length));
-          }
+          hd->client->overflow = azy_events_overflow_add(hd->recv, data, len);
+        else if (hd->recv->http.transfer_encoding)
+          azy_events_transfer_decode(hd->recv, data, len);
         else
           {
              azy_events_recv_progress(hd->recv, data, len);
@@ -450,22 +443,7 @@ _azy_client_handler_data(Azy_Client_Handler_Data     *hd,
           }
      }
    else if (azy_events_length_overflows(hd->recv->progress, hd->recv->http.content_length))
-     {
-        int64_t overflow_length = 0;
-        size_t blen;
-        void *buf;
-
-        overflow_length = hd->recv->progress - hd->recv->http.content_length;
-        hd->client->overflow = eina_binbuf_new();
-        eina_binbuf_append_length(hd->client->overflow, EBUF(hd->recv->buffer) + (EBUFLEN(hd->recv->buffer) - overflow_length), overflow_length);
-        blen = EBUFLEN(hd->recv->buffer);
-        buf = eina_binbuf_string_steal(hd->recv->buffer);
-        eina_binbuf_free(hd->recv->buffer);
-        memset(buf + blen - overflow_length, 0, overflow_length);
-        hd->recv->buffer = eina_binbuf_manage_new_length(buf, hd->recv->http.content_length);
-        WARN("%s: Extra content length of %"PRIi64"! Set recv size to %"PRIi64" (previous %"PRIi64")",
-             hd->method, overflow_length, hd->recv->http.content_length, hd->recv->http.content_length);
-     }
+     hd->client->overflow = azy_events_overflow_add(hd->recv, NULL, 0);
 
    if ((hd->recv->http.res.http_code >= 301) && (hd->recv->http.res.http_code <= 303)) /* ughhhh redirect */
      {

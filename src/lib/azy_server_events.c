@@ -935,7 +935,8 @@ _azy_server_client_handler_data(Azy_Server_Client           *client,
    if (!client->net->buffer)
      {
         client->net->buffer = client->overflow;
-        INFO("%s: Set recv size to %"PRIi64" from overflow", client->ip, EBUFLEN(client->net->buffer));
+        client->net->progress = EBUFLEN(client->net->buffer);
+        INFO("%s: Set recv size to %"PRIi64" from overflow", client->ip, client->net->progress);
 
         /* returns offset where http header line ends */
         if (!(offset = azy_events_type_parse(client->net, type, data, len)) && ev && (!client->net->http.req.http_path))
@@ -946,6 +947,7 @@ _azy_server_client_handler_data(Azy_Server_Client           *client,
         else if (!offset && client->overflow)
           {
              client->net->buffer = NULL;
+             client->net->progress = 0;
              INFO("%s: Overflow could not be parsed, set recv size to 0, storing overflow of %"PRIi64"", client->ip, EBUFLEN(client->overflow));
              return ECORE_CALLBACK_RENEW;
           }
@@ -963,40 +965,18 @@ _azy_server_client_handler_data(Azy_Server_Client           *client,
      }
    else if (data) /* otherwise keep appending to buffer */
      {
-        if (azy_events_length_overflows(EBUFLEN(client->net->buffer) + len, client->net->http.content_length))
-          {
-             int64_t overflow_length = 0;
-
-             overflow_length = (EBUFLEN(client->net->buffer) + len) - client->net->http.content_length;
-             azy_events_recv_progress(client->net, data, len - overflow_length);
-             client->overflow = eina_binbuf_new();
-             eina_binbuf_append_length(client->overflow, data + (len - overflow_length), overflow_length);
-             WARN("%s: Extra content length of %"PRIi64"! Set recv size to %"PRIi64" (previous %"PRIi64")",
-                  client->ip, overflow_length, EBUFLEN(client->net->buffer), EBUFLEN(client->net->buffer) - (len - overflow_length));
-          }
+        if (azy_events_length_overflows(client->net->progress + len, client->net->http.content_length))
+          client->overflow = azy_events_overflow_add(client->net, data, len);
+        else if (client->net->http.transfer_encoding)
+          azy_events_transfer_decode(client->net, data, len);
         else
           {
              azy_events_recv_progress(client->net, data, len);
-             INFO("%s: Incremented recv size to %"PRIi64" (+%i)", client->ip, EBUFLEN(client->net->buffer), len);
+             INFO("%s: Incremented recv size to %"PRIi64" (+%i)", client->ip, client->net->progress, len);
           }
      }
-   else if (azy_events_length_overflows(EBUFLEN(client->net->buffer), client->net->http.content_length))
-     {
-        int64_t overflow_length;
-        void *buf;
-        size_t blen;
-
-        overflow_length = EBUFLEN(client->net->buffer) - client->net->http.content_length;
-        client->overflow = eina_binbuf_new();
-        eina_binbuf_append_length(client->overflow, EBUF(client->net->buffer) + (EBUFLEN(client->net->buffer) - overflow_length), overflow_length);
-        blen = EBUFLEN(client->net->buffer);
-        buf = eina_binbuf_string_steal(client->net->buffer);
-        eina_binbuf_free(client->net->buffer);
-        memset(buf + blen - overflow_length, 0, overflow_length);
-        client->net->buffer = eina_binbuf_manage_new_length(buf, client->net->http.content_length);
-        WARN("%s: Extra content length of %"PRIi64"! Set recv size to %"PRIi64" (previous %"PRIi64")",
-             client->ip, overflow_length, client->net->http.content_length, EBUFLEN(client->net->buffer));
-     }
+   else if (azy_events_length_overflows(client->net->progress, client->net->http.content_length))
+     client->overflow = azy_events_overflow_add(client->net, NULL, 0);
 
    if (client->net->overflow)
      {
@@ -1007,7 +987,7 @@ _azy_server_client_handler_data(Azy_Server_Client           *client,
    if (!client->net->headers_read)
      return ECORE_CALLBACK_RENEW;
 
-   if (azy_events_length_overflows(EBUFLEN(client->net->buffer), client->net->http.content_length) ||
+   if (azy_events_length_overflows(client->net->progress, client->net->http.content_length) ||
        ((!EBUFLEN(client->net->buffer)) && (client->net->http.content_length < 1) && client->net->headers_read))
      _azy_server_client_handler_request(client);
 
