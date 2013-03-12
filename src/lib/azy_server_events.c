@@ -983,10 +983,17 @@ _azy_server_client_handler_data(Azy_Server_Client           *client,
    else if (azy_events_length_overflows(EBUFLEN(client->net->buffer), client->net->http.content_length))
      {
         int64_t overflow_length;
+        void *buf;
+        size_t blen;
 
         overflow_length = EBUFLEN(client->net->buffer) - client->net->http.content_length;
         client->overflow = eina_binbuf_new();
         eina_binbuf_append_length(client->overflow, EBUF(client->net->buffer) + (EBUFLEN(client->net->buffer) - overflow_length), overflow_length);
+        blen = EBUFLEN(client->net->buffer);
+        buf = eina_binbuf_string_steal(client->net->buffer);
+        eina_binbuf_free(client->net->buffer);
+        memset(buf + blen - overflow_length, 0, overflow_length);
+        client->net->buffer = eina_binbuf_manage_new_length(buf, client->net->http.content_length);
         WARN("%s: Extra content length of %"PRIi64"! Set recv size to %"PRIi64" (previous %"PRIi64")",
              client->ip, overflow_length, client->net->http.content_length, EBUFLEN(client->net->buffer));
      }

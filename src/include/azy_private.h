@@ -63,11 +63,11 @@ extern int azy_rpc_log_dom;
 #define ERR(...)            EINA_LOG_DOM_ERR(azy_log_dom, __VA_ARGS__)
 #define CRI(...)            EINA_LOG_DOM_CRIT(azy_log_dom, __VA_ARGS__)
 
-#define RPC_DBG(...)        EINA_LOG_DOM_DBG(azy_rpc_log_dom, __VA_ARGS__)
-#define RPC_INFO(...)       EINA_LOG_DOM_INFO(azy_rpc_log_dom, __VA_ARGS__)
-#define RPC_WARN(...)       EINA_LOG_DOM_WARN(azy_rpc_log_dom, __VA_ARGS__)
-#define RPC_ERR(...)        EINA_LOG_DOM_ERR(azy_rpc_log_dom, __VA_ARGS__)
-#define RPC_CRI(...)        EINA_LOG_DOM_CRIT(azy_rpc_log_dom, __VA_ARGS__)
+#define RPC_DBG(...)        if (azy_rpc_log_dom != -1) EINA_LOG_DOM_DBG(azy_rpc_log_dom, __VA_ARGS__)
+#define RPC_INFO(...)       if (azy_rpc_log_dom != -1) EINA_LOG_DOM_INFO(azy_rpc_log_dom, __VA_ARGS__)
+#define RPC_WARN(...)       if (azy_rpc_log_dom != -1) EINA_LOG_DOM_WARN(azy_rpc_log_dom, __VA_ARGS__)
+#define RPC_ERR(...)        if (azy_rpc_log_dom != -1) EINA_LOG_DOM_ERR(azy_rpc_log_dom, __VA_ARGS__)
+#define RPC_CRI(...)        if (azy_rpc_log_dom != -1) EINA_LOG_DOM_CRIT(azy_rpc_log_dom, __VA_ARGS__)
 
 #ifndef strdupa
 # define strdupa(str)       strcpy(alloca(strlen(str) + 1), str)
@@ -194,6 +194,7 @@ struct Azy_Net
    Eina_Binbuf      *buffer;
    size_t             progress; //for tracking current call progress in RAW mode
    Eina_Binbuf      *overflow;
+   Eina_Strbuf      *separator; // \r\n, \n, \n\r, etc
 
    Ecore_Timer      *timer;
    Eina_Bool         nodata : 1;
@@ -202,6 +203,7 @@ struct Azy_Net
    Azy_Net_Type      type;
    Azy_Net_Transport transport;
    Azy_Net_Protocol proto;
+   Azy_Net_Transfer_Encoding transfer_encoding;
    struct
    {
       struct
@@ -345,7 +347,7 @@ struct Azy_Client_Handler_Data
    Azy_Content_Cb     callback;  //callback set to convert from Azy_Value to Return_Type
    void              *content_data;
    Eina_Strbuf       *send;
-   Eina_Bool          nodelete : 1;
+   Eina_Bool          redirect : 1;
 };
 
 struct Azy_Server_Module_Def
@@ -386,7 +388,7 @@ void          azy_rss_shutdown(void);
 void          azy_rss_item_shutdown(void);
 
 Eina_Bool     azy_value_multi_line_get_(Azy_Value *v, unsigned int max_strlen);
-int           azy_events_type_parse(Azy_Net *net, int type, const unsigned char *header, int len);
+int           azy_events_type_parse(Azy_Net *net, int type, const unsigned char *header, int64_t len);
 Eina_Bool     azy_events_header_parse(Azy_Net *net, unsigned char *event_data, size_t event_len, int offset);
 Eina_Bool     azy_events_connection_kill(void *conn, Eina_Bool server_client, const char *msg);
 

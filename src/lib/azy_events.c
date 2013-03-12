@@ -19,15 +19,18 @@
 #include <ctype.h>
 #include <errno.h>
 
-#define AZY_SKIP_BLANK(PTR)                \
-  if (PTR && (len > 0) && isspace(*(PTR))) \
-    do                                     \
-      {                                    \
-         (PTR)++;                          \
-         len--;                            \
-      } while ((PTR) && (len > 0) && isspace(*(PTR)))
-
 #define MAX_HEADER_SIZE 8092
+
+static inline unsigned char *
+_azy_events_skip_blank(const unsigned char *p, int64_t *len)
+{
+   if ((!p) || ((*len) < 1) || (!isspace(p[0]))) return (unsigned char*)p;
+   do
+     {
+        p++, (*len)--;
+     } while (((*len) > 0) && isspace(p[0]));
+   return (unsigned char*)p;
+}
 
 static unsigned int
 _azy_events_valid_header_name(const char  *start,
@@ -78,7 +81,16 @@ _azy_events_valid_response(Azy_Net *net,
    errno = 0;
    code = strtol((char*)start, (char**)&p, 10);
    if (errno || (code < 1) || (code > 999) || (p[0] != ' ')) return 0;
-   INFO("HTTP RESPONSE %"PRIi32, code);
+   switch (net->proto)
+     {
+      case AZY_NET_PROTOCOL_HTTP_1_0:
+        INFO("HTTP/1.0 RESPONSE %"PRIi32, code);
+        break;
+      case AZY_NET_PROTOCOL_HTTP_1_1:
+        INFO("HTTP/1.1 RESPONSE %"PRIi32, code);
+        break;
+      default: break;
+     }
    net->http.res.http_code = code;
    len -= (p - start); start += (p - start);
 
@@ -254,15 +266,12 @@ _azy_events_valid_header_value(const char  *name,
 }
 
 int
-azy_events_type_parse(Azy_Net             *net,
-                      int                  type,
-                      const unsigned char *header,
-                      int                  len)
+azy_events_type_parse(Azy_Net *net, int type, const unsigned char *header, int64_t len)
 {
    const unsigned char *start = NULL;
    size_t size;
 
-   DBG("(net=%p, header=%p, len=%i)", net, header, len);
+   DBG("(net=%p, header=%p, len=%"PRIi64")", net, header, len);
    if (!AZY_MAGIC_CHECK(net, AZY_MAGIC_NET))
      {
         AZY_MAGIC_FAIL(net, AZY_MAGIC_NET);
@@ -291,24 +300,167 @@ azy_events_type_parse(Azy_Net             *net,
           }
 
         start = buf_start;
-        AZY_SKIP_BLANK(start);
+        start = _azy_events_skip_blank(start, &len);
      }
    else
      {
         /* copy pointer */
-         start = header;
-         /* skip all spaces/newlines/etc and decrement len */
-         AZY_SKIP_BLANK(start);
+        start = header;
+        /* skip all spaces/newlines/etc and decrement len */
+        start = _azy_events_skip_blank(start, &len);
      }
 
    if (!start) return 0;
 
    /* some clients are dumb and send leading cr/nl/etc */
-   AZY_SKIP_BLANK(start);
+   start = _azy_events_skip_blank(start, &len);
 
    if (type == ECORE_CON_EVENT_CLIENT_DATA)
      return _azy_events_valid_request(net, start, len);
    return _azy_events_valid_response(net, start, len);
+}
+
+static Azy_Net_Transfer_Encoding
+_azy_events_transfer_encoding(const char *value)
+{
+   /* FIXME: chunk-extension???
+    * http://www.w3.org/Protocols/rfc2616/rfc2616-sec3.html#sec3.6.1
+    */
+   if (!strncasecmp(value, "chunked", sizeof("chunked") - 1)) return AZY_NET_TRANSFER_ENCODING_CHUNKED;
+   return AZY_NET_TRANSFER_ENCODING_NONE;
+}
+
+static Eina_Strbuf *
+_azy_events_separator_parse(const unsigned char *start, int64_t len, const unsigned char *r)
+{
+   const char *s = NULL;
+
+   if (*r == '\r')
+     {
+        unsigned char *x;
+        if ((x = memchr(start, '\n', len)))
+          {
+             if ((x - r) > 0)
+               s = "\r\n";
+             else
+               { /* we currently have \n\r: b64 encoding can leave a trailing \n
+                  * so we have to check for an extra \n
+                  */
+                   if ((x - r < 0) && ((unsigned int)(r + 1 - start) < len) && (r[1] == '\n')) /* \n\r\n */
+                     {
+                        if (((unsigned int)(r + 2 - start) < len) && (r[2] == '\r')) /* \n\r\n\r */
+                          {
+                             if (((unsigned int)(r + 3 - start) < len) && (r[3] == '\n'))
+                               /* \n\r\n\r\n oh hey I'm gonna stop here before it gets too insane */
+                               s = "\r\n";
+                             else
+                               s = "\n\r";
+                          }
+                        else
+                          s = "\r\n";
+                     }
+                   else
+                     s = "\n\r";
+               }
+          }
+        else
+          s = "\r";
+     }
+   else
+     s = "\n";
+
+
+   return eina_strbuf_manage_new(strdup(s));
+}
+
+static void
+_azy_events_header_add(Azy_Net *net, const char *key, const char *value)
+{
+   INFO("Found header: key='%s'", key);
+   INFO("Found header: value='%s'", value);
+   if (!strcasecmp(key, "transfer-encoding"))
+     {
+        net->transfer_encoding = _azy_events_transfer_encoding(value);
+        switch (net->transfer_encoding)
+          {
+           case AZY_NET_TRANSFER_ENCODING_CHUNKED:
+             INFO("TRANSFER ENCODING: CHUNKED");
+             break;
+           default: break;
+          }
+        net->http.content_length = -1;
+     }
+   else if (!strcasecmp(key, "content-length"))
+     {
+        if (net->transfer_encoding)
+          INFO("Ignoring content-length: transfer encoding is set :(");
+        else
+          net->http.content_length = strtol((const char *)value, NULL, 10);
+     }
+   else
+     azy_net_header_set(net, key, value);
+}
+
+static unsigned char *
+_azy_events_headers_parser(Azy_Net *net, unsigned char *start, int64_t *length, int line_len)
+{
+   unsigned char *r, *p;
+   int64_t len;
+   const char *s;
+   unsigned int slen;
+
+   if (!line_len) return start;
+
+   r = start + line_len;
+   len = *length;
+   p = start;
+   slen = eina_strbuf_length_get(net->separator);
+   s = eina_strbuf_string_get(net->separator);
+   while (len && r)
+     {
+        unsigned char *ptr, *semi = p;
+
+        if (line_len > MAX_HEADER_SIZE)
+          {
+             WARN("Ignoring unreasonably large header starting with:\n %.32s\n", p);
+             goto skip_header;
+          }
+        semi += (line_len - _azy_events_valid_header_name((const char *)p, line_len));
+        if (semi == p) goto skip_header;
+
+        ptr = semi + 1;
+        while ((isspace(*ptr)) && (ptr - p < line_len))
+          ptr++;
+
+        if (_azy_events_valid_header_value((const char *)ptr, line_len - (ptr - p)))
+          {
+             p[semi - p] = 0;
+             ptr[line_len - (ptr - p)] = 0;
+             _azy_events_header_add(net, (char*)p, (char*)ptr);
+          }
+
+skip_header:
+        len -= line_len + slen;
+        if (len < slen)
+          break;
+        p = r + slen;
+        /* double separator: STOP */
+        if (!strncmp((char*)p, s, slen))
+          {
+             INFO("HEADERS PARSED!");
+             net->headers_read = EINA_TRUE;
+             break;
+          }
+        r = azy_memstr(p, (const unsigned char *)s, len, slen);
+        if (r)
+          line_len = r - p;
+        /* FIXME: to be fully 1.1 compliant, lines without a colon
+         * be filtered and checked to see if is a continuing header
+         * from the previous line
+         */
+     }
+   *length = len;
+   return p;
 }
 
 Eina_Bool
@@ -320,10 +472,6 @@ azy_events_header_parse(Azy_Net       *net,
    unsigned char *r = NULL, *p = NULL, *start = NULL, *buf_start = NULL;
    unsigned char *data = (event_data) ? event_data + offset : NULL;
    int64_t len = (event_len) ? event_len - offset : 0;
-   const char *s = NULL;
-   unsigned char slen = 0;
-   unsigned char sep[5];
-   int line_len = 0;
    int64_t prev_size = 0;
 
    DBG("(net=%p, event_data=%p, len=%zu, offset=%i)", net, event_data, event_len, offset);
@@ -366,15 +514,21 @@ azy_events_header_parse(Azy_Net       *net,
         eina_binbuf_free(net->buffer);
         net->buffer = NULL;
         start = buf_start;
-        AZY_SKIP_BLANK(start);
+        start = _azy_events_skip_blank(start, &len);
      }
    else
    /* only current buffer plus possible net->overflow */
      {
-        /* copy pointer */
-         start = data;
-         /* skip all spaces/newlines/etc and decrement len */
-         AZY_SKIP_BLANK(start);
+        if (azy_rpc_log_dom != -1)
+          {
+             char buf[64];
+             snprintf(buf, sizeof(buf), "RECEIVED:\n<<<<<<<<<<<<<\n%%.%"PRIi64"s\n<<<<<<<<<<<<<", len - offset);
+             RPC_INFO(buf, data);
+          }
+       /* copy pointer */
+        start = data;
+        /* skip all spaces/newlines/etc and decrement len */
+        start = _azy_events_skip_blank(start, &len);
      }
 
    if ((!len) && (event_len - offset > 0)) /* only blanks were passed, assume http separator */
@@ -387,101 +541,20 @@ azy_events_header_parse(Azy_Net       *net,
    /* find a header or append to buffer */
    if ((!(r = memchr(start, '\r', len)) && !(r = memchr(start, '\n', len)))) /* append to a buffer and use net->overflow */
      {
-        if (!net->buffer) net->buffer = eina_binbuf_new();
+        if (!net->buffer)
+          {
+             net->buffer = eina_binbuf_new();
+             net->progress = 0;
+          }
         azy_events_recv_progress(net, start, len);
         return EINA_TRUE;
      }
 
-   if (*r == '\r')
-     {
-        unsigned char *x;
-        if ((x = memchr(start, '\n', len)))
-          {
-             if ((x - r) > 0)
-               s = "\r\n";
-             else
-               { /* we currently have \n\r: b64 encoding can leave a trailing \n
-                  * so we have to check for an extra \n
-                  */
-                   if ((x - r < 0) && ((unsigned int)(r + 1 - start) < len) && (r[1] == '\n')) /* \n\r\n */
-                     {
-                        if (((unsigned int)(r + 2 - start) < len) && (r[2] == '\r')) /* \n\r\n\r */
-                          {
-                             if (((unsigned int)(r + 3 - start) < len) && (r[3] == '\n'))
-                               /* \n\r\n\r\n oh hey I'm gonna stop here before it gets too insane */
-                               s = "\r\n";
-                             else
-                               s = "\n\r";
-                          }
-                        else
-                          s = "\r\n";
-                     }
-                   else
-                     s = "\n\r";
-               }
-          }
-        else
-          s = "\r";
-     }
-   else
-     s = "\n";
+   net->separator = _azy_events_separator_parse(start, len, r);
 
-   slen = strlen(s);
-   snprintf((char *)sep, sizeof(sep), "%s%s", s, s);
+   p = _azy_events_headers_parser(net, start, &len, r - start);
 
-   p = start;
-   line_len = r - p;
-   while (len && r)
-     {
-        unsigned char *ptr, *semi = p;
-
-        if (line_len > MAX_HEADER_SIZE)
-          {
-             WARN("Ignoring unreasonably large header starting with:\n %.32s\n", p);
-             goto skip_header;
-          }
-        semi += (line_len - _azy_events_valid_header_name((const char *)p, line_len));
-        if (semi == p) goto skip_header;
-
-        ptr = semi + 1;
-        while ((isspace(*ptr)) && (ptr - p < line_len))
-          ptr++;
-
-        if (_azy_events_valid_header_value((const char *)ptr, line_len - (ptr - p)))
-          {
-             const char *key, *value;
-
-             p[semi - p] = 0;
-             ptr[line_len - (ptr - p)] = 0;
-             key = (const char *)p;
-             value = (const char *)ptr;
-             INFO("Found header: key='%s'", key);
-             INFO("Found header: value='%s'", value);
-             azy_net_header_set(net, key, value);
-             if (!strcasecmp(key, "content-length"))
-               net->http.content_length = strtol((const char *)value, NULL, 10);
-          }
-
-skip_header:
-        len -= line_len + slen;
-        if (len < slen)
-          break;
-        p = r + slen;
-        /* double separator: STOP */
-        if (!strncmp((char*)p, s, slen))
-          {
-             net->headers_read = EINA_TRUE;
-             break;
-          }
-        r = azy_memstr(p, (const unsigned char *)s, len, slen);
-        line_len = r - p;
-        /* FIXME: to be fully 1.1 compliant, lines without a colon
-         * be filtered and checked to see if is a continuing header
-         * from the previous line
-         */
-     }
-
-   AZY_SKIP_BLANK(p);
+   p = _azy_events_skip_blank(p, &len);
 
    if (!net->headers_read)
      return EINA_TRUE;
@@ -522,6 +595,7 @@ skip_header:
 
         INFO("Set recv size to %"PRIi64" (previous %"PRIi64")", rlen, prev_size);
         net->buffer = eina_binbuf_new();
+        net->progress = 0;
         azy_events_recv_progress(net, p, rlen);
      }
 
@@ -553,7 +627,14 @@ inline void
 azy_events_recv_progress(Azy_Net *net, void *data, size_t len)
 {
    eina_binbuf_append_length(net->buffer, data, len);
-   net->progress = eina_binbuf_length_get(net->buffer);
+   net->progress += len;
+   INFO("(net=%p) PROGRESS: %zu/%"PRIi64, net, net->progress, net->http.content_length);
+   if (azy_rpc_log_dom != -1) 
+   {
+      char buf[64];
+      snprintf(buf, sizeof(buf), "RECEIVED:\n<<<<<<<<<<<<<\n%%.%"PRIi64"s\n<<<<<<<<<<<<<", len);
+      RPC_INFO(buf, data);
+   }
 }
 
 inline Eina_Bool

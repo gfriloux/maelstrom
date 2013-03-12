@@ -56,8 +56,10 @@ _azy_client_handler_data_free(Azy_Client_Handler_Data *hd)
 {
    Eina_List *f;
    DBG("(hd=%p, client=%p, net=%p)", hd, hd->client, hd->client->net);
+/*
    if (!AZY_MAGIC_CHECK(hd, AZY_MAGIC_CLIENT_DATA_HANDLER))
      return;
+*/
    AZY_MAGIC_SET(hd, AZY_MAGIC_NONE);
 
    f = eina_list_data_find_list(hd->client->conns, hd);
@@ -286,11 +288,14 @@ _azy_client_handler_redirect(Azy_Client_Handler_Data *hd)
 {
    const char *location, *next;
    Eina_Strbuf *msg;
+   Eina_Bool reconnect = EINA_FALSE;
 
    location = azy_net_header_get(hd->recv, "location");
    if (!location)
      {
         /* FIXME */
+         azy_net_free(hd->recv);
+         hd->recv = NULL;
          azy_events_connection_kill(hd->client->net->conn, EINA_FALSE, NULL);
          return;
      }
@@ -298,13 +303,22 @@ _azy_client_handler_redirect(Azy_Client_Handler_Data *hd)
    next = strchr(location, '/');
    if (next && (next - location < 8))
      {
-        const char *p;
-        p = next;
-        p += 1;
+        const char *p, *slash;
+
+        p = next + 1;
         if (p && *p && (*p == '/'))
           p += 1;
+        slash = p;
         next = strchr(p, '/'); /* try normal uri */
-        if (!next)
+        if (next)
+          {
+             if (strncmp(slash, hd->client->addr, next - slash))
+               {
+                  azy_client_addr_set(hd->client, strndupa(slash, next - slash));
+                  reconnect = EINA_TRUE;
+               }
+          }
+        else
           next = strchr(p, '?');  /* try php uri */
      }
    if (!next)
@@ -323,30 +337,32 @@ _azy_client_handler_redirect(Azy_Client_Handler_Data *hd)
    else
      hd->send = msg;
 
-   hd->nodelete = EINA_TRUE;
+   hd->redirect = EINA_TRUE;
 
-   if ((!hd->client->net->proto) || (!hd->recv->proto)) /* handle http 1.0 */
+   if (reconnect || (!hd->client->net->proto) || (!hd->recv->proto)) /* handle http 1.0 */
      {
+        azy_net_free(hd->recv);
+        hd->recv = NULL;
         azy_events_connection_kill(hd->client->net->conn, EINA_FALSE, NULL);
         azy_client_connect(hd->client, hd->client->secure);
         return;
      }
 
+   azy_net_free(hd->recv);
+   hd->recv = NULL;
    EINA_SAFETY_ON_NULL_RETURN(msg);
    /* need to handle redirects, so we get a bit crazy here by sending data without helpers */
-   if (hd->method)
+   if (ecore_con_server_send(hd->client->net->conn, eina_strbuf_string_get(hd->send), eina_strbuf_length_get(hd->send)))
      {
-        if (!ecore_con_server_send(hd->client->net->conn, eina_strbuf_string_get(hd->send), eina_strbuf_length_get(hd->send))) /* FIXME: wtf do we do here? header sent, no body... */
-          {
-             ERR("Could not queue data for sending to redirect URI!");
-             goto error;
-          }
+        INFO("Send [1/1] complete! %zu bytes queued for sending.", eina_strbuf_length_get(hd->send));
+        eina_strbuf_free(hd->send);
+        hd->send = NULL;
+        return;
      }
-   INFO("Send [1/1] complete! %zu bytes queued for sending.", eina_strbuf_length_get(hd->send));
 
-   return;
-error:
+   ERR("Could not queue data for sending to redirect URI!");
    eina_strbuf_free(msg);
+   azy_events_connection_kill(hd->client->net->conn, EINA_FALSE, NULL);
 }
 
 Eina_Bool
@@ -436,11 +452,17 @@ _azy_client_handler_data(Azy_Client_Handler_Data     *hd,
    else if (azy_events_length_overflows(hd->recv->progress, hd->recv->http.content_length))
      {
         int64_t overflow_length = 0;
+        size_t blen;
+        void *buf;
 
         overflow_length = hd->recv->progress - hd->recv->http.content_length;
         hd->client->overflow = eina_binbuf_new();
-        if (hd->recv->buffer_stolen)
         eina_binbuf_append_length(hd->client->overflow, EBUF(hd->recv->buffer) + (EBUFLEN(hd->recv->buffer) - overflow_length), overflow_length);
+        blen = EBUFLEN(hd->recv->buffer);
+        buf = eina_binbuf_string_steal(hd->recv->buffer);
+        eina_binbuf_free(hd->recv->buffer);
+        memset(buf + blen - overflow_length, 0, overflow_length);
+        hd->recv->buffer = eina_binbuf_manage_new_length(buf, hd->recv->http.content_length);
         WARN("%s: Extra content length of %"PRIi64"! Set recv size to %"PRIi64" (previous %"PRIi64")",
              hd->method, overflow_length, hd->recv->http.content_length, hd->recv->http.content_length);
      }
@@ -535,7 +557,7 @@ _azy_client_handler_del(Azy_Client                 *client,
 
              EINA_LIST_FOREACH_SAFE(client->conns, l, l2, hd)
                {
-                  if (!hd->nodelete)
+                  if (!hd->redirect)
                     _azy_client_handler_data_free(hd);
                }
           }
@@ -578,7 +600,7 @@ _azy_client_handler_add(Azy_Client                    *client,
    ecore_event_add(AZY_CLIENT_CONNECTED, client, _azy_event_handler_fake_free, NULL);
    EINA_LIST_FOREACH(client->conns, l, hd)
      {
-        if (hd->nodelete) /* saved call from redirect, send again */
+        if (hd->redirect) /* saved call from redirect, send again */
           {
              EINA_SAFETY_ON_TRUE_RETURN_VAL(
                !ecore_con_server_send(client->net->conn, eina_strbuf_string_get(hd->send), eina_strbuf_length_get(hd->send)),

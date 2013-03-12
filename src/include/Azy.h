@@ -184,6 +184,17 @@ typedef enum
 } Azy_Server_Type;
 
 /**
+ * @typedef Azy_Net_Transfer_Encoding
+ * An enum for determining transfer-encoding of a transfer
+ */
+typedef enum
+{
+   AZY_NET_TRANSFER_ENCODING_NONE,
+   AZY_NET_TRANSFER_ENCODING_CHUNKED,
+   AZY_NET_TRANSFER_ENCODING_LAST
+} Azy_Net_Transfer_Encoding;
+
+/**
  * @typedef Azy_Net_Protocol
  * An enum for determining which net protocol is used
  */

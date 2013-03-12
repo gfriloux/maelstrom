@@ -33,7 +33,8 @@ ret_(Azy_Client *cli __UNUSED__, int type __UNUSED__, Azy_Content *content)
         azy_rss_free(rss);
      }
    azy_net_free(net);
-   ecore_main_loop_quit();
+   eina_binbuf_free(buf);
+   buf = NULL;
    return ECORE_CALLBACK_RENEW;
 }
 
@@ -72,6 +73,8 @@ connected(void *data __UNUSED__, int type __UNUSED__, Azy_Client *cli)
      {
         id = azy_client_blank(cli, AZY_NET_TYPE_GET, NULL, NULL, NULL);
         EINA_SAFETY_ON_TRUE_RETURN_VAL(!id, ECORE_CALLBACK_RENEW);
+        //id = azy_client_blank(cli, AZY_NET_TYPE_GET, NULL, NULL, NULL);
+        //EINA_SAFETY_ON_TRUE_RETURN_VAL(!id, ECORE_CALLBACK_RENEW);
      }
 
    return ECORE_CALLBACK_RENEW;
@@ -85,19 +88,26 @@ main(void)
    eina_init();
    ecore_init();
    azy_init();
+   azy_rpc_log_enable();
    eina_log_domain_level_set("azy", EINA_LOG_LEVEL_DBG);
+   eina_log_domain_level_set("azy_rpc", EINA_LOG_LEVEL_DBG);
    eina_log_domain_level_set("ecore_con", EINA_LOG_LEVEL_DBG);
 
    cli = azy_client_new();
 
    EINA_SAFETY_ON_NULL_RETURN_VAL(cli, 1);
-   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "http://git.enlightenment.org", 80), 1);
+   //EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "http://cyber.law.harvard.edu", 80), 1);
+   //EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "https://github.com", 443), 1);
+   //EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "http://git.enlightenment.org", 80), 1);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "http://www.google.co.uk", 80), 1);
 
    EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_connect(cli, EINA_FALSE), 1);
 
-   azy_net_uri_set(azy_client_net_get(cli), "/core/efl.git/atom/?h=master");
-
-   azy_net_protocol_set(azy_client_net_get(cli), AZY_NET_PROTOCOL_HTTP_1_0);
+   //azy_net_uri_set(azy_client_net_get(cli), "/rss/examples/rss2sample.xml");
+   //azy_net_uri_set(azy_client_net_get(cli), "/zmike/shotgun/commits/master.atom");
+   //azy_net_uri_set(azy_client_net_get(cli), "/core/efl.git/atom/?h=master");
+   azy_net_uri_set(azy_client_net_get(cli), "/");
+   azy_net_protocol_set(azy_client_net_get(cli), AZY_NET_PROTOCOL_HTTP_1_1);
 
    ecore_event_handler_add(AZY_CLIENT_CONNECTED, (Ecore_Event_Handler_Cb)connected, NULL);
    ecore_event_handler_add(AZY_CLIENT_TRANSFER_COMPLETE, (Ecore_Event_Handler_Cb)ret_, NULL);
@@ -106,7 +116,7 @@ main(void)
    ecore_main_loop_begin();
    azy_client_free(cli);
 
-   eina_binbuf_free(buf);
+   if (buf) eina_binbuf_free(buf);
    azy_shutdown();
    ecore_shutdown();
    eina_shutdown();

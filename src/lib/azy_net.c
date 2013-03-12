@@ -164,6 +164,7 @@ azy_net_free(Azy_Net *net)
    eina_stringshare_del(net->http.res.http_msg);
    if (net->buffer) eina_binbuf_free(net->buffer);
    if (net->overflow) eina_binbuf_free(net->overflow);
+   if (net->separator) eina_strbuf_free(net->separator);
    memset(net, 0, sizeof(Azy_Net)); /* zero out data for security */
    if (net->timer) ecore_timer_del(net->timer);
    free(net);
@@ -441,8 +442,6 @@ azy_net_code_get(Azy_Net *net)
         AZY_MAGIC_FAIL(net, AZY_MAGIC_NET);
         return -1;
      }
-
-   DBG("(net=%p)", net);
 
    return net->http.res.http_code;
 }

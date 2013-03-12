@@ -759,8 +759,7 @@ azy_client_call_checker(Azy_Client          *cli,
 Eina_Bool
 azy_client_redirect(Azy_Client *cli)
 {
-   int code;
-   Azy_Net *net;
+   Azy_Client_Handler_Data *hd;
 
    if (!AZY_MAGIC_CHECK(cli, AZY_MAGIC_CLIENT))
      {
@@ -768,16 +767,10 @@ azy_client_redirect(Azy_Client *cli)
         return EINA_FALSE;
      }
 
-   net = azy_client_net_get(cli);
-   if (!net) return EINA_FALSE;
-   code = azy_net_code_get(net);
-
-   if ((code >= 301) && (code <= 303))
-     {
-        azy_client_connect(cli, cli->secure);
-        return EINA_TRUE;
-     }
-   return EINA_FALSE;
+   hd = eina_list_data_get(cli->conns);
+   if (!hd) return EINA_FALSE;
+   if (hd->redirect) azy_client_connect(cli, cli->secure);
+   return hd->redirect;
 }
 
 /**
