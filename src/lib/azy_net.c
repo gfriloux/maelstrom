@@ -163,7 +163,7 @@ azy_net_free(Azy_Net *net)
    eina_stringshare_del(net->http.req.http_path);
    eina_stringshare_del(net->http.res.http_msg);
    if (net->buffer) eina_binbuf_free(net->buffer);
-   
+   azy_net_cookie_list_clear(net);
    if (net->http.post_headers) eina_hash_free(net->http.post_headers);
    if (net->http.post_headers_buf) eina_binbuf_free(net->http.post_headers_buf);
    if (net->overflow) eina_binbuf_free(net->overflow);
@@ -712,9 +712,9 @@ azy_net_transport_get(Azy_Net *net)
 Eina_Strbuf *
 azy_net_header_create(Azy_Net *net)
 {
-   DBG("(net=%p)", net);
    Eina_Strbuf *header;
 
+   DBG("(net=%p)", net);
    if (!AZY_MAGIC_CHECK(net, AZY_MAGIC_NET))
      {
         AZY_MAGIC_FAIL(net, AZY_MAGIC_NET);
@@ -759,6 +759,23 @@ azy_net_header_create(Azy_Net *net)
 
    eina_strbuf_append(header, "\r\n");
    return header;
+}
+
+/**
+ * @brief Get the currently-set HTTP transfer encoding for a network connection
+ * @param net The network object
+ * @return The #Azy_Net_Transfer_Encoding currently set
+ */
+Azy_Net_Transfer_Encoding
+azy_net_transfer_encoding_get(const Azy_Net *net)
+{
+   DBG("(net=%p)", net);
+   if (!AZY_MAGIC_CHECK(net, AZY_MAGIC_NET))
+     {
+        AZY_MAGIC_FAIL(net, AZY_MAGIC_NET);
+        return AZY_NET_TRANSFER_ENCODING_LAST;
+     }
+   return net->http.transfer_encoding;
 }
 
 /**

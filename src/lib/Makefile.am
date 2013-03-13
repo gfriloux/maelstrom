@@ -36,6 +36,7 @@ libazy_la_SOURCES = \
   azy_server.c \
   azy_server_module.c \
   azy_net.c \
+  azy_net_cookie.c \
   azy_rss.c \
   azy_rss_item.c \
   azy_utils.c

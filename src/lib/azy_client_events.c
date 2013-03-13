@@ -85,6 +85,7 @@ _azy_client_handler_data_free(Azy_Client_Handler_Data *hd)
 
    if (hd->recv)
      azy_net_free(hd->recv);
+   eina_stringshare_del(hd->uri);
    if (hd->send) eina_strbuf_free(hd->send);
    free(hd);
 }
@@ -395,7 +396,10 @@ _azy_client_handler_data(Azy_Client_Handler_Data     *hd,
    DBG("(client=%p, server->client=%p)", hd->client, (ev) ? ecore_con_server_data_get(ev->server) : NULL);
 
    if (!hd->recv)
-     hd->recv = azy_net_new(hd->client->net->conn);
+     {
+        hd->recv = azy_net_new(hd->client->net->conn);
+        hd->recv->http.req.http_path = eina_stringshare_ref(hd->uri);
+     }
 
    EINA_SAFETY_ON_NULL_RETURN_VAL(hd->recv, ECORE_CALLBACK_RENEW);
    hd->recv->nodata = EINA_FALSE;

@@ -36,6 +36,7 @@ void *alloca (size_t);
 #define AZY_MAGIC_CLIENT               0x31342
 #define AZY_MAGIC_NET                  0x31343
 #define AZY_MAGIC_VALUE                0x31344
+#define AZY_MAGIC_NET_COOKIE           0x31345
 #define AZY_MAGIC_CONTENT              0x31346
 #define AZY_MAGIC_CLIENT_DATA_HANDLER  0x31347
 #define AZY_MAGIC_RSS                  0x66442
@@ -111,6 +112,22 @@ extern Eina_Error AZY_ERROR_XML_UNSUPPORTED;
 
 typedef struct Azy_Client_Handler_Data Azy_Client_Handler_Data;
 typedef unsigned int                   Azy_Magic;
+
+struct Azy_Net_Cookie
+{
+   AZY_MAGIC;
+   unsigned int refcount;
+   Eina_Stringshare *domain;
+   Eina_Stringshare *path;
+   Eina_Stringshare *name;
+   Eina_Stringshare *value;
+   time_t created;
+   time_t last_used;
+   time_t expires;
+   Azy_Net_Cookie_Flags flags;
+   Eina_Bool max_age : 1; // if expires is actually max-age
+   Eina_Bool in_hash : 1;
+};
 
 struct Azy_Content
 {
@@ -219,6 +236,7 @@ struct Azy_Net
          const char *http_msg;
          int         http_code;
       } res;
+      Eina_List *cookies; /* Azy_Net_Cookie */
       Eina_Hash *headers;
       Eina_Hash *post_headers;
       Eina_Binbuf *post_headers_buf; // headers after last chunk
@@ -351,7 +369,8 @@ struct Azy_Client_Handler_Data
    Azy_Net_Type       type;
    Azy_Client        *client;
    Azy_Net           *recv;
-   const char        *method;
+   Eina_Stringshare  *method;
+   Eina_Stringshare  *uri;
    Azy_Content_Cb     callback;  //callback set to convert from Azy_Value to Return_Type
    void              *content_data;
    Eina_Strbuf       *send;
@@ -406,6 +425,9 @@ inline Eina_Bool azy_events_length_overflows(int64_t current, int64_t max);
 size_t azy_events_transfer_decode(Azy_Net *net, unsigned char *start, int len);
 inline Eina_Bool azy_events_chunks_done(const Azy_Net *net);
 Eina_Binbuf *azy_events_overflow_add(Azy_Net *net, const unsigned char *data, size_t len);
+
+int azy_net_cookie_init_(void);
+void azy_net_cookie_shutdown_(void);
 
 Eina_Bool     _azy_client_handler_add(Azy_Client *client, int type, Ecore_Con_Event_Server_Add *add);
 Eina_Bool     _azy_client_handler_del(Azy_Client *client, int type, Ecore_Con_Event_Server_Del *del);

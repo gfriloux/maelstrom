@@ -607,6 +607,7 @@ azy_client_blank(Azy_Client    *client,
    hd->callback = cb;
    hd->type = type;
    hd->content_data = data;
+   hd->uri = eina_stringshare_ref(client->net->http.req.http_path);
    if (netdata && netdata->size && (type == AZY_NET_TYPE_POST))
      {
         hd->send = eina_strbuf_new();

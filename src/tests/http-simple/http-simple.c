@@ -14,27 +14,10 @@ static Eina_Binbuf *buf = NULL;
 static Eina_Bool
 ret_(Azy_Client *cli __UNUSED__, int type __UNUSED__, Azy_Content *content)
 {
-   Azy_Net *net;
    if (azy_content_error_is_set(content))
-     {
-        printf("Error encountered: %s\n", azy_content_error_message_get(content));
-        return ECORE_CALLBACK_RENEW;
-     }
-
-   net = azy_net_buffer_new(eina_binbuf_string_steal(buf), eina_binbuf_length_get(buf), azy_net_transport_get(azy_content_net_get(content)), 1);
-   if (!azy_content_deserialize(content, net))
-     fprintf(stderr, "FAIL!\n");
+     printf("Error encountered: %s\n", azy_content_error_message_get(content));
    else
-     {
-        Azy_Rss *rss;
-
-        rss = azy_content_return_get(content);
-        azy_rss_print("> ", 0, rss);
-        azy_rss_free(rss);
-     }
-   azy_net_free(net);
-   eina_binbuf_free(buf);
-   buf = NULL;
+     printf("Success!\n");
    return ECORE_CALLBACK_RENEW;
 }
 

@@ -109,6 +109,11 @@ typedef struct Azy_Client               Azy_Client;
  */
 typedef struct Azy_Net                  Azy_Net;
 /**
+ * @typedef Azy_Net_Cookie
+ * An HTTP cookie
+ */
+typedef struct Azy_Net_Cookie                  Azy_Net_Cookie;
+/**
  * @typedef Azy_Rss
  * An object representing an RSS feed's content
  */
@@ -172,6 +177,18 @@ typedef struct Azy_Event_Transfer_Progress
 } Azy_Event_Transfer_Progress;
 
 /**
+ * @typedef Azy_Net_Cookie_Flags
+ * The attributes of a cookie
+ */
+typedef enum
+{
+   AZY_NET_COOKIE_BLANK = 0,
+   AZY_NET_COOKIE_HTTPONLY = (1 << 0),
+   AZY_NET_COOKIE_SECURE = (1 << 1),
+   AZY_NET_COOKIE_PERSISTENT = (1 << 2)
+} Azy_Net_Cookie_Flags;
+
+/**
  * @typedef Azy_Server_Type
  * A simple enum for easily specifying the type of server to run
  */
@@ -189,9 +206,9 @@ typedef enum
  */
 typedef enum
 {
-   AZY_NET_TRANSFER_ENCODING_NONE,
-   AZY_NET_TRANSFER_ENCODING_CHUNKED,
-   AZY_NET_TRANSFER_ENCODING_LAST
+   AZY_NET_TRANSFER_ENCODING_NONE, /**< No encoding set */
+   AZY_NET_TRANSFER_ENCODING_CHUNKED, /**< Using chunked encoding */
+   AZY_NET_TRANSFER_ENCODING_LAST /**< Dummy value used for setting errors and iterating */
 } Azy_Net_Transfer_Encoding;
 
 /**
@@ -415,6 +432,20 @@ EAPI Azy_Net_Transport         azy_net_transport_get(Azy_Net *net);
 EAPI void                      azy_net_message_length_set(Azy_Net *net, int length);
 EAPI Eina_Strbuf              *azy_net_header_create(Azy_Net *net);
 EAPI const char               *azy_net_http_msg_get(int code);
+EAPI Azy_Net_Transfer_Encoding azy_net_transfer_encoding_get(const Azy_Net *net);
+
+/* cookie */
+EAPI Azy_Net_Cookie           *azy_net_cookie_parse(char *txt);
+EAPI time_t azy_net_cookie_expires(const Azy_Net_Cookie *ck);
+EAPI Azy_Net_Cookie_Flags azy_net_cookie_flags_get(const Azy_Net_Cookie *ck);
+EAPI Eina_Stringshare *azy_net_cookie_path_get(const Azy_Net_Cookie *ck);
+EAPI Eina_Stringshare *azy_net_cookie_domain_get(const Azy_Net_Cookie *ck);
+EAPI void azy_net_cookie_insert(Azy_Net *net, Azy_Net_Cookie *ck);
+EAPI void azy_net_cookie_list_clear(Azy_Net *net);
+EAPI const Eina_List *azy_net_cookie_list_get(const Azy_Net *net);
+EAPI Eina_List *azy_net_cookie_list_steal(Azy_Net *net);
+EAPI void azy_net_cookie_free(Azy_Net_Cookie *ck);
+EAPI Azy_Net_Cookie *azy_net_cookie_new(void);
 
 /* values */
 EAPI Azy_Value                *azy_value_ref(Azy_Value *val);

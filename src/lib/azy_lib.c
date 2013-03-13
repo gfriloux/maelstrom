@@ -163,6 +163,7 @@ azy_init(void)
 
    if (!azy_value_init(type)) goto ecore_con_fail;
    if (!azy_rss_init(type)) goto azy_fail;
+   if (!azy_net_cookie_init_()) goto azy_fail2;
    azy_lib_register_errors_();
 
    AZY_CLIENT_DISCONNECTED = ecore_event_type_new();
@@ -186,10 +187,13 @@ azy_init(void)
    eina_magic_string_set(AZY_MAGIC_CLIENT, "Azy_Client");
    eina_magic_string_set(AZY_MAGIC_CLIENT_DATA_HANDLER, "Azy_Client_Handler_Data");
    eina_magic_string_set(AZY_MAGIC_NET, "Azy_Net");
+   eina_magic_string_set(AZY_MAGIC_NET_COOKIE, "Azy_Net_Cookie");
    eina_magic_string_set(AZY_MAGIC_VALUE, "Azy_Value");
    eina_magic_string_set(AZY_MAGIC_CONTENT, "Azy_Content");
    return azy_init_count_;
 
+azy_fail2:
+   azy_rss_shutdown();
 azy_fail:
    azy_value_shutdown();
 ecore_con_fail:
@@ -223,6 +227,7 @@ azy_shutdown(void)
    eina_log_domain_unregister(azy_log_dom);
    if (azy_rpc_log_dom != -1)
      eina_log_domain_unregister(azy_rpc_log_dom);
+   azy_net_cookie_shutdown_();
    azy_rss_shutdown();
    azy_value_shutdown();
    ecore_con_shutdown();

@@ -19,7 +19,7 @@
 #include <ctype.h>
 #include <errno.h>
 
-#define MAX_HEADER_SIZE 8092
+#define MAX_HEADER_SIZE 8 * 1024
 
 static inline unsigned char *
 _azy_events_skip_blank(const unsigned char *p, int64_t *len)
@@ -380,7 +380,7 @@ _azy_events_separator_parse(const unsigned char *start, int64_t len, const unsig
 }
 
 static void
-_azy_events_header_add(Azy_Net *net, const char *key, const char *value)
+_azy_events_header_add(Azy_Net *net, char *key, char *value)
 {
    INFO("Found %sheader: key='%s'", net->http.post_headers ? "post " : "", key);
    INFO("Found %sheader: value='%s'", net->http.post_headers ? "post " : "", value);
@@ -438,6 +438,13 @@ _azy_events_header_add(Azy_Net *net, const char *key, const char *value)
         else
           net->http.content_length = strtol((const char *)value, NULL, 10);
      }
+   else if (!strcasecmp(key, "set-cookie"))
+     {
+        Azy_Net_Cookie *ck;
+
+        ck = azy_net_cookie_parse(value);
+        if (ck) azy_net_cookie_insert(net, ck);
+     }
    else
      azy_net_header_set(net, key, value);
 }
@@ -486,11 +493,6 @@ _azy_events_headers_parser(Azy_Net *net, unsigned char *start, int64_t *length, 
      {
         unsigned char *ptr, *semi = p;
 
-        if (line_len > MAX_HEADER_SIZE)
-          {
-             WARN("Ignoring unreasonably large header starting with:\n %.32s\n", p);
-             goto skip_header;
-          }
         semi += (line_len - _azy_events_valid_header_name((const char *)p, line_len));
         if (semi == p) goto skip_header;
 
