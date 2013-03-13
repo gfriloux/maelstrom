@@ -157,7 +157,6 @@ azy_net_free(Azy_Net *net)
         return;
      }
 
-   AZY_MAGIC_SET(net, AZY_MAGIC_NONE);
    if (net->http.headers)
      eina_hash_free(net->http.headers);
    eina_stringshare_del(net->http.req.http_path);
@@ -168,8 +167,9 @@ azy_net_free(Azy_Net *net)
    if (net->http.post_headers_buf) eina_binbuf_free(net->http.post_headers_buf);
    if (net->overflow) eina_binbuf_free(net->overflow);
    if (net->separator) eina_strbuf_free(net->separator);
-   memset(net, 0, sizeof(Azy_Net)); /* zero out data for security */
    if (net->timer) ecore_timer_del(net->timer);
+   memset(net, 0, sizeof(Azy_Net)); /* zero out data for security */
+   AZY_MAGIC_SET(net, AZY_MAGIC_NONE);
    free(net);
 }
 
