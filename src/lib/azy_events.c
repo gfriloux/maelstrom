@@ -474,6 +474,37 @@ _azy_events_chunk_size_parser(Azy_Net *net, const unsigned char *start, int64_t 
    return r;
 }
 
+static int
+_azy_events_headers_parser_line_unwrapper(Azy_Net *net, unsigned char *start, int64_t len, int line_len)
+{
+   const char *s;
+   int x;
+   unsigned int slen;
+   unsigned char *p, *ptr, *r;
+
+   slen = ESBUFLEN(net->separator);
+   s = ESBUF(net->separator);
+   p = start;
+   r = p + line_len;
+   while (r)
+     {
+        line_len = r - p;
+        /* stop for now if the line and first char of next isn't complete */
+        if (len <= line_len + slen + 1) return 0;
+        ptr = p + line_len + slen;
+        if (!isblank(ptr[0])) return line_len;
+        /* continuing header :((((( */
+
+        /* unwrap the line */
+        for (x = slen; x; x--)
+          ptr[-x] = ' ';
+
+        /* look for next line to check */
+        r = azy_memstr(ptr, (const unsigned char *)s, len - line_len - slen, slen);
+     }
+   return 0;
+}
+
 static unsigned char *
 _azy_events_headers_parser(Azy_Net *net, unsigned char *start, int64_t *length, int line_len)
 {
@@ -496,8 +527,10 @@ _azy_events_headers_parser(Azy_Net *net, unsigned char *start, int64_t *length, 
         semi += (line_len - _azy_events_valid_header_name((const char *)p, line_len));
         if (semi == p) goto skip_header;
 
+        line_len = _azy_events_headers_parser_line_unwrapper(net, p, len, line_len);
+
         ptr = semi + 1;
-        while ((isspace(*ptr)) && (ptr - p < line_len))
+        while ((isblank(ptr[0])) && (ptr - p < line_len))
           ptr++;
 
         if (_azy_events_valid_header_value((const char *)ptr, line_len - (ptr - p)))
@@ -531,12 +564,8 @@ skip_header:
              break;
           }
         r = azy_memstr(p, (const unsigned char *)s, len, slen);
-        if (r)
-          line_len = r - p;
-        /* FIXME: to be fully 1.1 compliant, lines without a colon
-         * be filtered and checked to see if is a continuing header
-         * from the previous line
-         */
+        if (!r) break;
+        line_len = r - p;
      }
    *length = len;
    return p;
