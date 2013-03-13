@@ -291,7 +291,6 @@ azy_client_connect(Azy_Client *client,
    ecore_con_server_data_set(svr, client);
 
    client->net = azy_net_new(svr);
-   azy_net_header_set(client->net, "host", NULL);
    azy_net_header_set(client->net, "host", client->addr);
 
    return EINA_TRUE;
