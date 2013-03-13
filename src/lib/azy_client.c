@@ -563,11 +563,14 @@ azy_client_blank(Azy_Client    *client,
         return 0;
      }
    EINA_SAFETY_ON_NULL_RETURN_VAL(client->net, 0);
-   EINA_SAFETY_ON_TRUE_RETURN_VAL((type != AZY_NET_TYPE_GET) && (type != AZY_NET_TYPE_POST), 0);
 
    while (++azy_client_send_id__ < 1) ;
 
    client->net->type = type;
+   if (type == AZY_NET_TYPE_GET)
+     netdata = NULL;
+   if (type == AZY_NET_TYPE_PUT)
+     azy_net_message_length_set(client->net, netdata->size);
 
    if (!client->net->http.req.http_path)
      {
@@ -588,7 +591,7 @@ azy_client_blank(Azy_Client    *client,
 #endif
 
    EINA_SAFETY_ON_TRUE_GOTO(!ecore_con_server_send(client->net->conn, eina_strbuf_string_get(msg), eina_strbuf_length_get(msg)), error);
-   if (netdata && netdata->size && (type == AZY_NET_TYPE_POST))
+   if (netdata && netdata->size)
      {
         INFO("Send [1/2] complete! %zu bytes queued for sending.", eina_strbuf_length_get(msg));
         EINA_SAFETY_ON_TRUE_GOTO(!ecore_con_server_send(client->net->conn, netdata->data, netdata->size), error);
@@ -608,7 +611,7 @@ azy_client_blank(Azy_Client    *client,
    hd->type = type;
    hd->content_data = data;
    hd->uri = eina_stringshare_ref(client->net->http.req.http_path);
-   if (netdata && netdata->size && (type == AZY_NET_TYPE_POST))
+   if (netdata && netdata->size)
      {
         hd->send = eina_strbuf_new();
         eina_strbuf_append_length(hd->send, (char *)netdata->data, netdata->size);
@@ -629,78 +632,6 @@ azy_client_blank(Azy_Client    *client,
    return azy_client_send_id__;
 error:
    if (msg) eina_strbuf_free(msg);
-   return 0;
-}
-
-/**
- * @brief Send arbitrary data to a connected server
- *
- * This function is used to send arbitrary data to a connected server using @p client through HTTP PUT.
- * It relies on the user to set required headers by operating on the client's #Azy_Net object.
- * @param client The client (NOT NULL)
- * @param send_data The data+length to send (NOT NULL)
- * @param data Optional data to pass to associated callbacks
- * @return The #Azy_Client_Call_Id of the transmission, to be used with azy_client_callback_set,
- * or 0 on failure
- * @see azy_net_header_set
- */
-Azy_Client_Call_Id
-azy_client_put(Azy_Client         *client,
-               const Azy_Net_Data *send_data,
-               void               *data)
-{
-   Eina_Strbuf *msg;
-   Azy_Client_Handler_Data *hd;
-
-   if (!AZY_MAGIC_CHECK(client, AZY_MAGIC_CLIENT))
-     {
-        AZY_MAGIC_FAIL(client, AZY_MAGIC_CLIENT);
-        return 0;
-     }
-   EINA_SAFETY_ON_NULL_RETURN_VAL(send_data, 0);
-   EINA_SAFETY_ON_NULL_RETURN_VAL(send_data->data, 0);
-
-   azy_net_message_length_set(client->net, send_data->size);
-   azy_net_type_set(client->net, AZY_NET_TYPE_PUT);
-   msg = azy_net_header_create(client->net);
-   EINA_SAFETY_ON_NULL_GOTO(msg, error);
-#ifdef ISCOMFITOR
-   DBG("\nSENDING >>>>>>>>>>>>>>>>>>>>>>>>\n%.*s%.*s\n>>>>>>>>>>>>>>>>>>>>>>>>",
-       eina_strbuf_length_get(msg), eina_strbuf_string_get(msg), (int)send_data->size, send_data->data);
-#endif
-   EINA_SAFETY_ON_TRUE_GOTO(!ecore_con_server_send(client->net->conn, eina_strbuf_string_get(msg), eina_strbuf_length_get(msg)), error);
-   INFO("Send [1/2] complete! %zi bytes queued for sending.", eina_strbuf_length_get(msg));
-   eina_strbuf_free(msg);
-   msg = NULL;
-
-   EINA_SAFETY_ON_TRUE_GOTO(!ecore_con_server_send(client->net->conn, send_data->data, send_data->size), error);
-   INFO("Send [2/2] complete! %" PRIi64 " bytes queued for sending.", send_data->size);
-   ecore_con_server_flush(client->net->conn);
-
-   EINA_SAFETY_ON_TRUE_RETURN_VAL(!(hd = calloc(1, sizeof(Azy_Client_Handler_Data))), 0);
-
-   if (!client->conns)
-     {
-        client->recv = ecore_event_handler_add(ECORE_CON_EVENT_SERVER_DATA,
-                                               (Ecore_Event_Handler_Cb)_azy_client_handler_data, hd);
-        ecore_con_server_data_set(client->net->conn, client);
-     }
-
-   hd->client = client;
-   hd->content_data = data;
-   hd->type = AZY_NET_TYPE_PUT;
-   AZY_MAGIC_SET(hd, AZY_MAGIC_CLIENT_DATA_HANDLER);
-
-   while (++azy_client_send_id__ < 1) ;
-
-   hd->id = azy_client_send_id__;
-   client->conns = eina_list_append(client->conns, hd);
-
-   return azy_client_send_id__;
-
-error:
-   if (msg)
-     eina_strbuf_free(msg);
    return 0;
 }
 

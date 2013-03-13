@@ -159,7 +159,7 @@ typedef struct Azy_Value   Azy_Value;
 typedef struct Azy_Content Azy_Content;
 /**
  * @typedef Azy_Client_Call_Id
- * A unique identifier for every azy_client_call and azy_client_put
+ * A unique identifier for every azy_client_call and azy_client_blank
  * which can be used to set callbacks for the transmission
  */
 typedef unsigned int       Azy_Client_Call_Id;
@@ -529,7 +529,6 @@ EAPI void                      azy_client_close(Azy_Client *client);
 EAPI Eina_Bool                 azy_client_call_checker(Azy_Client *cli, Azy_Content *err_content, Azy_Client_Call_Id ret, Azy_Client_Return_Cb cb, const char *func);
 EAPI Azy_Client_Call_Id        azy_client_call(Azy_Client *client, Azy_Content *content, Azy_Net_Transport transport, Azy_Content_Cb cb);
 EAPI Azy_Client_Call_Id        azy_client_blank(Azy_Client *client, Azy_Net_Type type, Azy_Net_Data *netdata, Azy_Content_Cb cb, void *data);
-EAPI Azy_Client_Call_Id        azy_client_put(Azy_Client *client, const Azy_Net_Data *send, void *data);
 EAPI Eina_Bool                 azy_client_redirect(Azy_Client *cli);
 EAPI Azy_Client_Call_Id        azy_client_current(Azy_Client *cli);
 EAPI Eina_Bool                 azy_server_module_upgrade(Azy_Server_Module *module);
