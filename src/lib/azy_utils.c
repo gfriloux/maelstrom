@@ -46,7 +46,7 @@
  */
 char *
 azy_base64_encode(const char *string,
-                  double      len)
+                  double len)
 {
    base64_encodestate s;
    char *ret = NULL;
@@ -74,7 +74,7 @@ azy_base64_encode(const char *string,
  */
 char *
 azy_base64_decode(const char *string,
-                  size_t         len)
+                  size_t len)
 {
    base64_decodestate s;
    unsigned char *ret = NULL;
@@ -88,7 +88,7 @@ azy_base64_decode(const char *string,
    retlen = base64_decode_block(string, len, ret, &s);
    ret[retlen] = '\0';
 
-   return (char*)ret;
+   return (char *)ret;
 }
 
 /**
@@ -105,8 +105,8 @@ azy_base64_decode(const char *string,
 unsigned char *
 azy_memstr(const unsigned char *big,
            const unsigned char *small,
-           size_t               big_len,
-           size_t               small_len)
+           size_t big_len,
+           size_t small_len)
 {
    unsigned char *x = (unsigned char *)big;
 
@@ -145,6 +145,7 @@ azy_uuid_new(void)
 
         ret = eina_stringshare_add(buf);
         RpcStringFree(buf);
+
       default:
         break;
      }
@@ -173,7 +174,7 @@ azy_uuid_new(void)
 Azy_Net_Transport
 azy_transport_get(const char *content_type)
 {
-   const char *c = NULL;;
+   const char *c = NULL;
    DBG("(content_type='%s')", content_type);
    if (!content_type)
      return AZY_NET_TRANSPORT_TEXT;

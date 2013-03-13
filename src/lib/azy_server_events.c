@@ -61,43 +61,43 @@ static const char *error501 = "HTTP/1.1 501 Method Not Implemented\r\n"
                               "</body>"
                               "</html>";
 
-static void                      _azy_server_client_new(Azy_Server       *server,
+static void                      _azy_server_client_new(Azy_Server *server,
                                                         Ecore_Con_Client *conn);
 static Eina_Bool                 _azy_server_module_free(Azy_Server_Module *module,
-                                                         Eina_Bool          shutdown);
+                                                         Eina_Bool shutdown);
 static Azy_Server_Module        *_azy_server_module_new(Azy_Server_Module_Def *def,
-                                                        Azy_Server_Client     *client);
+                                                        Azy_Server_Client *client);
 static Azy_Server_Module_Def    *_azy_server_module_def_find(Azy_Server *server,
                                                              const char *name);
 static Azy_Server_Module        *_azy_server_client_module_find(Azy_Server_Client *client,
-                                                                const char        *name);
+                                                                const char *name);
 static Azy_Server_Module_Method *_azy_server_module_method_find(Azy_Server_Module *module,
-                                                                const char        *name);
+                                                                const char *name);
 static Eina_Bool                 _azy_server_client_method_run(Azy_Server_Client *client,
-                                                               Azy_Content       *content);
+                                                               Azy_Content *content);
 
-static void _azy_server_client_send(Azy_Server_Client *client,
-                                    Azy_Net_Data      *data,
-                                    Azy_Content       *content);
-static Eina_Bool _azy_server_client_get_put(Azy_Server_Client *client);
-static Eina_Bool _azy_server_client_rpc(Azy_Server_Client *client,
-                                        Azy_Net_Transport  t);
+static void                      _azy_server_client_send(Azy_Server_Client *client,
+                                                         Azy_Net_Data *data,
+                                                         Azy_Content *content);
+static Eina_Bool                 _azy_server_client_get_put(Azy_Server_Client *client);
+static Eina_Bool                 _azy_server_client_rpc(Azy_Server_Client *client,
+                                                        Azy_Net_Transport t);
 
-static Eina_Bool _azy_server_client_handler_request(Azy_Server_Client *client);
-static Eina_Bool _azy_server_client_handler_del(Azy_Server_Client          *client,
-                                                int                         type,
-                                                Ecore_Con_Event_Client_Del *ev);
-static Eina_Bool _azy_server_client_handler_data(Azy_Server_Client           *client,
-                                                 int                          type,
-                                                 Ecore_Con_Event_Client_Data *ev);
-static Eina_Bool _azy_server_client_handler_upgrade(Azy_Server_Client           *cl,
-                                                    int type                    __UNUSED__,
-                                                    Ecore_Con_Event_Client_Upgrade *ev);
-static void _azy_server_client_free(Azy_Server_Client *client);
+static Eina_Bool                 _azy_server_client_handler_request(Azy_Server_Client *client);
+static Eina_Bool                 _azy_server_client_handler_del(Azy_Server_Client *client,
+                                                                int type,
+                                                                Ecore_Con_Event_Client_Del *ev);
+static Eina_Bool                 _azy_server_client_handler_data(Azy_Server_Client *client,
+                                                                 int type,
+                                                                 Ecore_Con_Event_Client_Data *ev);
+static Eina_Bool                 _azy_server_client_handler_upgrade(Azy_Server_Client *cl,
+                                                                    int type                    __UNUSED__,
+                                                                    Ecore_Con_Event_Client_Upgrade *ev);
+static void                      _azy_server_client_free(Azy_Server_Client *client);
 
 static Eina_Bool
 _azy_server_module_free(Azy_Server_Module *module,
-                        Eina_Bool          run_shutdown)
+                        Eina_Bool run_shutdown)
 {
    if (!AZY_MAGIC_CHECK(module, AZY_MAGIC_SERVER_MODULE))
      {
@@ -140,7 +140,7 @@ _azy_server_module_free(Azy_Server_Module *module,
 
 static Azy_Server_Module *
 _azy_server_module_new(Azy_Server_Module_Def *def,
-                       Azy_Server_Client     *client)
+                       Azy_Server_Client *client)
 {
    Azy_Server_Module *s;
    DBG("(client=%p)", client);
@@ -196,7 +196,7 @@ _azy_server_module_def_find(Azy_Server *server,
 
 static Azy_Server_Module_Method *
 _azy_server_module_method_find(Azy_Server_Module *module,
-                               const char        *name)
+                               const char *name)
 {
    DBG("(module=%p, name='%s')", module, name);
    if (!AZY_MAGIC_CHECK(module, AZY_MAGIC_SERVER_MODULE))
@@ -216,7 +216,7 @@ _azy_server_module_method_find(Azy_Server_Module *module,
 
 static Eina_Bool
 _azy_server_client_method_run(Azy_Server_Client *client,
-                              Azy_Content       *content)
+                              Azy_Content *content)
 {
    Azy_Server_Module *module = NULL;
    Azy_Server_Module_Method *method;
@@ -293,10 +293,10 @@ _azy_server_client_method_run(Azy_Server_Client *client,
    module->post = EINA_FALSE;
    module->content = content;
    method = _azy_server_module_method_find(module, azy_content_method_get(content));
-#define MODULE_STATE(STATE) \
-   module->rewind_now = EINA_TRUE; \
-   module->state = AZY_SERVER_MODULE_STATE_##STATE; \
-   continue
+#define MODULE_STATE(STATE)                        \
+  module->rewind_now = EINA_TRUE;                  \
+  module->state = AZY_SERVER_MODULE_STATE_##STATE; \
+  continue
 
    module->rewind_now = EINA_TRUE;
    while (module->rewind_now)
@@ -323,7 +323,8 @@ _azy_server_client_method_run(Azy_Server_Client *client,
                }
 
              if (module->rewind_now) continue;
-             else if (module->run_method) module->state = AZY_SERVER_MODULE_STATE_PRE;
+             else if (module->run_method)
+               module->state = AZY_SERVER_MODULE_STATE_PRE;
              else
                {
                   module->client->current->http.req.http_path = NULL;
@@ -415,7 +416,7 @@ _azy_server_client_method_run(Azy_Server_Client *client,
 }
 
 static void
-_azy_server_client_new(Azy_Server       *server,
+_azy_server_client_new(Azy_Server *server,
                        Ecore_Con_Client *conn)
 {
    Azy_Server_Client *client;
@@ -493,7 +494,7 @@ _azy_server_client_free(Azy_Server_Client *client)
 
 static Azy_Server_Module *
 _azy_server_client_module_find(Azy_Server_Client *client,
-                               const char        *name)
+                               const char *name)
 {
    Eina_List *l;
    Azy_Server_Module *module;
@@ -593,10 +594,10 @@ _azy_server_client_get_put(Azy_Server_Client *client)
      return _azy_server_client_not_impl(client, module);
    module->executing = EINA_TRUE;
    module->post = EINA_FALSE;
-#define MODULE_STATE(STATE) \
-   module->rewind_now = EINA_TRUE; \
-   module->state = AZY_SERVER_MODULE_STATE_##STATE; \
-   continue
+#define MODULE_STATE(STATE)                        \
+  module->rewind_now = EINA_TRUE;                  \
+  module->state = AZY_SERVER_MODULE_STATE_##STATE; \
+  continue
 
    module->rewind_now = EINA_TRUE;
    while (module->rewind_now)
@@ -613,7 +614,7 @@ _azy_server_client_get_put(Azy_Server_Client *client)
              if (def->pre)
                module->run_method = def->pre(module, net ? net : module->new_net);
 
-             module->recv.data = (void*)EBUF(client->current->buffer);
+             module->recv.data = (void *)EBUF(client->current->buffer);
              module->recv.size = EBUFLEN(client->current->buffer);
              if (net)
                {
@@ -625,7 +626,8 @@ _azy_server_client_get_put(Azy_Server_Client *client)
                }
 
              if (module->rewind_now) continue;
-             else if (module->run_method) module->state = AZY_SERVER_MODULE_STATE_PRE;
+             else if (module->run_method)
+               module->state = AZY_SERVER_MODULE_STATE_PRE;
              else
                {
                   client->current->buffer = NULL; /* prevent buffer from being freed */
@@ -705,8 +707,8 @@ _azy_server_client_get_put(Azy_Server_Client *client)
 
 static void
 _azy_server_client_send(Azy_Server_Client *client,
-                        Azy_Net_Data      *data,
-                        Azy_Content       *content)
+                        Azy_Net_Data *data,
+                        Azy_Content *content)
 {
    Eina_Strbuf *header;
    Azy_Net *net;
@@ -755,7 +757,7 @@ _azy_server_client_send(Azy_Server_Client *client,
         if (content)
           {
              char buf[64];
-             snprintf(buf, sizeof(buf), "SENDING:\n<<<<<<<<<<<<<\n%%.%is%%.%"PRIi64"s\n<<<<<<<<<<<<<", (int)eina_strbuf_length_get(header), content->length);
+             snprintf(buf, sizeof(buf), "SENDING:\n<<<<<<<<<<<<<\n%%.%is%%.%" PRIi64 "s\n<<<<<<<<<<<<<", (int)eina_strbuf_length_get(header), content->length);
              RPC_INFO(buf, eina_strbuf_string_get(header), content->buffer);
           }
         else
@@ -767,7 +769,7 @@ _azy_server_client_send(Azy_Server_Client *client,
    if (content && content->buffer && content->length)
      {
         EINA_SAFETY_ON_TRUE_GOTO(!ecore_con_client_send(net->conn, content->buffer, content->length), error);
-        INFO("Send [2/2] complete! %"PRIi64" bytes queued for sending.", content->length);
+        INFO("Send [2/2] complete! %" PRIi64 " bytes queued for sending.", content->length);
      }
    ecore_con_client_flush(net->conn);
    /* http 1.0 requires that we disconnect after every request has been served */
@@ -785,7 +787,7 @@ error:
 
 static Eina_Bool
 _azy_server_client_rpc(Azy_Server_Client *client,
-                       Azy_Net_Transport  t)
+                       Azy_Net_Transport t)
 {
    Azy_Content *content;
 
@@ -901,8 +903,8 @@ _azy_server_client_handler_request(Azy_Server_Client *client)
 }
 
 static Eina_Bool
-_azy_server_client_handler_data(Azy_Server_Client           *client,
-                                int                          type,
+_azy_server_client_handler_data(Azy_Server_Client *client,
+                                int type,
                                 Ecore_Con_Event_Client_Data *ev)
 {
    int offset = 0;
@@ -912,9 +914,9 @@ _azy_server_client_handler_data(Azy_Server_Client           *client,
    if (!client->net)
      {
         /* dead client */
-         INFO("Removing probably dead client %p", client);
-         client->data = NULL;
-         return ECORE_CALLBACK_CANCEL;
+        INFO("Removing probably dead client %p", client);
+        client->data = NULL;
+        return ECORE_CALLBACK_CANCEL;
      }
 
    if (ev && (client != ecore_con_client_data_get(ev->client)))
@@ -936,7 +938,7 @@ _azy_server_client_handler_data(Azy_Server_Client           *client,
      {
         client->net->buffer = client->overflow;
         client->net->progress = EBUFLEN(client->net->buffer);
-        INFO("%s: Set recv size to %"PRIi64" from overflow", client->ip, client->net->progress);
+        INFO("%s: Set recv size to %" PRIi64 " from overflow", client->ip, client->net->progress);
 
         /* returns offset where http header line ends */
         if (!(offset = azy_events_type_parse(client->net, type, data, len)) && ev && (!client->net->http.req.http_path))
@@ -948,7 +950,7 @@ _azy_server_client_handler_data(Azy_Server_Client           *client,
           {
              client->net->buffer = NULL;
              client->net->progress = 0;
-             INFO("%s: Overflow could not be parsed, set recv size to 0, storing overflow of %"PRIi64"", client->ip, EBUFLEN(client->overflow));
+             INFO("%s: Overflow could not be parsed, set recv size to 0, storing overflow of %" PRIi64 "", client->ip, EBUFLEN(client->overflow));
              return ECORE_CALLBACK_RENEW;
           }
         else
@@ -972,7 +974,7 @@ _azy_server_client_handler_data(Azy_Server_Client           *client,
         else
           {
              azy_events_recv_progress(client->net, data, len);
-             INFO("%s: Incremented recv size to %"PRIi64" (+%i)", client->ip, client->net->progress, len);
+             INFO("%s: Incremented recv size to %" PRIi64 " (+%i)", client->ip, client->net->progress, len);
           }
      }
    else if (azy_events_length_overflows(client->net->progress, client->net->http.content_length))
@@ -993,19 +995,19 @@ _azy_server_client_handler_data(Azy_Server_Client           *client,
 
    if (client->overflow && (!client->net->buffer))
      {
-        WARN("%s: Calling %s again to try using %"PRIi64" bytes of overflow data...", client->ip, __PRETTY_FUNCTION__, EBUFLEN(client->overflow));
+        WARN("%s: Calling %s again to try using %" PRIi64 " bytes of overflow data...", client->ip, __PRETTY_FUNCTION__, EBUFLEN(client->overflow));
         _azy_server_client_handler_data(client, type, NULL);
         if (!client->overflow)
           WARN("%s: Overflow has been successfully used!", client->ip);
         else
-          WARN("%s: Overflow could not be used, storing %"PRIi64" bytes for next event.", client->ip, EBUFLEN(client->overflow));
+          WARN("%s: Overflow could not be used, storing %" PRIi64 " bytes for next event.", client->ip, EBUFLEN(client->overflow));
      }
 
    return ECORE_CALLBACK_RENEW;
 }
 
 static Eina_Bool
-_azy_server_client_handler_del(Azy_Server_Client          *client,
+_azy_server_client_handler_del(Azy_Server_Client *client,
                                int type                    __UNUSED__,
                                Ecore_Con_Event_Client_Del *ev)
 {
@@ -1038,7 +1040,7 @@ _azy_server_client_handler_del(Azy_Server_Client          *client,
 }
 
 static Eina_Bool
-_azy_server_client_handler_upgrade(Azy_Server_Client           *cl,
+_azy_server_client_handler_upgrade(Azy_Server_Client *cl,
                                    int type                    __UNUSED__,
                                    Ecore_Con_Event_Client_Upgrade *ev)
 {
@@ -1054,7 +1056,7 @@ _azy_server_client_handler_upgrade(Azy_Server_Client           *cl,
 }
 
 Eina_Bool
-azy_server_client_handler_add(Azy_Server                 *server,
+azy_server_client_handler_add(Azy_Server *server,
                               int type                    __UNUSED__,
                               Ecore_Con_Event_Client_Add *ev)
 {
@@ -1134,14 +1136,17 @@ azy_server_module_events_resume(Azy_Server_Module *module, Eina_Bool ret)
       case AZY_SERVER_MODULE_STATE_PRE:
         module->run_method = ret;
         break;
+
       case AZY_SERVER_MODULE_STATE_ERR:
         if (ret) module->state = AZY_SERVER_MODULE_STATE_METHOD;
         client->resume_ret = ret;
         break;
+
       case AZY_SERVER_MODULE_STATE_METHOD:
         if (!ret) module->state = AZY_SERVER_MODULE_STATE_ERR;
       case AZY_SERVER_MODULE_STATE_POST:
         client->resume_ret = ret;
+
       default:
         break;
      }
@@ -1257,4 +1262,5 @@ azy_server_module_events_rewind(Azy_Server_Module *module)
 
    return EINA_TRUE;
 }
+
 /** @} */

@@ -183,36 +183,40 @@ azy_value_unref(Azy_Value *val)
    if (val->type == AZY_VALUE_BOOL) return;
 
    EINA_REFCOUNT_UNREF(val)
-     {
-        Eina_Hash *h;
-        AZY_MAGIC_SET(val, AZY_MAGIC_NONE);
-        switch (val->type)
-          {
-           case AZY_VALUE_STRING:
-             h = string_values;
-             break;
-           case AZY_VALUE_TIME:
-             h = time_values;
-             break;
-           case AZY_VALUE_BASE64:
-             h = base64_values;
-             break;
-           case AZY_VALUE_INT:
-             h = int_values;
-             break;
-           default:
-             h = NULL;
-          }
+   {
+      Eina_Hash *h;
+      AZY_MAGIC_SET(val, AZY_MAGIC_NONE);
+      switch (val->type)
+        {
+         case AZY_VALUE_STRING:
+           h = string_values;
+           break;
 
-        if (h) eina_hash_del_by_data(h, val);
-        eina_stringshare_del(val->str_val);
-        eina_stringshare_del(val->member_name);
-        if (val->member_value)
-          azy_value_unref(val->member_value);
-        EINA_LIST_FREE(val->children, v)
-          azy_value_unref(v);
-        eina_mempool_free(value_mempool, val);
-     }
+         case AZY_VALUE_TIME:
+           h = time_values;
+           break;
+
+         case AZY_VALUE_BASE64:
+           h = base64_values;
+           break;
+
+         case AZY_VALUE_INT:
+           h = int_values;
+           break;
+
+         default:
+           h = NULL;
+        }
+
+      if (h) eina_hash_del_by_data(h, val);
+      eina_stringshare_del(val->str_val);
+      eina_stringshare_del(val->member_name);
+      if (val->member_value)
+        azy_value_unref(val->member_value);
+      EINA_LIST_FREE(val->children, v)
+        azy_value_unref(v);
+      eina_mempool_free(value_mempool, val);
+   }
 }
 
 /* base types */
@@ -378,7 +382,7 @@ azy_value_base64_new(const char *base64)
  */
 Eina_Bool
 azy_value_int_get(Azy_Value *val,
-                  int       *nval)
+                  int *nval)
 {
    if (!AZY_MAGIC_CHECK(val, AZY_MAGIC_VALUE))
      {
@@ -404,7 +408,7 @@ azy_value_int_get(Azy_Value *val,
  * @return EINA_TRUE on success, else EINA_FALSE
  */
 Eina_Bool
-azy_value_string_get(Azy_Value   *val,
+azy_value_string_get(Azy_Value *val,
                      const char **nval)
 {
    if (!AZY_MAGIC_CHECK(val, AZY_MAGIC_VALUE))
@@ -449,7 +453,7 @@ azy_value_string_get(Azy_Value   *val,
  * @return EINA_TRUE on success, else EINA_FALSE
  */
 Eina_Bool
-azy_value_base64_get(Azy_Value   *val,
+azy_value_base64_get(Azy_Value *val,
                      const char **nval)
 {
    if (!AZY_MAGIC_CHECK(val, AZY_MAGIC_VALUE))
@@ -500,7 +504,7 @@ azy_value_bool_get(Azy_Value *val,
  */
 Eina_Bool
 azy_value_double_get(Azy_Value *val,
-                     double    *nval)
+                     double *nval)
 {
    if (!AZY_MAGIC_CHECK(val, AZY_MAGIC_VALUE))
      {
@@ -527,7 +531,7 @@ azy_value_double_get(Azy_Value *val,
  * @return EINA_TRUE on success, else EINA_FALSE
  */
 Eina_Bool
-azy_value_value_get(Azy_Value  *val,
+azy_value_value_get(Azy_Value *val,
                     Azy_Value **nval)
 {
    if (!AZY_MAGIC_CHECK(val, AZY_MAGIC_VALUE))
@@ -641,7 +645,7 @@ azy_value_struct_member_value_get(Azy_Value *val)
  * @return The #Azy_Value of the named struct member, or NULL on failure
  */
 Azy_Value *
-azy_value_struct_member_get(Azy_Value  *val,
+azy_value_struct_member_get(Azy_Value *val,
                             const char *name)
 {
    Eina_List *l;
@@ -729,9 +733,9 @@ azy_value_array_new(void)
  * @param val The struct member value
  */
 void
-azy_value_struct_member_set(Azy_Value  *struc,
+azy_value_struct_member_set(Azy_Value *struc,
                             const char *name,
-                            Azy_Value  *val)
+                            Azy_Value *val)
 {
    Eina_List *l;
    Azy_Value *m, *v;
@@ -801,8 +805,8 @@ azy_value_array_push(Azy_Value *arr,
  * @return EINA_FALSE if @p val is not an error value, else EINA_TRUE
  */
 Eina_Bool
-azy_value_retval_is_error(Azy_Value   *val,
-                          int         *errcode,
+azy_value_retval_is_error(Azy_Value *val,
+                          int *errcode,
                           const char **errmsg)
 {
    Azy_Value *c, *s;
@@ -841,7 +845,7 @@ azy_value_retval_is_error(Azy_Value   *val,
  * @param indent The number of spaces to indent
  */
 void
-azy_value_dump(Azy_Value   *v,
+azy_value_dump(Azy_Value *v,
                Eina_Strbuf *string,
                unsigned int indent)
 {

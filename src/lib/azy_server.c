@@ -237,7 +237,6 @@ azy_server_port_get(Azy_Server *server)
    return server->port;
 }
 
-
 /**
  * @brief Add an RSA certificate to an Azy server
  *
@@ -328,9 +327,9 @@ azy_server_run(Azy_Server *server)
  * immediately with EINA_FALSE
  */
 Eina_Bool
-azy_server_basic_run(int                     port,
-                     int                     type,
-                     const char             *cert,
+azy_server_basic_run(int port,
+                     int type,
+                     const char *cert,
                      Azy_Server_Module_Def **modules)
 {
    Azy_Server *server;

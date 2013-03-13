@@ -45,6 +45,7 @@ azy_rss_shutdown(void)
    eina_mempool_del(rss_mempool);
    rss_mempool = NULL;
 }
+
 /*
  * @brief Create a new #Azy_Rss object
  *
@@ -302,7 +303,7 @@ DEF(subtitle)
  */
 void
 azy_rss_contact_print(const char *pre,
-                      int         indent,
+                      int indent,
                       Azy_Rss_Contact *c)
 {
    int i;
@@ -310,14 +311,14 @@ azy_rss_contact_print(const char *pre,
 
    if (!pre) pre = "\t";
 
-#define PRINT(X) do { \
-   if (c->X) \
-     { \
-        for (i = 0; i < indent; i++) \
-          printf("%s", pre); \
-        printf("%s: %s\n", #X, c->X); \
-     } \
-} while (0)
+#define PRINT(X) do {                     \
+       if (c->X)                          \
+         {                                \
+            for (i = 0; i < indent; i++)  \
+              printf("%s", pre);          \
+            printf("%s: %s\n", #X, c->X); \
+         }                                \
+  } while (0)
 
    PRINT(name);
    PRINT(uri);
@@ -336,7 +337,7 @@ azy_rss_contact_print(const char *pre,
  */
 void
 azy_rss_link_print(const char *pre,
-                   int         indent,
+                   int indent,
                    Azy_Rss_Link *li)
 {
    int i;
@@ -344,14 +345,14 @@ azy_rss_link_print(const char *pre,
 
    if (!pre) pre = "\t";
 
-#define PRINT(X) do { \
-   if (li->X) \
-     { \
-        for (i = 0; i < indent; i++) \
-          printf("%s", pre); \
-        printf("%s: %s\n", #X, li->X); \
-     } \
-} while (0)
+#define PRINT(X) do {                      \
+       if (li->X)                          \
+         {                                 \
+            for (i = 0; i < indent; i++)   \
+              printf("%s", pre);           \
+            printf("%s: %s\n", #X, li->X); \
+         }                                 \
+  } while (0)
 
    PRINT(title);
    PRINT(href);
@@ -378,8 +379,8 @@ azy_rss_link_print(const char *pre,
  */
 void
 azy_rss_print(const char *pre,
-              int         indent,
-              Azy_Rss    *rss)
+              int indent,
+              Azy_Rss *rss)
 {
    int i;
    const char *str;
@@ -394,18 +395,18 @@ azy_rss_print(const char *pre,
 
    if (!pre) pre = "\t";
 
-#define PRINT(X) do { \
-   if (rss->X) \
-     { \
-        for (i = 0; i < indent; i++) \
-          printf("%s", pre); \
-        printf("%s: %s\n", #X, rss->X); \
-     } \
-} while (0)
+#define PRINT(X) do {                       \
+       if (rss->X)                          \
+         {                                  \
+            for (i = 0; i < indent; i++)    \
+              printf("%s", pre);            \
+            printf("%s: %s\n", #X, rss->X); \
+         }                                  \
+  } while (0)
 
    PRINT(title);
    PRINT(img_url);
-   
+
    if (rss->atom)
      {
         PRINT(rights);
@@ -420,14 +421,15 @@ azy_rss_print(const char *pre,
              printf("category: %s\n", str);
           }
 
-#define INDENT(X) do { \
-        if (rss->X##s) \
-          { \
-             for (i = 0; i < indent; i++) \
-               printf("%s", pre); \
-             printf("%s: \n", #X); \
-          } \
-} while (0)
+#define INDENT(X) do {                   \
+       if (rss->X##s)                    \
+         {                               \
+            for (i = 0; i < indent; i++) \
+              printf("%s", pre);         \
+            printf("%s: \n", #X);        \
+         }                               \
+  }                                      \
+  while (0)
 
         INDENT(contributor);
         EINA_LIST_FOREACH(rss->contributors, l, item)

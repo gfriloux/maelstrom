@@ -33,7 +33,7 @@ struct xml_memory_writer : xml_writer
    {
    }
 
-   xml_memory_writer(char  *buffer,
+   xml_memory_writer(char *buffer,
                      size_t capacity) : buffer(buffer), capacity(capacity), result(0)
    {
    }
@@ -46,7 +46,7 @@ struct xml_memory_writer : xml_writer
 
    virtual void
    write(const void *data,
-         size_t      size)
+         size_t size)
    {
       if (result < capacity)
         {
@@ -59,14 +59,14 @@ struct xml_memory_writer : xml_writer
 };
 
 static char *
-azy_content_xmlnode_to_buf(xml_node       node,
+azy_content_xmlnode_to_buf(xml_node node,
                            int64_t *len)
 {
    xml_memory_writer counter;
    char *buffer;
 
    node.print(counter);
-   buffer = static_cast<char*>(calloc(1, counter.result + 1));
+   buffer = static_cast<char *>(calloc(1, counter.result + 1));
    xml_memory_writer writer(buffer, counter.result);
    node.print(writer);
    buffer[writer.written_size()] = 0;
@@ -85,8 +85,8 @@ azy_value_deserialize_xml(xml_node node)
    name = node.name();
    if ((!name) || (!name[0])) return NULL;
 
-   switch (name[0])
-     { /* yaaay micro-optimizing! */
+   switch (name[0]) /* yaaay micro-optimizing! */
+     {
       case 'b':
         if (std::distance(node.begin(), node.end()) != 1)
           return NULL;
@@ -223,7 +223,7 @@ azy_value_deserialize_xml(xml_node node)
 }
 
 static void
-azy_value_serialize_xml(xml_node   node,
+azy_value_serialize_xml(xml_node node,
                         Azy_Value *val)
 {
    EINA_SAFETY_ON_TRUE_RETURN(node.empty());
@@ -573,7 +573,6 @@ azy_content_deserialize_rss_xml(Azy_Content *content,
                     i->content = eina_stringshare_add(nn.child_value());
                   else if ((!i->content_encoded) && (!strcmp(name, "content:encoded")))
                     i->content_encoded = eina_stringshare_add(nn.child_value());
-
                }
              rss->items = eina_list_append(rss->items, i);
           }
@@ -590,7 +589,7 @@ static Azy_Rss_Link *
 azy_content_deserialize_atom_xml_link(xml_node &node)
 {
 /*
-atomLink =
+   atomLink =
    element atom:link {
       atomCommonAttributes,
       attribute href { atomUri },
@@ -601,20 +600,20 @@ atomLink =
       attribute length { text }?,
       undefinedContent
    }
-*/
+ */
    Azy_Rss_Link *rl;
 
-   rl = (Azy_Rss_Link*)calloc(1, sizeof(Azy_Rss_Link));
+   rl = (Azy_Rss_Link *)calloc(1, sizeof(Azy_Rss_Link));
    EINA_SAFETY_ON_NULL_RETURN_VAL(rl, NULL);
    for (xml_attribute_iterator i = node.attributes_begin(); i != node.attributes_end(); ++i)
      {
         xml_attribute it;
 
         it = *i;
-        
-#define SET(X) \
-        if (!strcmp(it.name(), #X)) \
-          rl->X = eina_stringshare_add(it.value())
+
+#define SET(X)                \
+  if (!strcmp(it.name(), #X)) \
+    rl->X = eina_stringshare_add(it.value())
         SET(href);
         else SET(rel);
         else SET(type);
@@ -631,16 +630,16 @@ static Azy_Rss_Contact *
 azy_content_deserialize_atom_xml_contact(xml_node &node)
 {
 /*
-atomPersonConstruct =
+   atomPersonConstruct =
    atomCommonAttributes,
    (element atom:name { text }
     & element atom:uri { atomUri }?
     & element atom:email { atomEmailAddress }?
     & extensionElement*)
-*/
+ */
    Azy_Rss_Contact *c;
 
-   c = (Azy_Rss_Contact*)calloc(1, sizeof(Azy_Rss_Contact));
+   c = (Azy_Rss_Contact *)calloc(1, sizeof(Azy_Rss_Contact));
    EINA_SAFETY_ON_NULL_RETURN_VAL(c, NULL);
    for (xml_node::iterator i = node.begin(); i != node.end(); ++i)
      {
@@ -650,9 +649,9 @@ atomPersonConstruct =
         n = *i;
         name = n.name();
 
-#define SET(X) \
-        if ((!c->X) && (!strcmp(name, #X))) \
-          c->X = eina_stringshare_add(n.child_value())
+#define SET(X)                        \
+  if ((!c->X) && (!strcmp(name, #X))) \
+    c->X = eina_stringshare_add(n.child_value())
 
         SET(name);
         else SET(uri);
@@ -666,7 +665,7 @@ static Azy_Rss_Item *
 azy_content_deserialize_atom_xml_entry(xml_node &node)
 {
 /*
-atomEntry =
+   atomEntry =
    element atom:entry {
       atomCommonAttributes,
       (atomAuthor*
@@ -683,7 +682,7 @@ atomEntry =
        & atomUpdated
        & extensionElement*)
    }
-*/
+ */
    Azy_Rss_Item *it;
 
    it = azy_rss_item_new();
@@ -698,9 +697,9 @@ atomEntry =
         n = *i;
         name = n.name();
 
-#define SET(X) \
-        if ((!it->X) && (!strcmp(name, #X))) \
-          it->X = eina_stringshare_add(n.child_value())
+#define SET(X)                         \
+  if ((!it->X) && (!strcmp(name, #X))) \
+    it->X = eina_stringshare_add(n.child_value())
 
         SET(title);
         else SET(rights);
@@ -733,11 +732,9 @@ atomEntry =
           strptime(n.child_value(), "%FT%TZ", &it->updated);
         else if (!strcmp(name, "published"))
           strptime(n.child_value(), "%FT%TZ", &it->published);
-
      }
    return it;
 }
-
 
 Eina_Bool
 azy_content_deserialize_atom_xml(Azy_Content *content,
@@ -763,7 +760,7 @@ azy_content_deserialize_atom_xml(Azy_Content *content,
         n = *it;
         name = n.name();
 /* http://tools.ietf.org/html/rfc4287
-atomFeed =
+   atomFeed =
    element atom:feed {
       atomCommonAttributes,
       (atomAuthor*
@@ -781,10 +778,10 @@ atomFeed =
        & extensionElement*),
       atomEntry*
    }
-*/
-#define SET(X) \
-        if ((!rss->X) && (!strcmp(name, #X))) \
-          rss->X = eina_stringshare_add(n.child_value())
+ */
+#define SET(X)                          \
+  if ((!rss->X) && (!strcmp(name, #X))) \
+    rss->X = eina_stringshare_add(n.child_value())
 
         SET(title);
         else SET(rights);
@@ -832,8 +829,8 @@ atomFeed =
 
 Eina_Bool
 azy_content_deserialize_response_xml(Azy_Content *content,
-                                    char        *buf,
-                                    ssize_t      len)
+                                     char *buf,
+                                     ssize_t len)
 {
    xml_document doc;
 
@@ -850,8 +847,8 @@ azy_content_deserialize_response_xml(Azy_Content *content,
 
 Eina_Bool
 azy_content_deserialize_request_xml(Azy_Content *content,
-                                    char        *buf,
-                                    ssize_t      len)
+                                    char *buf,
+                                    ssize_t len)
 {
    xml_document doc;
 
@@ -868,8 +865,8 @@ azy_content_deserialize_request_xml(Azy_Content *content,
 
 Eina_Bool
 azy_content_deserialize_xml(Azy_Content *content,
-                            char        *buf,
-                            ssize_t      len)
+                            char *buf,
+                            ssize_t len)
 {
    xml_document doc;
    xml_attribute attr;
@@ -895,11 +892,13 @@ azy_content_deserialize_xml(Azy_Content *content,
         if (!strcmp(node.name(), "rss"))
           return azy_content_deserialize_rss_xml(content, doc);
         break;
+
       case 'm':
         if (!strcmp(node.name(), "methodCall"))
           return azy_content_deserialize_request_xml(content, doc);
         else if (!strcmp(node.name(), "methodResponse"))
           return azy_content_deserialize_response_xml(content, doc);
+
       default:
         break;
      }
@@ -909,3 +908,4 @@ azy_content_deserialize_xml(Azy_Content *content,
    azy_content_error_code_set(content, AZY_ERROR_RESPONSE_XML_FAULT);
    return EINA_FALSE;
 }
+

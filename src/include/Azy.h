@@ -52,7 +52,7 @@ EAPI extern int AZY_CLIENT_DISCONNECTED; /**< Event emitted upon client disconne
 EAPI extern int AZY_CLIENT_CONNECTED; /**< Event emitted upon client connecting, sends #Azy_Client object */
 EAPI extern int AZY_CLIENT_UPGRADE; /**< Event emitted upon client successfully upgrading to TLS, sends #Azy_Client object */
 EAPI extern int AZY_CLIENT_TRANSFER_COMPLETE; /**< Event emitted upon client method returning if
-                                      no callback was set, sends #Azy_Content */
+                                                 no callback was set, sends #Azy_Content */
 EAPI extern int AZY_CLIENT_RESULT; /**< Event emitted upon client method returning if
                                       a callback for the method has been set, sends #Eina_Error */
 EAPI extern int AZY_CLIENT_ERROR; /**< Event emitted upon client method encountering
@@ -112,7 +112,7 @@ typedef struct Azy_Net                  Azy_Net;
  * @typedef Azy_Net_Cookie
  * An HTTP cookie
  */
-typedef struct Azy_Net_Cookie                  Azy_Net_Cookie;
+typedef struct Azy_Net_Cookie           Azy_Net_Cookie;
 /**
  * @typedef Azy_Rss
  * An object representing an RSS feed's content
@@ -246,7 +246,8 @@ typedef enum
  * @typedef Azy_Value_Type
  * Represents the type of value stored in the #Azy_Value object
  */
-typedef enum {
+typedef enum
+{
    AZY_VALUE_ARRAY, /**< Array object */
    AZY_VALUE_STRUCT, /**< Struct object */
    AZY_VALUE_MEMBER, /**< Struct member object */
@@ -417,7 +418,7 @@ EAPI Eina_Bool                 azy_net_auth_set(Azy_Net *net, const char *userna
 EAPI Eina_Bool                 azy_net_auth_get(Azy_Net *net, const char **username, const char **password);
 EAPI const char               *azy_net_uri_get(Azy_Net *net);
 EAPI Eina_Bool                 azy_net_uri_set(Azy_Net *net, const char *path);
-EAPI Azy_Net_Protocol        azy_net_protocol_get(Azy_Net *net);
+EAPI Azy_Net_Protocol          azy_net_protocol_get(Azy_Net *net);
 EAPI Eina_Bool                 azy_net_protocol_set(Azy_Net *net, Azy_Net_Protocol proto);
 EAPI int                       azy_net_code_get(Azy_Net *net);
 EAPI void                      azy_net_code_set(Azy_Net *net, int code);
@@ -436,16 +437,16 @@ EAPI Azy_Net_Transfer_Encoding azy_net_transfer_encoding_get(const Azy_Net *net)
 
 /* cookie */
 EAPI Azy_Net_Cookie           *azy_net_cookie_parse(char *txt);
-EAPI time_t azy_net_cookie_expires(const Azy_Net_Cookie *ck);
-EAPI Azy_Net_Cookie_Flags azy_net_cookie_flags_get(const Azy_Net_Cookie *ck);
-EAPI Eina_Stringshare *azy_net_cookie_path_get(const Azy_Net_Cookie *ck);
-EAPI Eina_Stringshare *azy_net_cookie_domain_get(const Azy_Net_Cookie *ck);
-EAPI void azy_net_cookie_insert(Azy_Net *net, Azy_Net_Cookie *ck);
-EAPI void azy_net_cookie_list_clear(Azy_Net *net);
-EAPI const Eina_List *azy_net_cookie_list_get(const Azy_Net *net);
-EAPI Eina_List *azy_net_cookie_list_steal(Azy_Net *net);
-EAPI void azy_net_cookie_free(Azy_Net_Cookie *ck);
-EAPI Azy_Net_Cookie *azy_net_cookie_new(void);
+EAPI time_t                    azy_net_cookie_expires(const Azy_Net_Cookie *ck);
+EAPI Azy_Net_Cookie_Flags      azy_net_cookie_flags_get(const Azy_Net_Cookie *ck);
+EAPI Eina_Stringshare         *azy_net_cookie_path_get(const Azy_Net_Cookie *ck);
+EAPI Eina_Stringshare         *azy_net_cookie_domain_get(const Azy_Net_Cookie *ck);
+EAPI void                      azy_net_cookie_insert(Azy_Net *net, Azy_Net_Cookie *ck);
+EAPI void                      azy_net_cookie_list_clear(Azy_Net *net);
+EAPI const Eina_List          *azy_net_cookie_list_get(const Azy_Net *net);
+EAPI Eina_List                *azy_net_cookie_list_steal(Azy_Net *net);
+EAPI void                      azy_net_cookie_free(Azy_Net_Cookie *ck);
+EAPI Azy_Net_Cookie           *azy_net_cookie_new(void);
 
 /* values */
 EAPI Azy_Value                *azy_value_ref(Azy_Value *val);

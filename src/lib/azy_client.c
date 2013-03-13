@@ -112,7 +112,7 @@ azy_client_data_set(Azy_Client *client,
 Eina_Bool
 azy_client_host_set(Azy_Client *client,
                     const char *addr,
-                    int         port)
+                    int port)
 {
    DBG("(client=%p)", client);
    if (!AZY_MAGIC_CHECK(client, AZY_MAGIC_CLIENT))
@@ -217,7 +217,7 @@ azy_client_port_get(Azy_Client *client)
  */
 Eina_Bool
 azy_client_port_set(Azy_Client *client,
-                    int         port)
+                    int port)
 {
    DBG("(client=%p)", client);
    if (!AZY_MAGIC_CHECK(client, AZY_MAGIC_CLIENT))
@@ -267,7 +267,7 @@ azy_client_upgrade(Azy_Client *client)
  */
 Eina_Bool
 azy_client_connect(Azy_Client *client,
-                   Eina_Bool   secure)
+                   Eina_Bool secure)
 {
    DBG("(client=%p)", client);
    Ecore_Con_Server *svr;
@@ -379,8 +379,8 @@ azy_client_close(Azy_Client *client)
  * @return #EINA_TRUE on success, or #EINA_FALSE on failure
  */
 Eina_Bool
-azy_client_callback_set(Azy_Client          *client,
-                        Azy_Client_Call_Id   id,
+azy_client_callback_set(Azy_Client *client,
+                        Azy_Client_Call_Id id,
                         Azy_Client_Return_Cb callback)
 {
    DBG("(client=%p, id=%u)", client, id);
@@ -409,9 +409,9 @@ azy_client_callback_set(Azy_Client          *client,
  * @param callback The free callback
  */
 Eina_Bool
-azy_client_callback_free_set(Azy_Client        *client,
+azy_client_callback_free_set(Azy_Client *client,
                              Azy_Client_Call_Id id,
-                             Ecore_Cb           callback)
+                             Ecore_Cb callback)
 {
    DBG("(client=%p, id=%u)", client, id);
 
@@ -445,10 +445,10 @@ azy_client_callback_free_set(Azy_Client        *client,
  * or 0 on failure
  */
 Azy_Client_Call_Id
-azy_client_call(Azy_Client       *client,
-                Azy_Content      *content,
+azy_client_call(Azy_Client *client,
+                Azy_Content *content,
                 Azy_Net_Transport transport,
-                Azy_Content_Cb    cb)
+                Azy_Content_Cb cb)
 {
    Eina_Strbuf *msg;
    Azy_Client_Handler_Data *hd;
@@ -466,7 +466,8 @@ azy_client_call(Azy_Client       *client,
 
    INFO("New method call: '%s'", content->method);
 
-   while (++azy_client_send_id__ < 1) ;
+   while (++azy_client_send_id__ < 1)
+     ;
 
    content->id = azy_client_send_id__;
 
@@ -487,8 +488,8 @@ azy_client_call(Azy_Client       *client,
    if (azy_rpc_log_dom >= 0)
      {
         char buf[64];
-        snprintf(buf, sizeof(buf), "\nSENDING >>>>>>>>>>>>>>>>>>>>>>>>\n%%.%zus%%.%"PRIi64"s\n>>>>>>>>>>>>>>>>>>>>>>>>",
-            eina_strbuf_length_get(msg), content->length);
+        snprintf(buf, sizeof(buf), "\nSENDING >>>>>>>>>>>>>>>>>>>>>>>>\n%%.%zus%%.%" PRIi64 "s\n>>>>>>>>>>>>>>>>>>>>>>>>",
+                 eina_strbuf_length_get(msg), content->length);
         RPC_DBG(buf, eina_strbuf_string_get(msg), content->buffer);
      }
 
@@ -498,7 +499,7 @@ azy_client_call(Azy_Client       *client,
    msg = NULL;
 
    EINA_SAFETY_ON_TRUE_GOTO(!ecore_con_server_send(client->net->conn, content->buffer, content->length), error);
-   INFO("Send [2/2] complete! %"PRIi64" bytes queued for sending.", content->length);
+   INFO("Send [2/2] complete! %" PRIi64 " bytes queued for sending.", content->length);
    ecore_con_server_flush(client->net->conn);
 
    hd = calloc(1, sizeof(Azy_Client_Handler_Data));
@@ -545,11 +546,11 @@ error:
  * or 0 on failure
  */
 Azy_Client_Call_Id
-azy_client_blank(Azy_Client    *client,
-                 Azy_Net_Type   type,
-                 Azy_Net_Data  *netdata,
+azy_client_blank(Azy_Client *client,
+                 Azy_Net_Type type,
+                 Azy_Net_Data *netdata,
                  Azy_Content_Cb cb,
-                 void          *data)
+                 void *data)
 {
    Eina_Strbuf *msg;
    Azy_Client_Handler_Data *hd;
@@ -563,7 +564,8 @@ azy_client_blank(Azy_Client    *client,
      }
    EINA_SAFETY_ON_NULL_RETURN_VAL(client->net, 0);
 
-   while (++azy_client_send_id__ < 1) ;
+   while (++azy_client_send_id__ < 1)
+     ;
 
    client->net->type = type;
    if (type == AZY_NET_TYPE_GET)
@@ -650,11 +652,11 @@ error:
  * @return This function returns #EINA_TRUE only if the call was successful and @p cb was set, else #EINA_FALSE
  */
 Eina_Bool
-azy_client_call_checker(Azy_Client          *cli,
-                        Azy_Content         *err_content,
-                        Azy_Client_Call_Id   ret,
+azy_client_call_checker(Azy_Client *cli,
+                        Azy_Content *err_content,
+                        Azy_Client_Call_Id ret,
                         Azy_Client_Return_Cb cb,
-                        const char          *func)
+                        const char *func)
 {
    DBG("(cli=%p, cb=%p, func='%s')", cli, cb, func);
    EINA_SAFETY_ON_NULL_RETURN_VAL(cli, EINA_FALSE);

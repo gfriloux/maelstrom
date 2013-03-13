@@ -97,7 +97,7 @@ azy_rss_item_free(Azy_Rss_Item *item)
           azy_rss_link_free(d);
      }
    else
-     {   
+     {
         eina_stringshare_del(item->link);
         eina_stringshare_del(item->desc);
         eina_stringshare_del(item->date);
@@ -229,8 +229,8 @@ DEF(content_encoded)
  * @param item The rss item object (NOT NULL)
  */
 void
-azy_rss_item_print(const char   *pre,
-                   int           indent,
+azy_rss_item_print(const char *pre,
+                   int indent,
                    Azy_Rss_Item *item)
 {
    int i;
@@ -245,14 +245,14 @@ azy_rss_item_print(const char   *pre,
 
    if (!pre) pre = "\t";
 
-#define PRINT(X) do { \
-   if (item->X) \
-     { \
-        for (i = 0; i < indent; i++) \
-          printf("%s", pre); \
-        printf("%s: %s\n", #X, item->X); \
-     } \
-} while (0)
+#define PRINT(X) do {                        \
+       if (item->X)                          \
+         {                                   \
+            for (i = 0; i < indent; i++)     \
+              printf("%s", pre);             \
+            printf("%s: %s\n", #X, item->X); \
+         }                                   \
+  } while (0)
 
    PRINT(title);
    if (item->atom)
@@ -273,7 +273,7 @@ azy_rss_item_print(const char   *pre,
         for (i = 0; i < indent; i++)
           printf("%s", pre);
         printf("published: %s\n", buf);
-        
+
         EINA_LIST_FOREACH(item->categories, l, str)
           {
              for (i = 0; i < indent; i++)
@@ -281,14 +281,15 @@ azy_rss_item_print(const char   *pre,
              printf("category: %s\n", str);
           }
 
-#define INDENT(X) do { \
-        if (item->X##s) \
-          { \
-             for (i = 0; i < indent; i++) \
-               printf("%s", pre); \
-             printf("%s: \n", #X); \
-          } \
-} while (0)
+#define INDENT(X) do {                   \
+       if (item->X##s)                   \
+         {                               \
+            for (i = 0; i < indent; i++) \
+              printf("%s", pre);         \
+            printf("%s: \n", #X);        \
+         }                               \
+  }                                      \
+  while (0)
 
         INDENT(contributor);
         EINA_LIST_FOREACH(item->contributors, l, it)

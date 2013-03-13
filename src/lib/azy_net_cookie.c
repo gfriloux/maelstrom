@@ -115,12 +115,12 @@ _azy_cookie_tokenize(const char *field)
 static inline Eina_Bool
 _azy_date_char_is_delimiter(char c)
 {
-   return ((c == 0x09) ||
-           ((c >= 0x20) && (c <= 0x2F)) ||
-           ((c >= 0x3B) && (c <= 0x40)) ||
-           ((c >= 0x5B) && (c <= 0x60)) ||
-           ((c >= 0x7B) && (c <= 0x7E))
-          );
+   return (c == 0x09) ||
+          ((c >= 0x20) && (c <= 0x2F)) ||
+          ((c >= 0x3B) && (c <= 0x40)) ||
+          ((c >= 0x5B) && (c <= 0x60)) ||
+          ((c >= 0x7B) && (c <= 0x7E))
+   ;
 }
 
 static inline Azy_Date_Field
@@ -148,8 +148,9 @@ _azy_date_field_tokenize(char *start, char **end, Azy_Date_Field exclude)
    time            = hms-time ( non-digit *OCTET )
    hms-time        = time-field ":" time-field ":" time-field
    time-field      = 1*2DIGIT
-*/
-   while (!_azy_date_char_is_delimiter(p[0])) p++;
+ */
+   while (!_azy_date_char_is_delimiter(p[0]))
+     p++;
    *end = p;
    if (isdigit(start[0]))
      {
@@ -160,23 +161,26 @@ _azy_date_field_tokenize(char *start, char **end, Azy_Date_Field exclude)
              if (!(exclude & AZY_DATE_FIELD_DAY))
                return AZY_DATE_FIELD_DAY;
              return AZY_DATE_FIELD_IGNORE;
+
            case 4:
              if (!(exclude & AZY_DATE_FIELD_YEAR))
                return AZY_DATE_FIELD_YEAR;
              return AZY_DATE_FIELD_IGNORE;
+
            case 8:
              if (start[2] == ':') // hmstime...hopefully
                {
                   char *pp = start;
 
-                  for (p = start, pp++; isdigit(pp[0]); pp++);
+                  for (p = start, pp++; isdigit(pp[0]); pp++) ;
                   if ((pp - p != 2) || (pp[0] != ':')) goto error;
-                  for (pp++, p = pp; isdigit(pp[0]); pp++);
+                  for (pp++, p = pp; isdigit(pp[0]); pp++) ;
                   if ((pp - p != 2) || (pp[0] != ':')) goto error;
-                  for (pp++, p = pp; isdigit(pp[0]); pp++);
+                  for (pp++, p = pp; isdigit(pp[0]); pp++) ;
                   if ((pp - p != 2) || (pp != *end)) goto error;
                   return AZY_DATE_FIELD_TIME;
                }
+
            default: goto error;
           }
      }
@@ -214,6 +218,7 @@ _azy_cookie_expires_parse(char *start, char **end)
         switch (_azy_date_field_tokenize(start, &p, found))
           {
            case AZY_DATE_FIELD_IGNORE: break;
+
            case AZY_DATE_FIELD_TIME:
              x = strtol(start, NULL, 10);
              if ((x < 0) || (x > 23)) goto error;
@@ -228,12 +233,14 @@ _azy_cookie_expires_parse(char *start, char **end)
              tm.tm_sec = x;
              found |= AZY_DATE_FIELD_TIME;
              break;
+
            case AZY_DATE_FIELD_YEAR:
              x = strtol(start, NULL, 10);
              if (p - start == 2)
                {
                   if ((x >= 70) && (x <= 99)) x += 1900;
-                  else if ((x >= 0) && (x <= 69)) x += 2000;
+                  else if ((x >= 0) && (x <= 69))
+                    x += 2000;
                   else return 0;
                }
              else
@@ -243,6 +250,7 @@ _azy_cookie_expires_parse(char *start, char **end)
              tm.tm_year = x - 1900;
              found |= AZY_DATE_FIELD_YEAR;
              break;
+
            case AZY_DATE_FIELD_MONTH:
              for (x = 0; x < 12; x++)
                if (!memcmp(start, months[x], 3))
@@ -252,25 +260,28 @@ _azy_cookie_expires_parse(char *start, char **end)
                     break;
                  }
              break;
+
            case AZY_DATE_FIELD_DAY:
              x = strtol(start, NULL, 10);
              if ((x < 1) || (x > 31)) goto error;
              tm.tm_mday = x;
              found |= AZY_DATE_FIELD_DAY;
              break;
+
            case AZY_DATE_FIELD_FAILURE:
            default: goto error;
           }
         if (found ==
             (AZY_DATE_FIELD_TIME | AZY_DATE_FIELD_YEAR | AZY_DATE_FIELD_MONTH | AZY_DATE_FIELD_DAY)
-           )
+            )
           break;
         start = p;
-        while (_azy_date_char_is_delimiter(start[0])) start++;
+        while (_azy_date_char_is_delimiter(start[0]))
+          start++;
      }
    if (found ==
        (AZY_DATE_FIELD_TIME | AZY_DATE_FIELD_YEAR | AZY_DATE_FIELD_MONTH | AZY_DATE_FIELD_DAY)
-      )
+       )
      return mktime(&tm);
 error:
    *end = strchr(start, ';');
@@ -291,7 +302,7 @@ _azy_net_cookie_free(Azy_Net_Cookie *ck)
 static inline void
 _azy_net_cookie_hash_name(Azy_Net_Cookie *ck, char *buf)
 {
-   snprintf(buf, 4096, "%s;%s;%s", ck->name ?: "", ck->domain ?: "", ck->path ?: "");
+   snprintf(buf, 4096, "%s;%s;%s", ck->name ? : "", ck->domain ? : "", ck->path ? : "");
 }
 
 static inline void
@@ -507,7 +518,7 @@ azy_net_cookie_parse(char *txt)
    /* invalid but permissible cookie */
    if (!p) return NULL;
 
-   for (pp = p; (pp != txt) && (pp[-1] == ' '); pp--);
+   for (pp = p; (pp != txt) && (pp[-1] == ' '); pp--) ;
 
    /* invalid but also permissible cookie */
    if (pp == txt) return NULL;
@@ -515,7 +526,8 @@ azy_net_cookie_parse(char *txt)
    EINA_SAFETY_ON_NULL_RETURN_VAL(ck, NULL);
    ck->name = eina_stringshare_add_length(txt, pp - txt);
    start++;
-   while (isspace(start[0])) start++;
+   while (isspace(start[0]))
+     start++;
    for (p = start; p[0] && (p[0] != ';'); p++)
      {
         char c = p[0];
@@ -525,7 +537,7 @@ azy_net_cookie_parse(char *txt)
             !((c >= 0x2D) && (c <= 0x3A)) &&
             !((c >= 0x3C) && (c <= 0x5B)) &&
             !((c >= 0x5D) && (c <= 0x7E))
-           )
+            )
           {
              ERR("COOKIE VALUE CONTAINS ILLEGAL CHARACTERS! SITE MUST BE SPANKED!!!");
              goto error;
@@ -547,20 +559,22 @@ azy_net_cookie_parse(char *txt)
    if (p != start)
      ck->value = eina_stringshare_add_length(start, p - start);
    if (p[0] != ';') p = strchr(p, ';');
-   
+
    while (p && p[0])
      {
         Azy_Cookie_Field field;
 
         start = p;
-        while (isblank(start[0])) start++;
+        while (isblank(start[0]))
+          start++;
         if (start[0] != ';')
           {
              ERR("INVALID COOKIE FORMAT!");
              goto error;
           }
         start++;
-        while (isblank(start[0])) start++;
+        while (isblank(start[0]))
+          start++;
         field = _azy_cookie_tokenize(start);
         switch (field)
           {
@@ -568,15 +582,18 @@ azy_net_cookie_parse(char *txt)
              WARN("EXTENSION DATA! FIXME!");
              p = strchr(start, ';');
              continue;
+
            case AZY_COOKIE_FIELD_SECURE:
            case AZY_COOKIE_FIELD_HTTPONLY:
              ck->flags |= (field - AZY_COOKIE_FIELD_PATH);
              p = start + cookie_av_lens[field];
              continue;
+
            default:
              start += cookie_av_lens[field] + 1; // extra char for '='
           }
-        while (isblank(start[0])) start++;
+        while (isblank(start[0]))
+          start++;
         if (start[0] == ';')
           {
              /* cookie field without value */
@@ -587,51 +604,57 @@ azy_net_cookie_parse(char *txt)
           {
              int t;
 
-             case AZY_COOKIE_FIELD_EXPIRES:
-               /* fml */
-               p = strchr(start, ';');
-               if (ck->max_age) continue;
-               ck->expires = _azy_cookie_expires_parse(start, &p);
-               ck->flags |= AZY_NET_COOKIE_PERSISTENT;
-               break;
-             case AZY_COOKIE_FIELD_MAX_AGE:
-               p = strchr(start, ';');
-               if ((start[0] != '-') && (!isdigit(start[0]))) continue;
-               errno = 0;
-               t = strtol(start, &p, 10);
-               if (errno) continue;
-               if (t < 1)
-                 /* this is supposed to be
-                  * "the earliest possible time that the client can represent"
-                  * not sure if that should be t=0 or what, so I'm using t=1
-                  * since that should have the same effect but allow us to
-                  * see that the expiry time has been set
-                  */
-                 ck->expires = 1;
-               else
-                 ck->expires = lround(ecore_time_unix_get()) + t;
-               ck->flags |= AZY_NET_COOKIE_PERSISTENT;
-               ck->max_age = 1;
-               continue;
-             default:
-               p = strchr(start, ';');
+           case AZY_COOKIE_FIELD_EXPIRES:
+             /* fml */
+             p = strchr(start, ';');
+             if (ck->max_age) continue;
+             ck->expires = _azy_cookie_expires_parse(start, &p);
+             ck->flags |= AZY_NET_COOKIE_PERSISTENT;
+             break;
+
+           case AZY_COOKIE_FIELD_MAX_AGE:
+             p = strchr(start, ';');
+             if ((start[0] != '-') && (!isdigit(start[0]))) continue;
+             errno = 0;
+             t = strtol(start, &p, 10);
+             if (errno) continue;
+             if (t < 1)
+               /* this is supposed to be
+                * "the earliest possible time that the client can represent"
+                * not sure if that should be t=0 or what, so I'm using t=1
+                * since that should have the same effect but allow us to
+                * see that the expiry time has been set
+                */
+               ck->expires = 1;
+             else
+               ck->expires = lround(ecore_time_unix_get()) + t;
+             ck->flags |= AZY_NET_COOKIE_PERSISTENT;
+             ck->max_age = 1;
+             continue;
+
+           default:
+             p = strchr(start, ';');
           }
         if (p) p[0] = 0;
         switch (field)
           {
-             case AZY_COOKIE_FIELD_DOMAIN:
-               /* FIXME: this will break for unicode and stuff */
-               eina_str_tolower(&start);
-               pp = start;
-               while (pp[0] && (!isblank(pp[0]))) pp++;
-               eina_stringshare_replace_length(&ck->domain, start, pp - start);
-               break;
-             case AZY_COOKIE_FIELD_PATH:
-               pp = start;
-               while (pp[0] && (!isblank(pp[0]))) pp++;
-               eina_stringshare_replace_length(&ck->path, start, pp - start);
-               break;
-             default: break;
+           case AZY_COOKIE_FIELD_DOMAIN:
+             /* FIXME: this will break for unicode and stuff */
+             eina_str_tolower(&start);
+             pp = start;
+             while (pp[0] && (!isblank(pp[0])))
+               pp++;
+             eina_stringshare_replace_length(&ck->domain, start, pp - start);
+             break;
+
+           case AZY_COOKIE_FIELD_PATH:
+             pp = start;
+             while (pp[0] && (!isblank(pp[0])))
+               pp++;
+             eina_stringshare_replace_length(&ck->path, start, pp - start);
+             break;
+
+           default: break;
           }
         if (p) p[0] = ';';
      }
@@ -639,5 +662,6 @@ azy_net_cookie_parse(char *txt)
    return _azy_net_cookie_hash_add(ck);
 error:
    azy_net_cookie_free(ck);
-   return NULL;   
+   return NULL;
 }
+

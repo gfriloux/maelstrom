@@ -19,7 +19,7 @@
 
 typedef struct
 {
-   const void *data;
+   const void  *data;
    Eina_Free_Cb free_func;
 } Azy_Server_Module_Param;
 
@@ -27,7 +27,7 @@ static void
 azy_server_module_param_free_(Azy_Server_Module_Param *param)
 {
    if (!param) return;
-   if (param->free_func) param->free_func((void*)param->data);
+   if (param->free_func) param->free_func((void *)param->data);
    free(param);
 }
 
@@ -154,7 +154,7 @@ azy_server_module_param_get(Azy_Server_Module *module, const char *name)
 
    param = eina_hash_find(module->params, name);
    EINA_SAFETY_ON_NULL_RETURN_VAL(param, NULL);
-   return (void*)param->data;
+   return (void *)param->data;
 }
 
 /**
@@ -233,7 +233,7 @@ azy_server_module_def_find(Azy_Server *server,
  * @return EINA_TRUE on success, else EINA_FALSE
  */
 Eina_Bool
-azy_server_module_add(Azy_Server            *server,
+azy_server_module_add(Azy_Server *server,
                       Azy_Server_Module_Def *module)
 {
    if (!AZY_MAGIC_CHECK(server, AZY_MAGIC_SERVER))
@@ -268,7 +268,7 @@ azy_server_module_add(Azy_Server            *server,
  * @return EINA_TRUE on success, else EINA_FALSE
  */
 Eina_Bool
-azy_server_module_del(Azy_Server            *server,
+azy_server_module_del(Azy_Server *server,
                       Azy_Server_Module_Def *module)
 {
    DBG("server=%p, module=%p", server, module);
@@ -361,8 +361,8 @@ azy_server_module_def_free(Azy_Server_Module_Def *def)
  * @param sd The callback function to call upon module shutdown
  */
 void
-azy_server_module_def_init_shutdown_set(Azy_Server_Module_Def        *def,
-                                        Azy_Server_Module_Cb          init,
+azy_server_module_def_init_shutdown_set(Azy_Server_Module_Def *def,
+                                        Azy_Server_Module_Cb init,
                                         Azy_Server_Module_Shutdown_Cb sd)
 {
    if (!AZY_MAGIC_CHECK(def, AZY_MAGIC_SERVER_MODULE_DEF))
@@ -383,8 +383,8 @@ azy_server_module_def_init_shutdown_set(Azy_Server_Module_Def        *def,
  * @param post The callback function to call immediately after method calls
  */
 void
-azy_server_module_def_pre_post_set(Azy_Server_Module_Def       *def,
-                                   Azy_Server_Module_Pre_Cb     pre,
+azy_server_module_def_pre_post_set(Azy_Server_Module_Def *def,
+                                   Azy_Server_Module_Pre_Cb pre,
                                    Azy_Server_Module_Content_Cb post)
 {
    if (!AZY_MAGIC_CHECK(def, AZY_MAGIC_SERVER_MODULE_DEF))
@@ -406,8 +406,8 @@ azy_server_module_def_pre_post_set(Azy_Server_Module_Def       *def,
  */
 void
 azy_server_module_def_download_upload_set(Azy_Server_Module_Def *def,
-                                          Azy_Server_Module_Cb   download,
-                                          Azy_Server_Module_Cb   upload)
+                                          Azy_Server_Module_Cb download,
+                                          Azy_Server_Module_Cb upload)
 {
    if (!AZY_MAGIC_CHECK(def, AZY_MAGIC_SERVER_MODULE_DEF))
      {
@@ -427,7 +427,7 @@ azy_server_module_def_download_upload_set(Azy_Server_Module_Def *def,
  * @param fallback The callback function to call when an undefined method is requested
  */
 void
-azy_server_module_def_fallback_set(Azy_Server_Module_Def       *def,
+azy_server_module_def_fallback_set(Azy_Server_Module_Def *def,
                                    Azy_Server_Module_Content_Cb fallback)
 {
    if (!AZY_MAGIC_CHECK(def, AZY_MAGIC_SERVER_MODULE_DEF))
@@ -447,7 +447,7 @@ azy_server_module_def_fallback_set(Azy_Server_Module_Def       *def,
  * @param method The method to add (NOT NULL)
  */
 void
-azy_server_module_def_method_add(Azy_Server_Module_Def    *def,
+azy_server_module_def_method_add(Azy_Server_Module_Def *def,
                                  Azy_Server_Module_Method *method)
 {
    Azy_Server_Module_Method *old;
@@ -478,7 +478,7 @@ azy_server_module_def_method_add(Azy_Server_Module_Def    *def,
  * @return EINA_TRUE on success, else EINA_FALSE
  */
 Eina_Bool
-azy_server_module_def_method_del(Azy_Server_Module_Def    *def,
+azy_server_module_def_method_del(Azy_Server_Module_Def *def,
                                  Azy_Server_Module_Method *method)
 {
    if (!AZY_MAGIC_CHECK(def, AZY_MAGIC_SERVER_MODULE_DEF))
@@ -505,7 +505,7 @@ azy_server_module_def_method_del(Azy_Server_Module_Def    *def,
  * @return The new #Azy_Server_Module_Method object, or NULL on failure
  */
 Azy_Server_Module_Method *
-azy_server_module_method_new(const char                  *name,
+azy_server_module_method_new(const char *name,
                              Azy_Server_Module_Content_Cb cb)
 {
    Azy_Server_Module_Method *method;
@@ -575,7 +575,7 @@ azy_server_module_version_get(Azy_Server_Module *m)
  */
 void
 azy_server_module_def_version_set(Azy_Server_Module_Def *def,
-                              double version)
+                                  double version)
 {
    if (!AZY_MAGIC_CHECK(def, AZY_MAGIC_SERVER_MODULE_DEF))
      {
@@ -616,7 +616,7 @@ azy_server_module_def_size_get(Azy_Server_Module_Def *def)
  */
 Eina_Bool
 azy_server_module_size_set(Azy_Server_Module_Def *def,
-                           int                    size)
+                           int size)
 {
    if (!AZY_MAGIC_CHECK(def, AZY_MAGIC_SERVER_MODULE_DEF))
      {
@@ -639,8 +639,8 @@ azy_server_module_size_set(Azy_Server_Module_Def *def,
  * @return EINA_TRUE on success, else EINA_FALSE
  */
 Eina_Bool
-azy_server_module_send(Azy_Server_Module  *module,
-                       Azy_Net            *net,
+azy_server_module_send(Azy_Server_Module *module,
+                       Azy_Net *net,
                        const Azy_Net_Data *data)
 {
    Eina_Strbuf *header;
@@ -739,8 +739,8 @@ azy_server_module_def_load(const char *file,
    EINA_SAFETY_ON_NULL_RETURN_VAL(file, NULL);
 
    if (modname) name = modname;
-   else
-     { /* attempt to autodetect module name */
+   else /* attempt to autodetect module name */
+     {
         const char *s, *d;
 
         s = strrchr(file, '/');
@@ -824,4 +824,5 @@ azy_server_module_session_get(Azy_Server_Module *module)
      module->client->session_id = eina_stringshare_add(h);
    return module->client->session_id;
 }
+
 /** @} */

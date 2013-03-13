@@ -109,8 +109,8 @@ azy_lib_register_errors_(void)
 
 void
 _azy_magic_fail(const void *d,
-                Azy_Magic   m,
-                Azy_Magic   req_m,
+                Azy_Magic m,
+                Azy_Magic req_m,
                 const char *fname)
 {
    ERR("\n"
@@ -246,4 +246,5 @@ azy_rpc_log_enable(void)
    if (azy_rpc_log_dom < 0)
      ERR("Could not register 'azy_rpc' log domain!");
 }
+
 /** @} */

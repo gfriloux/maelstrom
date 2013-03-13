@@ -23,7 +23,7 @@
 #define alloca __alloca
 #else
 #include <stddef.h>
-void *alloca (size_t);
+void *alloca(size_t);
 #endif
 
 #define AZY_SERVER_TYPE                0x0f
@@ -78,11 +78,11 @@ extern int azy_rpc_log_dom;
 # define strndupa(str, len) strncpy(alloca(len + 1), str, len)
 #endif
 
-#define EBUF(X) ((X) ? eina_binbuf_string_get(X) : NULL)
-#define EBUFLEN(X) ((X) ? eina_binbuf_length_get(X) : 0)
+#define EBUF(X)             ((X) ? eina_binbuf_string_get(X) : NULL)
+#define EBUFLEN(X)          ((X) ? eina_binbuf_length_get(X) : 0)
 
-#define ESBUF(X) ((X) ? eina_strbuf_string_get(X) : NULL)
-#define ESBUFLEN(X) ((X) ? eina_strbuf_length_get(X) : 0)
+#define ESBUF(X)            ((X) ? eina_strbuf_string_get(X) : NULL)
+#define ESBUFLEN(X)         ((X) ? eina_strbuf_length_get(X) : 0)
 
 extern Eina_Error AZY_ERROR_REQUEST_JSON_OBJECT;
 extern Eina_Error AZY_ERROR_REQUEST_JSON_METHOD;
@@ -116,17 +116,17 @@ typedef unsigned int                   Azy_Magic;
 struct Azy_Net_Cookie
 {
    AZY_MAGIC;
-   unsigned int refcount;
-   Eina_Stringshare *domain;
-   Eina_Stringshare *path;
-   Eina_Stringshare *name;
-   Eina_Stringshare *value;
-   time_t created;
-   time_t last_used;
-   time_t expires;
+   unsigned int         refcount;
+   Eina_Stringshare    *domain;
+   Eina_Stringshare    *path;
+   Eina_Stringshare    *name;
+   Eina_Stringshare    *value;
+   time_t               created;
+   time_t               last_used;
+   time_t               expires;
    Azy_Net_Cookie_Flags flags;
-   Eina_Bool max_age : 1; // if expires is actually max-age
-   Eina_Bool in_hash : 1;
+   Eina_Bool            max_age : 1; // if expires is actually max-age
+   Eina_Bool            in_hash : 1;
 };
 
 struct Azy_Content
@@ -212,7 +212,7 @@ struct Azy_Net
    Eina_Bool         server_client : 1;
 
    Eina_Binbuf      *buffer;
-   size_t             progress; //for tracking current call progress in RAW mode
+   size_t            progress;  //for tracking current call progress in RAW mode
    Eina_Binbuf      *overflow;
    Eina_Strbuf      *separator; // \r\n, \n, \n\r, etc
 
@@ -222,7 +222,7 @@ struct Azy_Net
 
    Azy_Net_Type      type;
    Azy_Net_Transport transport;
-   Azy_Net_Protocol proto;
+   Azy_Net_Protocol  proto;
 
    struct
    {
@@ -236,13 +236,13 @@ struct Azy_Net
          const char *http_msg;
          int         http_code;
       } res;
-      Eina_List *cookies; /* Azy_Net_Cookie */
-      Eina_Hash *headers;
-      Eina_Hash *post_headers;
-      Eina_Binbuf *post_headers_buf; // headers after last chunk
-      int64_t    content_length;
+      Eina_List                *cookies; /* Azy_Net_Cookie */
+      Eina_Hash                *headers;
+      Eina_Hash                *post_headers;
+      Eina_Binbuf              *post_headers_buf; // headers after last chunk
+      int64_t                   content_length;
       Azy_Net_Transfer_Encoding transfer_encoding;
-      size_t chunk_size;
+      size_t                    chunk_size;
    } http;
    Eina_Bool headers_read : 1;
    Eina_Bool need_chunk_size : 1; // waiting for size of next chunk for transfer encoding
@@ -343,7 +343,7 @@ struct Azy_Client
    AZY_MAGIC;
    void                *data;
    Azy_Net             *net;
-   Eina_Binbuf        *overflow;
+   Eina_Binbuf         *overflow;
 
    Ecore_Event_Handler *add;
    Ecore_Event_Handler *del;
@@ -405,57 +405,57 @@ struct Azy_Server_Module_Method
 extern "C" {
 #endif
 
-void   _azy_magic_fail(const void *d, Azy_Magic m, Azy_Magic req_m, const char *fname);
+void             _azy_magic_fail(const void *d, Azy_Magic m, Azy_Magic req_m, const char *fname);
 
-Eina_Bool     azy_value_init(const char *);
-Eina_Bool     azy_rss_init(const char *);
-Eina_Bool     azy_rss_item_init(const char *);
-void          azy_value_shutdown(void);
-void          azy_rss_shutdown(void);
-void          azy_rss_item_shutdown(void);
+Eina_Bool        azy_value_init(const char *);
+Eina_Bool        azy_rss_init(const char *);
+Eina_Bool        azy_rss_item_init(const char *);
+void             azy_value_shutdown(void);
+void             azy_rss_shutdown(void);
+void             azy_rss_item_shutdown(void);
 
-Eina_Bool     azy_value_multi_line_get_(Azy_Value *v, unsigned int max_strlen);
-int           azy_events_type_parse(Azy_Net *net, int type, const unsigned char *header, int64_t len);
-Eina_Bool     azy_events_header_parse(Azy_Net *net, unsigned char *event_data, size_t event_len, int offset);
-Eina_Bool     azy_events_connection_kill(void *conn, Eina_Bool server_client, const char *msg);
+Eina_Bool        azy_value_multi_line_get_(Azy_Value *v, unsigned int max_strlen);
+int              azy_events_type_parse(Azy_Net *net, int type, const unsigned char *header, int64_t len);
+Eina_Bool        azy_events_header_parse(Azy_Net *net, unsigned char *event_data, size_t event_len, int offset);
+Eina_Bool        azy_events_connection_kill(void *conn, Eina_Bool server_client, const char *msg);
 
-void azy_events_recv_progress(Azy_Net *net, const void *data, size_t len);
-inline void azy_events_transfer_progress_event(const Azy_Client_Handler_Data *hd, size_t size);
+void             azy_events_recv_progress(Azy_Net *net, const void *data, size_t len);
+inline void      azy_events_transfer_progress_event(const Azy_Client_Handler_Data *hd, size_t size);
 inline Eina_Bool azy_events_length_overflows(int64_t current, int64_t max);
-size_t azy_events_transfer_decode(Azy_Net *net, unsigned char *start, int len);
+size_t           azy_events_transfer_decode(Azy_Net *net, unsigned char *start, int len);
 inline Eina_Bool azy_events_chunks_done(const Azy_Net *net);
-Eina_Binbuf *azy_events_overflow_add(Azy_Net *net, const unsigned char *data, size_t len);
+Eina_Binbuf     *azy_events_overflow_add(Azy_Net *net, const unsigned char *data, size_t len);
 
-int azy_net_cookie_init_(void);
-void azy_net_cookie_shutdown_(void);
+int              azy_net_cookie_init_(void);
+void             azy_net_cookie_shutdown_(void);
 
-Eina_Bool     _azy_client_handler_add(Azy_Client *client, int type, Ecore_Con_Event_Server_Add *add);
-Eina_Bool     _azy_client_handler_del(Azy_Client *client, int type, Ecore_Con_Event_Server_Del *del);
-Eina_Bool     _azy_client_handler_data(Azy_Client_Handler_Data *handler_data, int type, Ecore_Con_Event_Server_Data *ev);
-Eina_Bool     _azy_client_handler_upgrade(Azy_Client_Handler_Data *hd, int type, Ecore_Con_Event_Server_Upgrade *ev);
+Eina_Bool        _azy_client_handler_add(Azy_Client *client, int type, Ecore_Con_Event_Server_Add *add);
+Eina_Bool        _azy_client_handler_del(Azy_Client *client, int type, Ecore_Con_Event_Server_Del *del);
+Eina_Bool        _azy_client_handler_data(Azy_Client_Handler_Data *handler_data, int type, Ecore_Con_Event_Server_Data *ev);
+Eina_Bool        _azy_client_handler_upgrade(Azy_Client_Handler_Data *hd, int type, Ecore_Con_Event_Server_Upgrade *ev);
 
-Eina_Bool     azy_server_client_handler_add(Azy_Server *server, int type, Ecore_Con_Event_Client_Add *ev);
-void          _azy_event_handler_fake_free(void *data, void *data2);
+Eina_Bool        azy_server_client_handler_add(Azy_Server *server, int type, Ecore_Con_Event_Client_Add *ev);
+void             _azy_event_handler_fake_free(void *data, void *data2);
 
 Eina_Bool
-              azy_content_deserialize_json(Azy_Content *content, const char *buf, ssize_t len);
+                 azy_content_deserialize_json(Azy_Content *content, const char *buf, ssize_t len);
 
-Azy_Rss      *azy_rss_new(void);
-Azy_Rss_Item *azy_rss_item_new(void);
+Azy_Rss         *azy_rss_new(void);
+Azy_Rss_Item    *azy_rss_item_new(void);
 
 #ifdef HAVE_XML
-Eina_Bool     azy_content_serialize_request_xml(Azy_Content *content);
-Eina_Bool     azy_content_serialize_response_xml(Azy_Content *content);
-Eina_Bool     azy_content_deserialize_xml(Azy_Content *content, char *buf, ssize_t len);
-Eina_Bool     azy_content_deserialize_request_xml(Azy_Content *content, char *buf, ssize_t len);
-Eina_Bool     azy_content_deserialize_response_xml(Azy_Content *content, char *buf, ssize_t len);
+Eina_Bool        azy_content_serialize_request_xml(Azy_Content *content);
+Eina_Bool        azy_content_serialize_response_xml(Azy_Content *content);
+Eina_Bool        azy_content_deserialize_xml(Azy_Content *content, char *buf, ssize_t len);
+Eina_Bool        azy_content_deserialize_request_xml(Azy_Content *content, char *buf, ssize_t len);
+Eina_Bool        azy_content_deserialize_response_xml(Azy_Content *content, char *buf, ssize_t len);
 #endif
-Eina_Bool     azy_content_serialize_request_json(Azy_Content *content);
-Eina_Bool     azy_content_serialize_response_json(Azy_Content *content);
-Eina_Bool     azy_content_deserialize_request_json(Azy_Content *content, const char *buf, ssize_t len);
-Eina_Bool     azy_content_deserialize_response_json(Azy_Content *content, const char *buf, ssize_t len);
+Eina_Bool        azy_content_serialize_request_json(Azy_Content *content);
+Eina_Bool        azy_content_serialize_response_json(Azy_Content *content);
+Eina_Bool        azy_content_deserialize_request_json(Azy_Content *content, const char *buf, ssize_t len);
+Eina_Bool        azy_content_deserialize_response_json(Azy_Content *content, const char *buf, ssize_t len);
 
-Eina_Bool     azy_content_buffer_set_(Azy_Content *content, unsigned char *buffer, int length);
+Eina_Bool        azy_content_buffer_set_(Azy_Content *content, unsigned char *buffer, int length);
 #ifdef __cplusplus
 }
 #endif

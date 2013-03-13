@@ -27,9 +27,11 @@ _azy_net_proto_str(Azy_Net_Protocol proto)
       case AZY_NET_PROTOCOL_HTTP_1_0:
         strcpy(buf, "HTTP/1.0");
         break;
+
       case AZY_NET_PROTOCOL_HTTP_1_1:
         strcpy(buf, "HTTP/1.1");
         break;
+
       default:
         buf[0] = 0;
         break;
@@ -45,9 +47,9 @@ _azy_net_proto_str(Azy_Net_Protocol proto)
 /* append a header hash to a strbuf */
 static void
 _azy_net_header_hash(Eina_Hash *hash __UNUSED__,
-                     const char     *key,
-                     const char     *data,
-                     Eina_Strbuf    *header)
+                     const char *key,
+                     const char *data,
+                     Eina_Strbuf *header)
 {
    eina_strbuf_append_printf(header, "%s: %s\r\n", key, data);
 }
@@ -184,7 +186,7 @@ azy_net_free(Azy_Net *net)
  * @return The value of the header, or NULL if header is not present
  */
 const char *
-azy_net_header_get(Azy_Net    *net,
+azy_net_header_get(Azy_Net *net,
                    const char *name)
 {
    const char *value;
@@ -244,7 +246,7 @@ azy_net_header_reset(Azy_Net *net)
  * @return #EINA_TRUE on success, else #EINA_FALSE
  */
 Eina_Bool
-azy_net_auth_set(Azy_Net    *net,
+azy_net_auth_set(Azy_Net *net,
                  const char *username,
                  const char *password)
 {
@@ -289,7 +291,7 @@ azy_net_auth_set(Azy_Net    *net,
  * @return #EINA_TRUE on success, else #EINA_FALSE
  */
 Eina_Bool
-azy_net_auth_get(Azy_Net     *net,
+azy_net_auth_get(Azy_Net *net,
                  const char **username,
                  const char **password)
 {
@@ -369,7 +371,7 @@ azy_net_uri_get(Azy_Net *net)
  * @return EINA_TRUE on success, else EINA_FALSE
  */
 Eina_Bool
-azy_net_uri_set(Azy_Net    *net,
+azy_net_uri_set(Azy_Net *net,
                 const char *path)
 {
    DBG("(net=%p)", net);
@@ -460,7 +462,7 @@ azy_net_code_get(Azy_Net *net)
  */
 void
 azy_net_code_set(Azy_Net *net,
-                 int      code)
+                 int code)
 {
    DBG("(net=%p)", net);
    if (!AZY_MAGIC_CHECK(net, AZY_MAGIC_NET))
@@ -503,7 +505,7 @@ azy_net_type_get(Azy_Net *net)
  * @param type The #Azy_Net_Type to be used
  */
 void
-azy_net_type_set(Azy_Net     *net,
+azy_net_type_set(Azy_Net *net,
                  Azy_Net_Type type)
 {
    DBG("(net=%p)", net);
@@ -550,7 +552,7 @@ azy_net_message_length_get(Azy_Net *net)
  */
 void
 azy_net_message_length_set(Azy_Net *net,
-                           int      length)
+                           int length)
 {
    DBG("(net=%p)", net);
    char buf[64];
@@ -661,7 +663,7 @@ azy_net_ip_get(Azy_Net *net)
  * @param transport The #Azy_Net_Transport to use
  */
 void
-azy_net_transport_set(Azy_Net          *net,
+azy_net_transport_set(Azy_Net *net,
                       Azy_Net_Transport transport)
 {
    DBG("(net=%p)", net);
@@ -752,7 +754,6 @@ azy_net_header_create(Azy_Net *net)
              azy_net_header_set(net, "connection", "Upgrade");
           }
      }
-
 
    if (net->http.headers)
      eina_hash_foreach(net->http.headers, (Eina_Hash_Foreach)_azy_net_header_hash, header);
