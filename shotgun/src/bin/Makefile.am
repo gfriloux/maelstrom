@@ -1,6 +1,5 @@
 AM_CFLAGS = \
   @SHOTGUN_CFLAGS@ \
-  @AZY_CFLAGS@ \
   @GUI_CFLAGS@ \
   @edbus_CFLAGS@ \
   @enotify_CFLAGS@ \
@@ -17,7 +16,6 @@ bin_PROGRAMS = shotgun
 
 shotgun_LDADD = \
   @SHOTGUN_LIBS@ \
-  @AZY_LIBS@ \
   @GUI_LIBS@ \
   @edbus_LIBS@ \
   @enotify_LIBS@ \

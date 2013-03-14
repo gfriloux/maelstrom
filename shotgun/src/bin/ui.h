@@ -24,11 +24,9 @@ void *alloca (size_t);
 #include <Ecore_Con.h>
 #include <Elementary.h>
 #include <Efx.h>
+#include <Azy.h>
 #ifdef HAVE_DBUS
 # include <E_DBus.h>
-#endif
-#ifdef HAVE_AZY
-# include <Azy.h>
 #endif
 #endif
 #ifndef __UNUSED__
@@ -292,7 +290,7 @@ struct Contact
 struct Image
 {
    EINA_INLIST;
-   Ecore_Con_Url *url;
+   Azy_Client *client;
    Eina_Binbuf *buf;
    const char *addr;
    unsigned long long timestamp;
@@ -322,8 +320,6 @@ void chat_image_free(Image *i);
 void chat_image_cleanup(Contact_List *cl);
 void chat_conv_image_show(void *data, Evas_Object *obj, Elm_Entry_Anchor_Info *ev);
 void chat_conv_image_hide(Contact *c, Evas_Object *obj, Elm_Entry_Anchor_Info *ev);
-Eina_Bool chat_image_data(void *d __UNUSED__, int type __UNUSED__, Ecore_Con_Event_Url_Data *ev);
-Eina_Bool chat_image_complete(void *d __UNUSED__, int type __UNUSED__, Ecore_Con_Event_Url_Complete *ev);
 
 Shotgun_Event_Presence *contact_presence_get(Contact *c);
 void contact_presence_set(Contact *c, Shotgun_Event_Presence *cur);

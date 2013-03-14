@@ -107,6 +107,7 @@ main(int argc, char *argv[])
    eina_init();
    shotgun_init();
    efx_init();
+   azy_init();
    elm_init(argc, argv);
    elm_policy_set(ELM_POLICY_QUIT, ELM_POLICY_QUIT_LAST_WINDOW_CLOSED);
 
@@ -119,8 +120,6 @@ main(int argc, char *argv[])
      }
    _setup_extension();
    //eina_log_domain_level_set("ecore_con", EINA_LOG_LEVEL_DBG);
-   ecore_event_handler_add(ECORE_CON_EVENT_URL_DATA, (Ecore_Event_Handler_Cb)chat_image_data, NULL);
-   ecore_event_handler_add(ECORE_CON_EVENT_URL_COMPLETE, (Ecore_Event_Handler_Cb)chat_image_complete, NULL);
    ch = ecore_event_handler_add(SHOTGUN_EVENT_CONNECT, (Ecore_Event_Handler_Cb)con, NULL);
    ecore_event_handler_add(SHOTGUN_EVENT_CONNECTION_STATE, (Ecore_Event_Handler_Cb)con_state, NULL);
 //   eina_log_abort_on_critical_level_set(EINA_LOG_LEVEL_CRITICAL);

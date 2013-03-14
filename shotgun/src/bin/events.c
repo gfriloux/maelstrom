@@ -175,6 +175,7 @@ event_presence_cb(Contact_List *cl, int type __UNUSED__, Shotgun_Event_Presence 
    char *jid, *p;
    Eina_List *l = NULL;
 
+   INF("PRESENCE FOR %s", ev->jid);
    p = strchr(ev->jid, '/');
    if (p) jid = strndupa(ev->jid, p - ev->jid);
    else jid = (char*)ev->jid;
@@ -249,12 +250,15 @@ event_presence_cb(Contact_List *cl, int type __UNUSED__, Shotgun_Event_Presence 
           {
              /* if current resource has no photo, use low priority photo */
              if (pres->photo && (!c->cur->photo))
-               c->cur->photo = eina_stringshare_ref(pres->photo);
+               {
+                  c->cur->photo = eina_stringshare_ref(pres->photo);
+                  if (c->list_item) elm_genlist_item_fields_update(c->list_item, "elm.swallow.end", ELM_GENLIST_ITEM_FIELD_CONTENT);
+               }
              c->cur->vcard |= pres->vcard;
-             c->tooltip_changed = EINA_TRUE;
              /* if lower priority, add to plist */
              if (ev->priority < c->cur->priority)
                {
+                  c->tooltip_changed = EINA_TRUE;
                   if (eina_list_data_get(l) != pres)
                     c->plist = eina_list_sorted_insert(c->plist, (Eina_Compare_Cb)_list_sort_cb, pres);
                   if (c->vcard_request) return ECORE_CALLBACK_RENEW;

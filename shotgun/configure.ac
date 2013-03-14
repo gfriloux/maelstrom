@@ -85,7 +85,7 @@ AC_ARG_ENABLE([gui],
 
 if test "x$want_gui" != "xno"; then
    PKG_CHECK_MODULES([GUI],
-      [eet >= 1.4.0 evas >= 1.7 ecore-file >= 1.7 ecore-imf >= 1.7 edje >= 1.7 elementary efx],
+      [eet >= 1.4.0 evas >= 1.7 ecore-file >= 1.7 ecore-imf >= 1.7 edje >= 1.7 elementary efx azy],
       [have_gui="yes"],
       [have_gui="no"]
    )
@@ -101,29 +101,6 @@ AC_ARG_WITH([edje-cc],
     AC_MSG_NOTICE([edje_cc explicitly set to $edje_cc])
    ],[edje_cc=$(pkg-config --variable=prefix edje)/bin/edje_cc])
 AC_SUBST(edje_cc)
-
-have_azy="no"
-want_azy="no"
-AC_ARG_ENABLE([azy],
-   [AC_HELP_STRING([--disable-azy], [disable azy support. @<:@default=detect@:>@])],
-   [want_azy=no], [])
-##   [want_azy=$enableval], [])
-
-if test "x$want_azy" != "xno"; then
-   PKG_CHECK_MODULES([AZY],
-      [azy >= 1.0.0],
-      [
-       AC_DEFINE(HAVE_AZY, 1, [Azy support])
-       have_azy="yes"
-      ],
-      [have_azy="no"]
-   )
-else
-    have_azy="no"
-fi
-if test "x$want_azy" = "xyes" -a "x$have_azy" = "xno"; then
-    AC_MSG_ERROR([azy support requested, but not found by pkg-config.])
-fi
 
 have_edbus="no"
 want_edbus="auto"

@@ -256,7 +256,6 @@ void
 settings_new(UI_WIN *ui)
 {
    Evas_Object *scr, *ic, *back, *box, *ck, *fr, *frbox, *sl, *radio, *sradio;
-   int init;
    Contact_List *cl;
    Login_Window *lw;
    char buf[1024];
@@ -337,25 +336,13 @@ settings_new(UI_WIN *ui)
    SETTINGS_CHECK("Disable notifications", disable_notify, "Disables use of notification popups");
 #endif
 
-   init = ecore_con_url_init();
-   if (init)
-     SETTINGS_FRAME("Images");
-   else
-     SETTINGS_FRAME("Images (DISABLED: REQUIRES CURL SUPPORT IN ECORE)");
+   SETTINGS_FRAME("Images");
    elm_frame_collapse_set(fr, EINA_TRUE);
    SETTINGS_CHECK("Disable automatic image fetching", disable_image_fetch, "Disables background fetching of images");
-   if (init)
-     {
-        SETTINGS_SLIDER("Max image age", "Number of days to save linked images on disk before deleting them",
-                        "%1.0f days", 60, image_age);
-        SETTINGS_SLIDER("Max image memory", "Total size of images to keep in memory",
-                        "%1.0f MB", 512, image_size);
-     }
-   else
-     {
-        elm_check_state_set(ck, EINA_TRUE);
-        elm_object_disabled_set(ck, EINA_TRUE);
-     }
+   SETTINGS_SLIDER("Max image age", "Number of days to save linked images on disk before deleting them",
+                   "%1.0f days", 60, image_age);
+   SETTINGS_SLIDER("Max image memory", "Total size of images to keep in memory",
+                   "%1.0f MB", 512, image_size);
 
    SETTINGS_FRAME("List");
    elm_frame_collapse_set(fr, EINA_TRUE);
