@@ -128,7 +128,7 @@ Azy_Module Test1
                                      */
      retval->v_string = eina_stringshare_add("Hi!");
      retval->v_time = eina_stringshare_add("2011-01-01");
-     buf = azy_base64_encode("Hi all!", sizeof("Hi all!"));
+     buf = azy_util_base64_encode((void*)"Hi all!", sizeof("Hi all!"), NULL);
      retval->v_base64 = eina_stringshare_add(buf);
      free(buf);
      retval->v_int = 5645;
@@ -184,7 +184,7 @@ Azy_Module Test1
           char *b64;
           /** base64 encoding...in a method! */
           buf = eina_stringshare_printf("BBBBBBBBBBBBBBBBBLOOOOOB%d", i);
-          b64 = azy_base64_encode(buf, eina_stringshare_strlen(buf));
+          b64 = azy_util_base64_encode((void*)buf, eina_stringshare_strlen(buf), NULL);
           eina_stringshare_del(buf);
           ADD(a_base64, eina_stringshare_add(b64));
           free(b64);

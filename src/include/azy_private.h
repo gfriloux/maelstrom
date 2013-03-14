@@ -9,6 +9,7 @@
 #include "config.h"
 #endif
 
+#include <ctype.h>
 #include <inttypes.h>
 #include <time.h>
 #include <Ecore.h>
@@ -141,8 +142,7 @@ struct Azy_Content
    Azy_Net              *recv_net;
    Azy_Content_Retval_Cb retval_cb;
 
-   unsigned char        *buffer;
-   int64_t               length;
+   Eina_Binbuf          *buffer;
 
    Eina_Bool             error_set : 1;
    Eina_Error            errcode; //internal code
@@ -208,6 +208,7 @@ struct Azy_Rss_Item
 struct Azy_Net
 {
    AZY_MAGIC;
+   unsigned int      refcount;
    void             *conn;
    Eina_Bool         server_client : 1;
 
@@ -217,8 +218,6 @@ struct Azy_Net
    Eina_Strbuf      *separator; // \r\n, \n, \n\r, etc
 
    Ecore_Timer      *timer;
-   Eina_Bool         nodata : 1;
-   Eina_Bool         buffer_stolen : 1;
 
    Azy_Net_Type      type;
    Azy_Net_Transport transport;
@@ -228,15 +227,17 @@ struct Azy_Net
    {
       struct
       {
-         const char *http_path;
+         Eina_Stringshare *http_path;
+         Eina_Stringshare *host;
       } req;
 
       struct
       {
-         const char *http_msg;
+         Eina_Stringshare *http_msg;
          int         http_code;
       } res;
-      Eina_List                *cookies; /* Azy_Net_Cookie */
+      Eina_List                *set_cookies; /* Azy_Net_Cookie; Set-Cookie: cookies*/
+      Eina_List                *send_cookies; /* Azy_Net_Cookie; Cookie: cookies */
       Eina_Hash                *headers;
       Eina_Hash                *post_headers;
       Eina_Binbuf              *post_headers_buf; // headers after last chunk
@@ -244,6 +245,8 @@ struct Azy_Net
       Azy_Net_Transfer_Encoding transfer_encoding;
       size_t                    chunk_size;
    } http;
+   Eina_Bool         nodata : 1;
+   Eina_Bool         buffer_stolen : 1;
    Eina_Bool headers_read : 1;
    Eina_Bool need_chunk_size : 1; // waiting for size of next chunk for transfer encoding
 };
@@ -251,6 +254,7 @@ struct Azy_Net
 struct Azy_Server
 {
    AZY_MAGIC;
+   unsigned int         refcount;
    Ecore_Con_Server    *server;
    Ecore_Event_Handler *add;
    const char          *addr;
@@ -277,6 +281,7 @@ typedef struct Azy_Server_Client
    Azy_Net             *current;
    Azy_Server          *server;
    Eina_List           *modules;
+   Azy_Server_Module   *upgrading_module;
    Eina_Binbuf         *overflow;
 
    Eina_Bool            handled : 1;
@@ -290,7 +295,6 @@ typedef struct Azy_Server_Client
    Azy_Content         *resume_rpc;
    Eina_Bool            resume_ret : 1;
 
-   const char          *session_id;
    const char          *ip;
 } Azy_Server_Client;
 
@@ -341,6 +345,7 @@ struct Azy_Value
 struct Azy_Client
 {
    AZY_MAGIC;
+   unsigned int refcount;
    void                *data;
    Azy_Net             *net;
    Eina_Binbuf         *overflow;
@@ -356,7 +361,6 @@ struct Azy_Client
 
    const char          *addr;
    int                  port;
-   const char          *session_id;
    int                  secure;
 
    Eina_Bool            connected : 1;
@@ -435,7 +439,7 @@ Eina_Bool        _azy_client_handler_data(Azy_Client_Handler_Data *handler_data,
 Eina_Bool        _azy_client_handler_upgrade(Azy_Client_Handler_Data *hd, int type, Ecore_Con_Event_Server_Upgrade *ev);
 
 Eina_Bool        azy_server_client_handler_add(Azy_Server *server, int type, Ecore_Con_Event_Client_Add *ev);
-void             _azy_event_handler_fake_free(void *data, void *data2);
+void _azy_event_handler_fake_free(Eina_Free_Cb cb, void *data);
 
 Eina_Bool
                  azy_content_deserialize_json(Azy_Content *content, const char *buf, ssize_t len);
@@ -455,7 +459,7 @@ Eina_Bool        azy_content_serialize_response_json(Azy_Content *content);
 Eina_Bool        azy_content_deserialize_request_json(Azy_Content *content, const char *buf, ssize_t len);
 Eina_Bool        azy_content_deserialize_response_json(Azy_Content *content, const char *buf, ssize_t len);
 
-Eina_Bool        azy_content_buffer_set_(Azy_Content *content, unsigned char *buffer, int length);
+Eina_Bool        azy_content_buffer_set_(Azy_Content *content, unsigned char *buffer, size_t length);
 #ifdef __cplusplus
 }
 #endif

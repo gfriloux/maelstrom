@@ -25,9 +25,7 @@
 
 /* internal helper function to set buffer and free existing buffer if present */
 Eina_Bool
-azy_content_buffer_set_(Azy_Content *content,
-                        unsigned char *buffer,
-                        int length)
+azy_content_buffer_set_(Azy_Content *content, unsigned char *buffer, size_t length)
 {
    if (!AZY_MAGIC_CHECK(content, AZY_MAGIC_CONTENT))
      {
@@ -37,10 +35,9 @@ azy_content_buffer_set_(Azy_Content *content,
    if ((!buffer) || (length < 1))
      return EINA_FALSE;
 
-   free(content->buffer);
+   eina_binbuf_free(content->buffer);
 
-   content->buffer = buffer;
-   content->length = length;
+   content->buffer = eina_binbuf_manage_new_length(buffer, length);
    return EINA_TRUE;
 }
 
@@ -138,8 +135,7 @@ azy_content_free(Azy_Content *content)
      azy_value_unref(v);
    if (content->retval)
      azy_value_unref(content->retval);
-   if (content->length)
-     free(content->buffer);
+   if (content->buffer) eina_binbuf_free(content->buffer);
    if (content->faultmsg)
      eina_stringshare_del(content->faultmsg);
    if (content->recv_net)

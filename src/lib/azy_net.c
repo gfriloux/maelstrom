@@ -72,6 +72,7 @@ azy_net_new(void *conn)
    net = calloc(1, sizeof(Azy_Net));
    EINA_SAFETY_ON_NULL_RETURN_VAL(net, NULL);
    net->conn = conn;
+   net->refcount = 1;
    net->proto = AZY_NET_PROTOCOL_HTTP_1_1;
 
    AZY_MAGIC_SET(net, AZY_MAGIC_NET);
@@ -97,6 +98,7 @@ azy_net_buffer_new(void *buf, size_t size, Azy_Net_Transport transport, Eina_Boo
    net = calloc(1, sizeof(Azy_Net));
    EINA_SAFETY_ON_NULL_RETURN_VAL(net, NULL);
    AZY_MAGIC_SET(net, AZY_MAGIC_NET);
+   net->refcount = 1;
    if (buf && size)
      {
         if (steal)
@@ -158,13 +160,15 @@ azy_net_free(Azy_Net *net)
         AZY_MAGIC_FAIL(net, AZY_MAGIC_NET);
         return;
      }
-
-   if (net->http.headers)
-     eina_hash_free(net->http.headers);
+   if (net->refcount) net->refcount--;
+   if (net->refcount) return;
+   eina_hash_free(net->http.headers);
+   eina_stringshare_del(net->http.req.host);
    eina_stringshare_del(net->http.req.http_path);
    eina_stringshare_del(net->http.res.http_msg);
    if (net->buffer) eina_binbuf_free(net->buffer);
-   azy_net_cookie_list_clear(net);
+   azy_net_cookie_set_list_clear(net);
+   azy_net_cookie_send_list_clear(net);
    if (net->http.post_headers) eina_hash_free(net->http.post_headers);
    if (net->http.post_headers_buf) eina_binbuf_free(net->http.post_headers_buf);
    if (net->overflow) eina_binbuf_free(net->overflow);
@@ -218,7 +222,7 @@ azy_net_header_get(Azy_Net *net,
  * @param net The #Azy_Net object containing the headers to free (NOT NULL)
  */
 void
-azy_net_header_reset(Azy_Net *net)
+azy_net_headers_reset(Azy_Net *net)
 {
    DBG("(net=%p)", net);
    if (!AZY_MAGIC_CHECK(net, AZY_MAGIC_NET))
@@ -269,7 +273,7 @@ azy_net_auth_set(Azy_Net *net,
         return EINA_FALSE;
      }
    eina_strbuf_append_printf(str, "%s:%s", username, password);
-   enc_auth_str = azy_base64_encode(eina_strbuf_string_get(str), eina_strbuf_length_get(str));
+   enc_auth_str = azy_util_base64_encode((void*)eina_strbuf_string_get(str), eina_strbuf_length_get(str), NULL);
    eina_strbuf_string_free(str);
    eina_strbuf_append_printf(str, "Basic %s", enc_auth_str);
    azy_net_header_set(net, "Authorization", NULL);
@@ -315,8 +319,7 @@ azy_net_auth_get(Azy_Net *net,
      return EINA_FALSE;
 
    enc_auth_str = auth_header + 6;
-   auth_str = azy_base64_decode(enc_auth_str, strlen(enc_auth_str));
-   auth_str_len = strlen(auth_str);
+   auth_str = (char*)azy_util_base64_decode(enc_auth_str, strlen(enc_auth_str), &auth_str_len);
 
    if ((!auth_str) || (!auth_str_len))
      return EINA_FALSE;
@@ -757,6 +760,9 @@ azy_net_header_create(Azy_Net *net)
 
    if (net->http.headers)
      eina_hash_foreach(net->http.headers, (Eina_Hash_Foreach)_azy_net_header_hash, header);
+
+   if (net->http.set_cookies) azy_net_cookie_set_list_generate(header, net->http.set_cookies);
+   if (net->http.send_cookies) azy_net_cookie_send_list_generate(header, net->http.send_cookies);
 
    eina_strbuf_append(header, "\r\n");
    return header;

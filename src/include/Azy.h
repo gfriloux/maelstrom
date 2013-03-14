@@ -183,9 +183,10 @@ typedef struct Azy_Event_Transfer_Progress
 typedef enum
 {
    AZY_NET_COOKIE_BLANK = 0,
-   AZY_NET_COOKIE_HTTPONLY = (1 << 0),
-   AZY_NET_COOKIE_SECURE = (1 << 1),
-   AZY_NET_COOKIE_PERSISTENT = (1 << 2)
+   AZY_NET_COOKIE_HTTPONLY = (1 << 0), /**< Cookie cannot be used for non-HTTP transfers */
+   AZY_NET_COOKIE_SECURE = (1 << 1), /**< Cookie cannot be used for "insecure" transfers */
+   AZY_NET_COOKIE_PERSISTENT = (1 << 2), /**< Cookie persists after current session ends */
+   AZY_NET_COOKIE_HOSTONLY = (1 << 3) /**< Cookie can only be used with exact domain matches */
 } Azy_Net_Cookie_Flags;
 
 /**
@@ -327,18 +328,18 @@ typedef void     * (*Azy_Content_Cb)(Azy_Value *, void **);
  */
 typedef Azy_Value *(*Azy_Content_Retval_Cb)(void *);
 /**
- * @typedef Azy_Client_Return_Cb
+ * @typedef Azy_Client_Transfer_Complete_Cb
  * Function must return AZY_ERROR_NONE (0) on success, else
  * an error number. @p  ret_content must NOT be freed.
  */
-typedef Eina_Error (*Azy_Client_Return_Cb)(Azy_Client *cli, Azy_Content *ret_content, void *ret);
+typedef Eina_Error (*Azy_Client_Transfer_Complete_Cb)(Azy_Client *cli, Azy_Content *ret_content, void *ret);
 
 /**
  * @typedef Azy_Server_Module_Def_Cb
  * Function which creates an #Azy_Server_Module_Def, used in azy_server_module_def_load().
  */
 typedef Azy_Server_Module_Def *(*Azy_Server_Module_Def_Cb)(void);
-#define AZY_ERROR_NONE 0 /**< More explicit define for #Azy_Client_Return_Cb functions. */
+#define AZY_ERROR_NONE 0 /**< More explicit define for #Azy_Client_Transfer_Complete_Cb functions. */
 /** }@ */
 #ifdef __cplusplus
 extern "C" {
@@ -350,11 +351,13 @@ EAPI int                       azy_shutdown(void);
 EAPI void                      azy_rpc_log_enable(void);
 
 /* utils */
-EAPI char                     *azy_base64_encode(const char *string, double len);
-EAPI char                     *azy_base64_decode(const char *string, size_t len);
-EAPI unsigned char            *azy_memstr(const unsigned char *big, const unsigned char *small, size_t big_len, size_t small_len);
-EAPI const char               *azy_uuid_new(void);
-EAPI Azy_Net_Transport         azy_transport_get(const char *content_type);
+EAPI char *azy_util_base64_encode(const unsigned char *string, size_t len, size_t *size);
+EAPI unsigned char *azy_util_base64_decode(const char *string, size_t len, size_t *size);
+EAPI unsigned char            *azy_util_memstr(const unsigned char *big, const unsigned char *small, size_t big_len, size_t small_len);
+EAPI const char               *azy_util_uuid_new(void);
+EAPI Azy_Net_Transport         azy_util_transport_get(const char *content_type);
+EAPI Eina_Bool azy_util_ip_is_valid(const char *ip);
+EAPI Eina_Bool azy_util_domain_match(const char *domain, const char *match);
 
 /* server */
 EAPI void                      azy_server_stop(Azy_Server *server);
@@ -404,8 +407,6 @@ EAPI int                       azy_server_module_def_size_get(Azy_Server_Module_
 EAPI Eina_Bool                 azy_server_module_size_set(Azy_Server_Module_Def *def, int size);
 EAPI double                    azy_server_module_version_get(Azy_Server_Module *m);
 EAPI void                      azy_server_module_def_version_set(Azy_Server_Module_Def *def, double version);
-EAPI Eina_Bool                 azy_server_module_session_set(Azy_Server_Module *module, const char *sessid);
-EAPI const char               *azy_server_module_session_get(Azy_Server_Module *module);
 EAPI Eina_Bool                 azy_server_module_upgrade(Azy_Server_Module *module);
 
 /* net */
@@ -426,7 +427,7 @@ EAPI const char               *azy_net_ip_get(Azy_Net *net);
 EAPI Azy_Net_Type              azy_net_type_get(Azy_Net *net);
 EAPI int                       azy_net_message_length_get(Azy_Net *net);
 EAPI void                      azy_net_header_set(Azy_Net *net, const char *name, const char *value);
-EAPI void                      azy_net_header_reset(Azy_Net *net);
+EAPI void                      azy_net_headers_reset(Azy_Net *net);
 EAPI void                      azy_net_type_set(Azy_Net *net, Azy_Net_Type type);
 EAPI void                      azy_net_transport_set(Azy_Net *net, Azy_Net_Transport transport);
 EAPI Azy_Net_Transport         azy_net_transport_get(Azy_Net *net);
@@ -436,17 +437,23 @@ EAPI const char               *azy_net_http_msg_get(int code);
 EAPI Azy_Net_Transfer_Encoding azy_net_transfer_encoding_get(const Azy_Net *net);
 
 /* cookie */
-EAPI Azy_Net_Cookie           *azy_net_cookie_parse(char *txt);
+EAPI Azy_Net_Cookie           *azy_net_cookie_parse(const Azy_Net *net, char *txt);
 EAPI time_t                    azy_net_cookie_expires(const Azy_Net_Cookie *ck);
 EAPI Azy_Net_Cookie_Flags      azy_net_cookie_flags_get(const Azy_Net_Cookie *ck);
 EAPI Eina_Stringshare         *azy_net_cookie_path_get(const Azy_Net_Cookie *ck);
 EAPI Eina_Stringshare         *azy_net_cookie_domain_get(const Azy_Net_Cookie *ck);
-EAPI void                      azy_net_cookie_insert(Azy_Net *net, Azy_Net_Cookie *ck);
-EAPI void                      azy_net_cookie_list_clear(Azy_Net *net);
-EAPI const Eina_List          *azy_net_cookie_list_get(const Azy_Net *net);
-EAPI Eina_List                *azy_net_cookie_list_steal(Azy_Net *net);
+EAPI void                      azy_net_cookie_append(Azy_Net *net, Azy_Net_Cookie *ck, Eina_Bool send);
+EAPI void azy_net_cookie_set_list_clear(Azy_Net *net);
+EAPI void azy_net_cookie_send_list_clear(Azy_Net *net);
+EAPI const Eina_List *azy_net_cookie_send_list_get(const Azy_Net *net);
+EAPI const Eina_List *azy_net_cookie_set_list_get(const Azy_Net *net);
+EAPI Eina_List *azy_net_cookie_send_list_steal(Azy_Net *net);
+EAPI Eina_List *azy_net_cookie_set_list_steal(Azy_Net *net);
+EAPI void azy_net_cookie_send_list_apply(Azy_Net *net, const Eina_List *cookies);
 EAPI void                      azy_net_cookie_free(Azy_Net_Cookie *ck);
 EAPI Azy_Net_Cookie           *azy_net_cookie_new(void);
+EAPI void azy_net_cookie_set_list_generate(Eina_Strbuf *buf, const Eina_List *cookies);
+EAPI void azy_net_cookie_send_list_generate(Eina_Strbuf *buf, const Eina_List *cookies);
 
 /* values */
 EAPI Azy_Value                *azy_value_ref(Azy_Value *val);
@@ -514,7 +521,7 @@ EAPI Eina_Bool                 azy_content_deserialize_response(Azy_Content *con
 EAPI void                     *azy_client_data_get(Azy_Client *client);
 EAPI void                      azy_client_data_set(Azy_Client *client, const void *data);
 EAPI Azy_Client               *azy_client_new(void);
-EAPI Eina_Bool                 azy_client_callback_set(Azy_Client *client, Azy_Client_Call_Id id, Azy_Client_Return_Cb callback);
+EAPI Eina_Bool                 azy_client_callback_set(Azy_Client *client, Azy_Client_Call_Id id, Azy_Client_Transfer_Complete_Cb callback);
 EAPI Eina_Bool                 azy_client_callback_free_set(Azy_Client *client, Azy_Client_Call_Id id, Eina_Free_Cb callback);
 EAPI void                      azy_client_free(Azy_Client *client);
 EAPI Eina_Bool                 azy_client_port_set(Azy_Client *client, int port);
@@ -525,9 +532,10 @@ EAPI void                      azy_client_net_set(Azy_Client *client, Azy_Net *n
 EAPI const char               *azy_client_addr_get(Azy_Client *client);
 EAPI Eina_Bool                 azy_client_addr_set(Azy_Client *client, const char *addr);
 EAPI int                       azy_client_port_get(Azy_Client *client);
+EAPI Azy_Client *azy_client_util_connect(const char *host);
 EAPI Eina_Bool                 azy_client_connect(Azy_Client *client, Eina_Bool secure);
 EAPI void                      azy_client_close(Azy_Client *client);
-EAPI Eina_Bool                 azy_client_call_checker(Azy_Client *cli, Azy_Content *err_content, Azy_Client_Call_Id ret, Azy_Client_Return_Cb cb, const char *func);
+EAPI Eina_Bool                 azy_client_call_checker(Azy_Client *cli, Azy_Content *err_content, Azy_Client_Call_Id ret, Azy_Client_Transfer_Complete_Cb cb, const char *func);
 EAPI Azy_Client_Call_Id        azy_client_call(Azy_Client *client, Azy_Content *content, Azy_Net_Transport transport, Azy_Content_Cb cb);
 EAPI Azy_Client_Call_Id        azy_client_blank(Azy_Client *client, Azy_Net_Type type, Azy_Net_Data *netdata, Azy_Content_Cb cb, void *data);
 EAPI Eina_Bool                 azy_client_redirect(Azy_Client *cli);

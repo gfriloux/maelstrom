@@ -16,7 +16,6 @@
  */
 
 #include "azy_private.h"
-#include <ctype.h>
 
 static Azy_Client_Call_Id azy_client_send_id__ = 0;
 
@@ -52,7 +51,7 @@ azy_client_new(void)
    client->del = ecore_event_handler_add(ECORE_CON_EVENT_SERVER_DEL, (Ecore_Event_Handler_Cb)_azy_client_handler_del, client);
    client->upgrade = ecore_event_handler_add(ECORE_CON_EVENT_SERVER_UPGRADE,
                                              (Ecore_Event_Handler_Cb)_azy_client_handler_upgrade, client);
-
+   client->refcount = 1;
    AZY_MAGIC_SET(client, AZY_MAGIC_CLIENT);
    return client;
 }
@@ -105,7 +104,7 @@ azy_client_data_set(Azy_Client *client,
  * connect to.  The address can be either an ip string (ipv6 supported)
  * or a web address.
  * @param client The client object (NOT NULL)
- * @param addr The server's address (NOT NULL)
+ * @param addr The canonicalized host name string (NOT NULL, NOT including http(s)://)
  * @param port The port on the server (-1 < port < 65536)
  * @return #EINA_TRUE on success, else #EINA_FALSE
  */
@@ -123,13 +122,7 @@ azy_client_host_set(Azy_Client *client,
    if ((!addr) || (port < 0) || (port > 65536))
      return EINA_FALSE;
 
-   if (client->addr)
-     eina_stringshare_del(client->addr);
-   if (!strncmp(addr, "http://", 7))
-     addr += 7;
-   else if (!strncmp(addr, "https://", 8))
-     addr += 8;
-   client->addr = eina_stringshare_add(addr);
+   eina_stringshare_replace(&client->addr, addr);
    client->port = port;
 
    return EINA_TRUE;
@@ -163,8 +156,8 @@ azy_client_addr_get(Azy_Client *client)
  * This function sets the address string of the server that @p client
  * connects to.
  * @param client The client object (NOT NULL)
- * @param addr The address string (NOT NULL)
- * @return The address string
+ * @param addr The canonicalized host name string (NOT NULL, NOT including http(s)://)
+ * @return EINA_TRUE on success, EINA_FALSE on failure
  */
 Eina_Bool
 azy_client_addr_set(Azy_Client *client,
@@ -177,11 +170,7 @@ azy_client_addr_set(Azy_Client *client,
         return EINA_FALSE;
      }
    EINA_SAFETY_ON_NULL_RETURN_VAL(addr, EINA_FALSE);
-   if (!strncmp(addr, "http://", 7))
-     addr += 7;
-   else if (!strncmp(addr, "https://", 8))
-     addr += 8;
-   client->addr = eina_stringshare_add(addr);
+   eina_stringshare_replace(&client->addr, addr);
    return EINA_TRUE;
 }
 
@@ -292,8 +281,71 @@ azy_client_connect(Azy_Client *client,
 
    client->net = azy_net_new(svr);
    azy_net_header_set(client->net, "host", client->addr);
+   client->net->http.req.host = eina_stringshare_ref(client->addr);
 
    return EINA_TRUE;
+}
+
+/**
+ * @brief Create, set the host for, and connect a new #Azy_Client
+ *
+ * This function parses a protocol schema + hostname and then performs a connection,
+ * simplifying the setup of a new connection.
+ * @param host The hostname and schema with which to connect, eg. http://www.google.com
+ * @return A currenctly-connecting #Azy_Client, @c NULL on failure
+ * @note If the protocol schema is missing, standard HTTP will be used
+ */
+Azy_Client *
+azy_client_util_connect(const char *host)
+{
+   Azy_Client *client;
+   Eina_Bool secure = EINA_FALSE;
+   const char *domain, *portstr, *path = NULL;
+   int port = 80;
+
+   EINA_SAFETY_ON_NULL_RETURN_VAL(host, NULL);
+   if (!strncmp(host, "http", 4))
+     {
+        domain = host + 4;
+        if (domain[0] == 's')
+          {
+             domain++;
+             secure = EINA_TRUE;
+          }
+        if (strncmp(domain, "://", 3)) return NULL;
+        domain += 3;
+     }
+   else
+     domain = host;
+   portstr = strchr(domain, ':');
+   if (portstr)
+     {
+        if (!isdigit(portstr[1])) return NULL;
+        port = strtol(portstr, (char**)&path, 10);
+        if ((port < 0) || (port > 65535)) return NULL;
+        if (path && (path[0] != '/')) return NULL;
+     }
+   else
+     {
+        path = strchr(domain, '/');
+        if (secure) port = 443;
+     }
+   client = azy_client_new();
+   EINA_SAFETY_ON_NULL_RETURN_VAL(client, NULL);
+   client->port = port;
+   if (portstr)
+     client->addr = eina_stringshare_add_length(domain, portstr - domain);
+   else if (path)
+     client->addr = eina_stringshare_add_length(domain, path - domain);
+   else
+     client->addr = eina_stringshare_add(domain);
+   if (azy_client_connect(client, secure))
+     {
+        if (path) client->net->http.req.http_path = eina_stringshare_add(path);
+        return client;
+     }
+   azy_client_free(client);
+   return NULL;
 }
 
 /**
@@ -381,7 +433,7 @@ azy_client_close(Azy_Client *client)
 Eina_Bool
 azy_client_callback_set(Azy_Client *client,
                         Azy_Client_Call_Id id,
-                        Azy_Client_Return_Cb callback)
+                        Azy_Client_Transfer_Complete_Cb callback)
 {
    DBG("(client=%p, id=%u)", client, id);
 
@@ -481,7 +533,7 @@ azy_client_call(Azy_Client *client,
         azy_net_uri_set(client->net, "/");
      }
 
-   azy_net_message_length_set(client->net, content->length);
+   azy_net_message_length_set(client->net, EBUFLEN(content->buffer));
    msg = azy_net_header_create(client->net);
    EINA_SAFETY_ON_NULL_GOTO(msg, error);
 
@@ -489,8 +541,8 @@ azy_client_call(Azy_Client *client,
      {
         char buf[64];
         snprintf(buf, sizeof(buf), "\nSENDING >>>>>>>>>>>>>>>>>>>>>>>>\n%%.%zus%%.%" PRIi64 "s\n>>>>>>>>>>>>>>>>>>>>>>>>",
-                 eina_strbuf_length_get(msg), content->length);
-        RPC_DBG(buf, eina_strbuf_string_get(msg), content->buffer);
+                 eina_strbuf_length_get(msg), EBUFLEN(content->buffer));
+        RPC_DBG(buf, eina_strbuf_string_get(msg), EBUF(content->buffer));
      }
 
    EINA_SAFETY_ON_TRUE_GOTO(!ecore_con_server_send(client->net->conn, eina_strbuf_string_get(msg), eina_strbuf_length_get(msg)), error);
@@ -498,8 +550,8 @@ azy_client_call(Azy_Client *client,
    eina_strbuf_free(msg);
    msg = NULL;
 
-   EINA_SAFETY_ON_TRUE_GOTO(!ecore_con_server_send(client->net->conn, content->buffer, content->length), error);
-   INFO("Send [2/2] complete! %" PRIi64 " bytes queued for sending.", content->length);
+   EINA_SAFETY_ON_TRUE_GOTO(!ecore_con_server_send(client->net->conn, EBUF(content->buffer), EBUFLEN(content->buffer)), error);
+   INFO("Send [2/2] complete! %" PRIi64 " bytes queued for sending.", EBUFLEN(content->buffer));
    ecore_con_server_flush(client->net->conn);
 
    hd = calloc(1, sizeof(Azy_Client_Handler_Data));
@@ -510,7 +562,7 @@ azy_client_call(Azy_Client *client,
    hd->type = AZY_NET_TYPE_POST;
    hd->content_data = content->data;
    hd->send = eina_strbuf_new();
-   eina_strbuf_append_length(hd->send, (char *)content->buffer, content->length);
+   eina_strbuf_append_length(hd->send, (char *)EBUF(content->buffer), EBUFLEN(content->buffer));
 
    hd->id = azy_client_send_id__;
    AZY_MAGIC_SET(hd, AZY_MAGIC_CLIENT_DATA_HANDLER);
@@ -641,7 +693,7 @@ error:
  *
  * This function is used to check both the #Azy_Client_Call_Id and the #Azy_Content
  * of an azy_client_call or azy_client_put attempt, and will additionally set
- * an #Azy_Client_Return_Cb and log the calling function name upon failure.
+ * an #Azy_Client_Transfer_Complete_Cb and log the calling function name upon failure.
  * Note that this function also calls azy_content_error_reset.
  * Also note: THIS FUNCTION IS MEANT TO BE USED IN A MACRO!!!!
  * @param cli The client (NOT NULL)
@@ -655,7 +707,7 @@ Eina_Bool
 azy_client_call_checker(Azy_Client *cli,
                         Azy_Content *err_content,
                         Azy_Client_Call_Id ret,
-                        Azy_Client_Return_Cb cb,
+                        Azy_Client_Transfer_Complete_Cb cb,
                         const char *func)
 {
    DBG("(cli=%p, cb=%p, func='%s')", cli, cb, func);
@@ -750,11 +802,12 @@ azy_client_free(Azy_Client *client)
         return;
      }
 
+   if (client->refcount) client->refcount--;
+   if (client->refcount) return;
    if (client->connected)
      azy_client_close(client);
    AZY_MAGIC_SET(client, AZY_MAGIC_NONE);
    eina_stringshare_del(client->addr);
-   eina_stringshare_del(client->session_id);
    if (client->overflow)
      eina_binbuf_free(client->overflow);
    if (client->add)

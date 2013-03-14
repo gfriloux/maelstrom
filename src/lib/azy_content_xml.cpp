@@ -291,6 +291,8 @@ azy_content_serialize_request_xml(Azy_Content *content)
    xml_node node;
    Eina_List *l;
    void *val;
+   unsigned char *buf;
+   int64_t len;
 
    node = doc.append_child("methodCall");
    node.append_child("methodName").append_child(node_pcdata).set_value(content->method);
@@ -304,7 +306,8 @@ azy_content_serialize_request_xml(Azy_Content *content)
         p = node.append_child("param");
         azy_value_serialize_xml(p, static_cast<Azy_Value *>(val));
      }
-   content->buffer = (unsigned char *)azy_content_xmlnode_to_buf(doc, &content->length);
+   buf = (unsigned char *)azy_content_xmlnode_to_buf(doc, &len);
+   content->buffer = eina_binbuf_manage_new_length(buf, len);
    return EINA_TRUE;
 }
 
@@ -313,6 +316,8 @@ azy_content_serialize_response_xml(Azy_Content *content)
 {
    xml_document doc;
    xml_node node, m;
+   unsigned char *buf;
+   int64_t len;
 
    node = doc.append_child("methodResponse");
    if (content->error_set)
@@ -334,7 +339,8 @@ azy_content_serialize_response_xml(Azy_Content *content)
         azy_value_serialize_xml(node, content->retval);
      }
 
-   content->buffer = (unsigned char *)azy_content_xmlnode_to_buf(doc, &content->length);
+   buf = (unsigned char *)azy_content_xmlnode_to_buf(doc, &len);
+   content->buffer = eina_binbuf_manage_new_length(buf, len);
    return EINA_TRUE;
 }
 

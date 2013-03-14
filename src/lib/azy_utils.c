@@ -22,11 +22,12 @@
 #include "cencode.h"
 #include "cdecode.h"
 #include "azy_private.h"
+#include <ctype.h>
 
 #ifdef _WIN32
 # ifdef HAVE_RPCDCE_H
 #  include <Rpcdce.h>
-#endif
+# endif
 #endif
 
 /* length of a uuid */
@@ -40,13 +41,13 @@
  * @brief Base64 encode a string of known length
  * @param string The string to encode
  * @param len The length of the string
+ * @param size A pointer to store the size of the returned string in
  * @return Allocated base64 encoded string or NULL on error
  * This calls base64 encode functions to encode @p string, allocating
  * memory for the encoded string.
  */
 char *
-azy_base64_encode(const char *string,
-                  double len)
+azy_util_base64_encode(const unsigned char *string, size_t len, size_t *size)
 {
    base64_encodestate s;
    char *ret = NULL;
@@ -57,9 +58,16 @@ azy_base64_encode(const char *string,
    if (!(ret = malloc(sizeof(char) * ((((len + 2) - ((size_t)(len + 2) % 3)) / 3) * 4) + 4)))
      return NULL;
    base64_init_encodestate(&s);
-   retlen[0] = base64_encode_block(string, len, ret, &s);
+   retlen[0] = base64_encode_block((char*)string, len, ret, &s);
    retlen[1] = base64_encode_blockend(ret + retlen[0], &s);
    ret[retlen[0] + retlen[1]] = '\0';
+   if (ret[retlen[0] + retlen[1] - 1] == '\n')
+     {
+        ret[retlen[0] + retlen[1] - 1] = '\0';
+        if (size) *size = retlen[0] + retlen[1] - 2;
+     }
+   else if (size)
+     *size = retlen[0] + retlen[1] - 1;
 
    return ret;
 }
@@ -68,13 +76,13 @@ azy_base64_encode(const char *string,
  * @brief Base64 decode a string of known length
  * @param string The string to decode
  * @param len The length of the string
+ * @param size A pointer to store the size of the returned string in
  * @return Allocated decoded string or NULL on error
  * This calls base64 decode functions to decode @p string, allocating
  * memory for the decoded string.
  */
-char *
-azy_base64_decode(const char *string,
-                  size_t len)
+unsigned char *
+azy_util_base64_decode(const char *string, size_t len, size_t *size)
 {
    base64_decodestate s;
    unsigned char *ret = NULL;
@@ -82,13 +90,13 @@ azy_base64_decode(const char *string,
 
    if ((len < 1) || (!string)) return NULL;
 
-   if (!(ret = malloc(sizeof(char) * (size_t)((double)len / (double)(4 / 3)) + 1)))
+   if (!(ret = malloc(sizeof(char) * (size_t)((double)len / (double)(4 / 3)))))
      return NULL;
    base64_init_decodestate(&s);
-   retlen = base64_decode_block(string, len, ret, &s);
-   ret[retlen] = '\0';
+   retlen = base64_decode_block((char*)string, len, ret, &s);
+   if (size) *size = retlen;
 
-   return (char *)ret;
+   return ret;
 }
 
 /**
@@ -103,7 +111,7 @@ azy_base64_decode(const char *string,
  * data can be found as well.
  */
 unsigned char *
-azy_memstr(const unsigned char *big,
+azy_util_memstr(const unsigned char *big,
            const unsigned char *small,
            size_t big_len,
            size_t small_len)
@@ -127,7 +135,7 @@ azy_memstr(const unsigned char *big,
  * 550e8400-e29b-41d4-a716-446655440000
  */
 const char *
-azy_uuid_new(void)
+azy_util_uuid_new(void)
 {
    const char *ret = NULL;
 
@@ -172,7 +180,7 @@ azy_uuid_new(void)
  * @return The matching #Azy_Net_Transport, or AZY_NET_TRANSPORT_UNKNOWN on failure
  */
 Azy_Net_Transport
-azy_transport_get(const char *content_type)
+azy_util_transport_get(const char *content_type)
 {
    const char *c = NULL;
    DBG("(content_type='%s')", content_type);
@@ -211,6 +219,82 @@ azy_transport_get(const char *content_type)
      return AZY_NET_TRANSPORT_ATOM;
 
    return AZY_NET_TRANSPORT_UNKNOWN;
+}
+
+/**
+ * @brief Determine whether @p ip is a valid ip string
+ * @param ip The ip string
+ * @return EINA_TRUE if the string is a valid ip, else EINA_FALSE
+ */
+Eina_Bool
+azy_util_ip_is_valid(const char *ip)
+{
+   int num, dot;
+
+   if ((!ip) || (!ip[0])) return EINA_FALSE;
+   for (dot = 0, num = 0; (dot < 4) && ip && *ip; ip++)
+     {
+        if (ip[0] == '.')
+          {
+             if (!num) return EINA_FALSE;
+             dot++;
+             num = 0;
+          }
+        else if (isdigit(ip[0]))
+          {
+             num++;
+             if (num > 3) return EINA_FALSE;
+             if (num == 3)
+               {
+                  char a, b;
+
+                  a = ip[-2];
+                  b = ip[-1];
+                  if (a == '2')
+                    {
+                       if (b > '5') return EINA_FALSE;
+                       if (b == '5')
+                         if (ip[0] > '5') return EINA_FALSE;
+                    }
+               }
+          }
+        else return EINA_FALSE;
+     }
+
+   if (dot != 3) return EINA_FALSE;
+
+   return EINA_TRUE;
+}
+
+/**
+ * @brief Determine whether a string domain-matches a domain-name according to
+ * RFC6265 (http://tools.ietf.org/html/rfc6265)
+ * @param domain The canonicalized domain-name to match against
+ * @param match The canonicalized domain-name to match
+ * @return EINA_TRUE if @p match domain-matches @p domain, else EINA_FALSE
+ */
+Eina_Bool
+azy_util_domain_match(const char *domain, const char *match)
+{
+   size_t len;
+
+   EINA_SAFETY_ON_NULL_RETURN_VAL(domain, EINA_FALSE);
+   EINA_SAFETY_ON_NULL_RETURN_VAL(match, EINA_FALSE);
+   if (azy_util_ip_is_valid(match)) return EINA_FALSE;
+   if (domain == match) return EINA_TRUE;
+   if (domain[0] == match[0])
+     {
+        len = strspn(domain, match);
+        if (domain[len]) return EINA_FALSE;
+        if (!match[len]) return EINA_TRUE;
+        if (match[len] == '.')
+          {
+             if (match[len + 1]) return EINA_FALSE;
+             return EINA_TRUE;
+          }
+        return EINA_FALSE;
+     }
+   return eina_str_has_suffix(domain, match);
 }
 
 /** @} */

@@ -11,13 +11,55 @@
 
 static Eina_Binbuf *buf = NULL;
 
-static Eina_Bool
-ret_(Azy_Client *cli __UNUSED__, int type __UNUSED__, Azy_Content *content)
+static Eina_Error
+ret_cb(Azy_Client *cli, Azy_Content *content, Eina_Binbuf *data)
 {
+   Eina_Strbuf *buf;
+
    if (azy_content_error_is_set(content))
      printf("Error encountered: %s\n", azy_content_error_message_get(content));
    else
-     printf("Success!\n");
+     {
+        const Eina_List *cookies;
+
+        printf("Success!\n");
+        buf = eina_strbuf_new();
+        cookies = azy_net_cookie_set_list_get(azy_content_net_get(content));
+        if (cookies)
+          azy_net_cookie_set_list_generate(buf, cookies);
+        cookies = azy_net_cookie_send_list_get(azy_content_net_get(content));
+        if (cookies)
+          azy_net_cookie_send_list_generate(buf, cookies);
+        printf("%s\n", eina_strbuf_string_get(buf));
+        eina_strbuf_free(buf);
+     }
+   if (!azy_client_current(cli)) azy_client_close(cli);
+   return AZY_ERROR_NONE;
+}
+
+static Eina_Bool
+ret_(Azy_Client *cli __UNUSED__, int type __UNUSED__, Azy_Content *content)
+{
+   Eina_Strbuf *buf;
+
+   if (azy_content_error_is_set(content))
+     printf("Error encountered: %s\n", azy_content_error_message_get(content));
+   else
+     {
+        const Eina_List *cookies;
+
+        printf("Success!\n");
+        buf = eina_strbuf_new();
+        cookies = azy_net_cookie_set_list_get(azy_content_net_get(content));
+        if (cookies)
+          azy_net_cookie_set_list_generate(buf, cookies);
+        cookies = azy_net_cookie_send_list_get(azy_content_net_get(content));
+        if (cookies)
+          azy_net_cookie_send_list_generate(buf, cookies);
+        printf("%s\n", eina_strbuf_string_get(buf));
+        eina_strbuf_free(buf);
+     }
+   if (!azy_client_current(cli)) azy_client_close(cli);
    return ECORE_CALLBACK_RENEW;
 }
 
@@ -67,6 +109,7 @@ int
 main(void)
 {
    Azy_Client *cli;
+   Azy_Client_Call_Id id;
 
    eina_init();
    ecore_init();
@@ -76,23 +119,25 @@ main(void)
    eina_log_domain_level_set("azy_rpc", EINA_LOG_LEVEL_DBG);
    eina_log_domain_level_set("ecore_con", EINA_LOG_LEVEL_DBG);
 
-   cli = azy_client_new();
+   cli = azy_client_util_connect("http://enlightenment.org/p/index/d/logo.png");
 
    EINA_SAFETY_ON_NULL_RETURN_VAL(cli, 1);
-   //EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "http://cyber.law.harvard.edu", 80), 1);
-   //EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "https://github.com", 443), 1);
-   //EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "http://git.enlightenment.org", 80), 1);
-   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "http://www.google.co.uk", 80), 1);
+   //EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "cyber.law.harvard.edu", 80), 1);
+   //EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "github.com", 443), 1);
+   //EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "git.enlightenment.org", 80), 1);
+   //EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "www.google.co.uk", 80), 1);
 
-   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_connect(cli, EINA_FALSE), 1);
+   //EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_connect(cli, EINA_FALSE), 1);
 
    //azy_net_uri_set(azy_client_net_get(cli), "/rss/examples/rss2sample.xml");
    //azy_net_uri_set(azy_client_net_get(cli), "/zmike/shotgun/commits/master.atom");
    //azy_net_uri_set(azy_client_net_get(cli), "/core/efl.git/atom/?h=master");
-   azy_net_uri_set(azy_client_net_get(cli), "/");
-   azy_net_protocol_set(azy_client_net_get(cli), AZY_NET_PROTOCOL_HTTP_1_1);
-
-   ecore_event_handler_add(AZY_CLIENT_CONNECTED, (Ecore_Event_Handler_Cb)connected, NULL);
+   //azy_net_uri_set(azy_client_net_get(cli), "/");
+   //azy_net_protocol_set(azy_client_net_get(cli), AZY_NET_PROTOCOL_HTTP_1_1);
+        id = azy_client_blank(cli, AZY_NET_TYPE_GET, NULL, NULL, NULL);
+        EINA_SAFETY_ON_TRUE_RETURN_VAL(!id, ECORE_CALLBACK_RENEW);
+        azy_client_callback_set(cli, id, (Azy_Client_Transfer_Complete_Cb)ret_cb);
+   //ecore_event_handler_add(AZY_CLIENT_CONNECTED, (Ecore_Event_Handler_Cb)connected, NULL);
    ecore_event_handler_add(AZY_CLIENT_TRANSFER_COMPLETE, (Ecore_Event_Handler_Cb)ret_, NULL);
    ecore_event_handler_add(AZY_CLIENT_DISCONNECTED, (Ecore_Event_Handler_Cb)disconnected, NULL);
    ecore_event_handler_add(AZY_EVENT_TRANSFER_PROGRESS, (Ecore_Event_Handler_Cb)download_status, NULL);

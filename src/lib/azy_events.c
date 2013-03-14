@@ -16,7 +16,6 @@
  */
 
 #include "azy_private.h"
-#include <ctype.h>
 #include <errno.h>
 
 #define MAX_HEADER_SIZE 8 * 1024
@@ -457,8 +456,9 @@ _azy_events_header_add(Azy_Net *net, char *key, char *value)
      {
         Azy_Net_Cookie *ck;
 
-        ck = azy_net_cookie_parse(value);
-        if (ck) azy_net_cookie_insert(net, ck);
+        ck = azy_net_cookie_parse(net, value);
+        if (!ck) return;
+        azy_net_cookie_append(net, ck, 0);
      }
    else
      azy_net_header_set(net, key, value);
@@ -470,7 +470,7 @@ _azy_events_chunk_size_parser(Azy_Net *net, const unsigned char *start, int64_t 
    unsigned char *r;
 
    if (!(*len)) return NULL;
-   r = azy_memstr(start, (unsigned char *)ESBUF(net->separator), *len, ESBUFLEN(net->separator));
+   r = azy_util_memstr(start, (unsigned char *)ESBUF(net->separator), *len, ESBUFLEN(net->separator));
    if (!r) return NULL;
    net->progress = 0;
    /* chunk size is hex */
@@ -515,7 +515,7 @@ _azy_events_headers_parser_line_unwrapper(Azy_Net *net, unsigned char *start, in
           ptr[-x] = ' ';
 
         /* look for next line to check */
-        r = azy_memstr(ptr, (const unsigned char *)s, len - line_len - slen, slen);
+        r = azy_util_memstr(ptr, (const unsigned char *)s, len - line_len - slen, slen);
      }
    return 0;
 }
@@ -578,7 +578,7 @@ skip_header:
                }
              break;
           }
-        r = azy_memstr(p, (const unsigned char *)s, len, slen);
+        r = azy_util_memstr(p, (const unsigned char *)s, len, slen);
         if (!r) break;
         line_len = r - p;
      }
@@ -602,7 +602,7 @@ _azy_events_chunk_parse(Azy_Net *net, unsigned char *start, int64_t len)
              if ((size_t)len > ESBUFLEN(net->separator))
                {
                   p += ESBUFLEN(net->separator), len -= ESBUFLEN(net->separator);
-                  r = azy_memstr(p, (unsigned char *)ESBUF(net->separator), len, ESBUFLEN(net->separator));
+                  r = azy_util_memstr(p, (unsigned char *)ESBUF(net->separator), len, ESBUFLEN(net->separator));
                   if (r)
                     r = _azy_events_headers_parser(net, p, &len, r - p);
 
@@ -731,7 +731,7 @@ azy_events_header_parse(Azy_Net *net,
    EINA_SAFETY_ON_NULL_RETURN_VAL(start, EINA_FALSE);
    /* find a header or append to buffer */
    if (net->separator)
-     r = azy_memstr(start, (unsigned char *)ESBUF(net->separator), len, ESBUFLEN(net->separator));
+     r = azy_util_memstr(start, (unsigned char *)ESBUF(net->separator), len, ESBUFLEN(net->separator));
    else
      {
         r = memchr(start, '\r', len);
@@ -850,6 +850,14 @@ azy_events_length_overflows(int64_t current, int64_t max)
    return current > max;
 }
 
+static void
+_azy_events_transfer_progress_event_free(void *d EINA_UNUSED, Azy_Event_Transfer_Progress *dse)
+{
+   azy_client_free(dse->client);
+   azy_net_free(dse->net);
+   free(dse);
+}
+
 inline void
 azy_events_transfer_progress_event(const Azy_Client_Handler_Data *hd, size_t size)
 {
@@ -860,8 +868,10 @@ azy_events_transfer_progress_event(const Azy_Client_Handler_Data *hd, size_t siz
    dse->id = hd->id;
    dse->size = size;
    dse->client = hd->client;
+   dse->client->refcount++;
    dse->net = hd->recv;
-   ecore_event_add(AZY_EVENT_TRANSFER_PROGRESS, dse, NULL, NULL);
+   dse->net->refcount++;
+   ecore_event_add(AZY_EVENT_TRANSFER_PROGRESS, dse, (Ecore_End_Cb)_azy_events_transfer_progress_event_free, NULL);
 }
 
 Eina_Binbuf *
@@ -897,11 +907,9 @@ azy_events_overflow_add(Azy_Net *net, const unsigned char *data, size_t len)
 }
 
 void
-_azy_event_handler_fake_free(void *data  __UNUSED__,
-                             void *data2 __UNUSED__)
-{}
+_azy_event_handler_fake_free(Eina_Free_Cb cb, void *data)
+{
+   if (cb) cb(data);
+}
 
-void
-azy_fake_free(void *data __UNUSED__)
-{}
 

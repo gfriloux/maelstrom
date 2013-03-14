@@ -16,7 +16,6 @@
  */
 
 #include "azy_private.h"
-#include <ctype.h>
 #include <math.h>
 
 typedef enum
@@ -339,9 +338,10 @@ _azy_net_cookie_hash_add(Azy_Net_Cookie *ck)
      {
         _azy_net_cookie_update(ck, ck2);
         _azy_net_cookie_free(ck);
+        ck2->last_used = lround(ecore_time_unix_get());
         return ck2;
      }
-   ck->created = lround(ecore_time_unix_get());
+   ck->last_used = ck->created = lround(ecore_time_unix_get());
    eina_hash_add(_azy_cookies, buf, ck);
    ck->in_hash = 1;
    return ck;
@@ -398,7 +398,62 @@ azy_net_cookie_free(Azy_Net_Cookie *ck)
 }
 
 void
-azy_net_cookie_insert(Azy_Net *net, Azy_Net_Cookie *ck)
+azy_net_cookie_send_list_generate(Eina_Strbuf *buf, const Eina_List *cookies)
+{
+   const Eina_List *l;
+   Azy_Net_Cookie *ck;
+
+   EINA_SAFETY_ON_NULL_RETURN(buf);
+   EINA_SAFETY_ON_NULL_RETURN(cookies);
+   eina_strbuf_append(buf, "Cookie: ");
+   EINA_LIST_FOREACH(cookies, l, ck)
+     {
+        ck->last_used = lround(ecore_time_unix_get());
+        eina_strbuf_append_printf(buf, "%s=%s%s", ck->name, ck->value ?: "", l->next ? ";" : "");
+     }
+   eina_strbuf_append(buf, "\r\n");
+}
+
+void
+azy_net_cookie_set_list_generate(Eina_Strbuf *buf, const Eina_List *cookies)
+{
+   const Eina_List *l;
+   Azy_Net_Cookie *ck;
+
+   EINA_SAFETY_ON_NULL_RETURN(buf);
+   EINA_SAFETY_ON_NULL_RETURN(cookies);
+   EINA_LIST_FOREACH(cookies, l, ck)
+     {
+        eina_strbuf_append(buf, "Set-Cookie: ");
+        eina_strbuf_append_printf(buf, "%s=%s", ck->name, ck->value ?: "");
+        if (ck->expires)
+          {
+             if (ck->max_age)
+               eina_strbuf_append_printf(buf, "; max-age=%ld", ck->expires - lround(ecore_time_unix_get()));
+             else
+               {
+                  char b[128];
+                  struct tm *tm;
+
+                  tm = localtime(&ck->expires);
+                  strftime(b, sizeof(b), "%a, %d-%b-%Y %H:%M:%S", tm);
+                  eina_strbuf_append_printf(buf, "; expires=%s", b);
+               }
+          }
+        if (ck->domain)
+          eina_strbuf_append_printf(buf, "; domain=%s", ck->domain);
+        if (ck->path)
+          eina_strbuf_append_printf(buf, "; path=%s", ck->path);
+        if (ck->flags & AZY_NET_COOKIE_HTTPONLY)
+          eina_strbuf_append(buf, "; HttpOnly");
+        if (ck->flags & AZY_NET_COOKIE_SECURE)
+          eina_strbuf_append(buf, "; Secure");
+        eina_strbuf_append(buf, "\r\n");
+     }
+}
+
+void
+azy_net_cookie_append(Azy_Net *net, Azy_Net_Cookie *ck, Eina_Bool send)
 {
    DBG("(net=%p,ck=%p)", net, ck);
    if (!AZY_MAGIC_CHECK(ck, AZY_MAGIC_NET_COOKIE))
@@ -412,11 +467,39 @@ azy_net_cookie_insert(Azy_Net *net, Azy_Net_Cookie *ck)
         return;
      }
    ck->refcount++;
-   net->http.cookies = eina_list_sorted_insert(net->http.cookies, (Eina_Compare_Cb)_azy_net_cookie_sort_cb, ck);
+   if (send)
+     net->http.send_cookies = eina_list_append(net->http.send_cookies, ck);
+   else
+     net->http.set_cookies = eina_list_append(net->http.set_cookies, ck);
 }
 
 void
-azy_net_cookie_list_clear(Azy_Net *net)
+azy_net_cookie_send_list_apply(Azy_Net *net, const Eina_List *cookies)
+{
+   const Eina_List *l;
+   Azy_Net_Cookie *ck;
+
+   if (!AZY_MAGIC_CHECK(net, AZY_MAGIC_NET))
+     {
+        AZY_MAGIC_FAIL(net, AZY_MAGIC_NET);
+        return;
+     }
+   EINA_SAFETY_ON_NULL_RETURN(cookies);
+   EINA_LIST_FOREACH(cookies, l, ck)
+     {
+        if (ck->flags & AZY_NET_COOKIE_HOSTONLY)
+          {
+             if (ck->domain != net->http.req.host) continue;
+          }
+        else
+          if (!azy_util_domain_match(net->http.req.host, ck->domain)) continue;
+        ck->refcount++;
+        net->http.send_cookies = eina_list_sorted_insert(net->http.send_cookies, (Eina_Compare_Cb)_azy_net_cookie_sort_cb, ck);
+     }
+}
+
+void
+azy_net_cookie_set_list_clear(Azy_Net *net)
 {
    Azy_Net_Cookie *ck;
 
@@ -426,12 +509,27 @@ azy_net_cookie_list_clear(Azy_Net *net)
         AZY_MAGIC_FAIL(net, AZY_MAGIC_NET);
         return;
      }
-   EINA_LIST_FREE(net->http.cookies, ck)
+   EINA_LIST_FREE(net->http.set_cookies, ck)
+     azy_net_cookie_free(ck);
+}
+
+void
+azy_net_cookie_send_list_clear(Azy_Net *net)
+{
+   Azy_Net_Cookie *ck;
+
+   DBG("(net=%p)", net);
+   if (!AZY_MAGIC_CHECK(net, AZY_MAGIC_NET))
+     {
+        AZY_MAGIC_FAIL(net, AZY_MAGIC_NET);
+        return;
+     }
+   EINA_LIST_FREE(net->http.send_cookies, ck)
      azy_net_cookie_free(ck);
 }
 
 const Eina_List *
-azy_net_cookie_list_get(const Azy_Net *net)
+azy_net_cookie_send_list_get(const Azy_Net *net)
 {
    DBG("(net=%p)", net);
    if (!AZY_MAGIC_CHECK(net, AZY_MAGIC_NET))
@@ -439,11 +537,23 @@ azy_net_cookie_list_get(const Azy_Net *net)
         AZY_MAGIC_FAIL(net, AZY_MAGIC_NET);
         return NULL;
      }
-   return net->http.cookies;
+   return net->http.send_cookies;
+}
+
+const Eina_List *
+azy_net_cookie_set_list_get(const Azy_Net *net)
+{
+   DBG("(net=%p)", net);
+   if (!AZY_MAGIC_CHECK(net, AZY_MAGIC_NET))
+     {
+        AZY_MAGIC_FAIL(net, AZY_MAGIC_NET);
+        return NULL;
+     }
+   return net->http.set_cookies;
 }
 
 Eina_List *
-azy_net_cookie_list_steal(Azy_Net *net)
+azy_net_cookie_send_list_steal(Azy_Net *net)
 {
    Eina_List *ret;
    DBG("(net=%p)", net);
@@ -452,8 +562,23 @@ azy_net_cookie_list_steal(Azy_Net *net)
         AZY_MAGIC_FAIL(net, AZY_MAGIC_NET);
         return NULL;
      }
-   ret = net->http.cookies;
-   net->http.cookies = NULL;
+   ret = net->http.send_cookies;
+   net->http.send_cookies = NULL;
+   return ret;
+}
+
+Eina_List *
+azy_net_cookie_set_list_steal(Azy_Net *net)
+{
+   Eina_List *ret;
+   DBG("(net=%p)", net);
+   if (!AZY_MAGIC_CHECK(net, AZY_MAGIC_NET))
+     {
+        AZY_MAGIC_FAIL(net, AZY_MAGIC_NET);
+        return NULL;
+     }
+   ret = net->http.set_cookies;
+   net->http.set_cookies = NULL;
    return ret;
 }
 
@@ -506,7 +631,7 @@ azy_net_cookie_expires(const Azy_Net_Cookie *ck)
 }
 
 Azy_Net_Cookie *
-azy_net_cookie_parse(char *txt)
+azy_net_cookie_parse(const Azy_Net *net, char *txt)
 {
    char *start, *p, *pp;
    Azy_Net_Cookie *ck;
@@ -659,6 +784,11 @@ azy_net_cookie_parse(char *txt)
         if (p) p[0] = ';';
      }
    if (!ck->expires) ck->expires = UINT_MAX;
+   if (net && (!ck->domain))
+     {
+        ck->domain = eina_stringshare_ref(net->http.req.host);
+        ck->flags |= AZY_NET_COOKIE_HOSTONLY;
+     }
    return _azy_net_cookie_hash_add(ck);
 error:
    azy_net_cookie_free(ck);

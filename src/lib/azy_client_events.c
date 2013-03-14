@@ -112,14 +112,15 @@ _azy_client_handler_upgrade(Azy_Client_Handler_Data *hd,
         return ECORE_CALLBACK_PASS_ON;
      }
 
-   ecore_event_add(AZY_CLIENT_UPGRADE, hd->client, _azy_event_handler_fake_free, NULL);
+   hd->client->refcount++;
+   ecore_event_add(AZY_CLIENT_UPGRADE, hd->client, (Ecore_End_Cb)_azy_event_handler_fake_free, azy_client_free);
    return ECORE_CALLBACK_RENEW;
 }
 
 static void
 _azy_client_transfer_complete(Azy_Client_Handler_Data *hd, Azy_Content *content)
 {
-   Azy_Client_Return_Cb cb;
+   Azy_Client_Transfer_Complete_Cb cb;
    Azy_Client *client;
 
    content->id = hd->id;
@@ -149,7 +150,6 @@ _azy_client_transfer_complete(Azy_Client_Handler_Data *hd, Azy_Content *content)
      }
 }
 
-/* FIXME: code dupication */
 static Eina_Bool
 _azy_client_handler_get(Azy_Client_Handler_Data *hd)
 {
@@ -158,7 +158,7 @@ _azy_client_handler_get(Azy_Client_Handler_Data *hd)
 
    DBG("(hd=%p, client=%p, net=%p)", hd, hd->client, hd->recv);
 
-   hd->recv->transport = azy_transport_get(azy_net_header_get(hd->recv, "content-type"));
+   hd->recv->transport = azy_util_transport_get(azy_net_header_get(hd->recv, "content-type"));
    content = azy_content_new(NULL);
 
    EINA_SAFETY_ON_NULL_RETURN_VAL(content, ECORE_CALLBACK_RENEW);
@@ -198,7 +198,10 @@ _azy_client_handler_get(Azy_Client_Handler_Data *hd)
           }
      }
    else
-     content->ret = hd->recv->buffer;
+     {
+        content->ret = hd->recv->buffer;
+        hd->recv->buffer = NULL;
+     }
 
 out:
    _azy_client_transfer_complete(hd, content);
@@ -223,7 +226,7 @@ _azy_client_handler_call(Azy_Client_Handler_Data *hd)
    /* handle HTTP GET request */
    if (!hd->method) return _azy_client_handler_get(hd);
    INFO("Running RPC for %s", hd->method);
-   hd->recv->transport = azy_transport_get(azy_net_header_get(hd->recv, "content-type"));
+   hd->recv->transport = azy_util_transport_get(azy_net_header_get(hd->recv, "content-type"));
    content = azy_content_new(hd->method);
 
    EINA_SAFETY_ON_NULL_RETURN_VAL(content, ECORE_CALLBACK_RENEW);
@@ -375,6 +378,7 @@ _azy_client_handler_data(Azy_Client_Handler_Data *hd,
    void *data = (ev) ? ev->data : NULL;
    int len = (ev) ? ev->size : 0;
    static unsigned int recursive;
+   Azy_Client *client;
 
    if (!AZY_MAGIC_CHECK(hd, AZY_MAGIC_CLIENT_DATA_HANDLER))
      return ECORE_CALLBACK_RENEW;
@@ -395,9 +399,11 @@ _azy_client_handler_data(Azy_Client_Handler_Data *hd,
    DBG("(hd=%p, method='%s', ev=%p, data=%p)", hd, (hd) ? hd->method : NULL, ev, (ev) ? ev->data : NULL);
    DBG("(client=%p, server->client=%p)", hd->client, (ev) ? ecore_con_server_data_get(ev->server) : NULL);
 
+   client = hd->client;
    if (!hd->recv)
      {
-        hd->recv = azy_net_new(hd->client->net->conn);
+        hd->recv = azy_net_new(client->net->conn);
+        hd->recv->http.req.host = eina_stringshare_ref(client->net->http.req.host);
         hd->recv->http.req.http_path = eina_stringshare_ref(hd->uri);
      }
 
@@ -406,38 +412,38 @@ _azy_client_handler_data(Azy_Client_Handler_Data *hd,
 
    if (!hd->recv->progress)
      {
-        hd->recv->buffer = hd->client->overflow;
-        hd->recv->progress = EBUFLEN(hd->client->overflow);
-        hd->client->overflow = NULL;
+        hd->recv->buffer = client->overflow;
+        hd->recv->progress = EBUFLEN(client->overflow);
+        client->overflow = NULL;
         if (hd->recv->buffer)
           INFO("%s: Set recv size to %" PRIi64 " from overflow", hd->method, hd->recv->progress);
 
         /* returns offset where http header line ends */
         if (!(offset = azy_events_type_parse(hd->recv, type, data, len)) && ev && (!hd->recv->http.res.http_msg))
-          return azy_events_connection_kill(hd->client->net->conn, EINA_FALSE, NULL);
-        else if ((!offset) && hd->client->overflow)
+          return azy_events_connection_kill(client->net->conn, EINA_FALSE, NULL);
+        else if ((!offset) && client->overflow)
           {
              hd->recv->buffer = NULL;
              hd->recv->progress = 0;
              INFO("%s: Overflow could not be parsed, set recv size to 0, storing overflow of %" PRIi64 "",
-                  hd->method, EBUFLEN(hd->client->overflow));
+                  hd->method, EBUFLEN(client->overflow));
              return ECORE_CALLBACK_RENEW;
           }
-        else if (hd->client->overflow)
+        else if (client->overflow)
           {
-             hd->client->overflow = NULL;
+             client->overflow = NULL;
              INFO("%s: Overflow was parsed! Removing...", hd->method);
           }
      }
    if (!hd->recv->headers_read) /* if headers aren't done being read, keep reading them */
      {
         if (!azy_events_header_parse(hd->recv, data, len, offset) && ev)
-          return azy_events_connection_kill(hd->client->net->conn, EINA_FALSE, NULL);
+          return azy_events_connection_kill(client->net->conn, EINA_FALSE, NULL);
      }
    else if (data) /* otherwise keep appending to buffer */
      {
         if (azy_events_length_overflows(hd->recv->progress + len, hd->recv->http.content_length))
-          hd->client->overflow = azy_events_overflow_add(hd->recv, data, len);
+          client->overflow = azy_events_overflow_add(hd->recv, data, len);
         else if (hd->recv->http.transfer_encoding)
           azy_events_transfer_decode(hd->recv, data, len);
         else
@@ -447,7 +453,7 @@ _azy_client_handler_data(Azy_Client_Handler_Data *hd,
           }
      }
    else if (azy_events_length_overflows(hd->recv->progress, hd->recv->http.content_length))
-     hd->client->overflow = azy_events_overflow_add(hd->recv, NULL, 0);
+     client->overflow = azy_events_overflow_add(hd->recv, NULL, 0);
 
    if ((hd->recv->http.res.http_code >= 301) && (hd->recv->http.res.http_code <= 303)) /* ughhhh redirect */
      {
@@ -457,7 +463,7 @@ _azy_client_handler_data(Azy_Client_Handler_Data *hd,
 
    if (hd->recv->overflow)
      {
-        hd->client->overflow = hd->recv->overflow;
+        client->overflow = hd->recv->overflow;
         hd->recv->overflow = NULL;
      }
 
@@ -482,32 +488,32 @@ _azy_client_handler_data(Azy_Client_Handler_Data *hd,
              ecore_timer_del(hd->recv->timer);
              hd->recv->timer = NULL;
           }
-        _azy_client_handler_call(hd);
+        _azy_client_handler_call(hd); // hd is freed here, ensure use of client ptr after
      }
 
-   if (hd->client && hd->client->overflow && (hd != eina_list_data_get(hd->client->conns)))
+   if (client && client->overflow && (hd != eina_list_data_get(client->conns)))
      {
         Azy_Client_Handler_Data *dh;
         const char *method;
         int64_t prev_len;
         unsigned int id;
 
-        dh = hd->client->conns->data;
+        dh = client->conns->data;
         if (dh->recv)
           return ECORE_CALLBACK_RENEW;
 
         id = dh->id;
         /* ref here in case recursive calls free dh to avoid segv */
         method = eina_stringshare_ref(dh->method);
-        WARN("%s:%u (%u): Calling %s recursively to try using %" PRIi64 " bytes of overflow data...", method, id, recursive, __PRETTY_FUNCTION__, EBUFLEN(hd->client->overflow));
+        WARN("%s:%u (%u): Calling %s recursively to try using %" PRIi64 " bytes of overflow data...", method, id, recursive, __PRETTY_FUNCTION__, EBUFLEN(client->overflow));
         recursive++;
-        prev_len = EBUFLEN(hd->client->overflow);
+        prev_len = EBUFLEN(client->overflow);
         _azy_client_handler_data(dh, type, NULL);
         recursive--;
-        if (!hd->client->overflow)
-          WARN("%s:%u (%u): Overflow has been successfully used (%" PRIi64 " bytes)!", method, id, recursive, prev_len - EBUFLEN(hd->client->overflow));
+        if (!client->overflow)
+          WARN("%s:%u (%u): Overflow has been successfully used (%" PRIi64 " bytes)!", method, id, recursive, prev_len - EBUFLEN(client->overflow));
         else
-          WARN("%s:%u (%u): Overflow could not be entirely used (%" PRIi64 " bytes gone), storing %" PRIi64 " bytes for next event.", method, id, recursive, prev_len - EBUFLEN(hd->client->overflow), EBUFLEN(hd->client->overflow));
+          WARN("%s:%u (%u): Overflow could not be entirely used (%" PRIi64 " bytes gone), storing %" PRIi64 " bytes for next event.", method, id, recursive, prev_len - EBUFLEN(client->overflow), EBUFLEN(client->overflow));
         eina_stringshare_del(method);
      }
 
@@ -561,7 +567,8 @@ _azy_client_handler_del(Azy_Client *client,
         hd->recv = NULL;
      }
 
-   ecore_event_add(AZY_CLIENT_DISCONNECTED, client, (Ecore_End_Cb)_azy_event_handler_fake_free, NULL);
+   client->refcount++;
+   ecore_event_add(AZY_CLIENT_DISCONNECTED, client, (Ecore_End_Cb)_azy_event_handler_fake_free, azy_client_free);
    return ECORE_CALLBACK_CANCEL;
 }
 
@@ -579,7 +586,8 @@ _azy_client_handler_add(Azy_Client *client,
 
    client->connected = EINA_TRUE;
 
-   ecore_event_add(AZY_CLIENT_CONNECTED, client, _azy_event_handler_fake_free, NULL);
+   client->refcount++;
+   ecore_event_add(AZY_CLIENT_CONNECTED, client, (Ecore_End_Cb)_azy_event_handler_fake_free, azy_client_free);
    EINA_LIST_FOREACH(client->conns, l, hd)
      {
         if (hd->redirect) /* saved call from redirect, send again */

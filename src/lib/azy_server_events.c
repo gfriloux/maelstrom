@@ -15,7 +15,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <ctype.h>
 #include "azy_private.h"
 
 EAPI int AZY_SERVER_CLIENT_ADD;
@@ -441,7 +440,8 @@ _azy_server_client_new(Azy_Server *server,
    client->upgrade = ecore_event_handler_add(ECORE_CON_EVENT_CLIENT_UPGRADE, (Ecore_Event_Handler_Cb)_azy_server_client_handler_upgrade, client);
 
    server->clients++;
-   ecore_event_add(AZY_SERVER_CLIENT_ADD, server, _azy_event_handler_fake_free, NULL);
+   server->refcount++;
+   ecore_event_add(AZY_SERVER_CLIENT_ADD, server, (Ecore_End_Cb)_azy_event_handler_fake_free, azy_server_free);
 
    /* FIXME: is there other data I want to shove into these handlers? */
    AZY_MAGIC_SET(client, AZY_MAGIC_SERVER_CLIENT);
@@ -474,8 +474,6 @@ _azy_server_client_free(Azy_Server_Client *client)
    if (client->current)
      azy_net_free(client->current);
    client->current = NULL;
-   if (client->session_id)
-     eina_stringshare_del(client->session_id);
 
    if (client->data)
      ecore_event_handler_del(client->data);
@@ -488,7 +486,8 @@ _azy_server_client_free(Azy_Server_Client *client)
      ecore_event_handler_del(client->upgrade);
 
    client->server->clients--;
-   ecore_event_add(AZY_SERVER_CLIENT_DEL, client->server, _azy_event_handler_fake_free, NULL);
+   client->server->refcount++;
+   ecore_event_add(AZY_SERVER_CLIENT_DEL, client->server, (Ecore_End_Cb)_azy_event_handler_fake_free, azy_server_free);
    free(client);
 }
 
@@ -727,19 +726,12 @@ _azy_server_client_send(Azy_Server_Client *client,
         net->http.res.http_code = 200;
         net->http.res.http_msg = azy_net_http_msg_get(200);
      }
-   if (client->session_id)
-     {
-        char idstr[48];
-        snprintf(idstr, sizeof(idstr), "sessid=%s;", client->session_id);
-        azy_net_header_set(net, "Set-Cookie", NULL);
-        azy_net_header_set(net, "Set-Cookie", idstr);
-     }
 
    net->type = AZY_NET_TYPE_RESPONSE;
    if (!net->http.content_length)
      {
-        if (content && content->length)
-          azy_net_message_length_set(net, content->length);
+        if (content && EBUFLEN(content->buffer))
+          azy_net_message_length_set(net, EBUFLEN(content->buffer));
         else if (data && data->size)
           azy_net_message_length_set(net, data->size);
      }
@@ -757,8 +749,8 @@ _azy_server_client_send(Azy_Server_Client *client,
         if (content)
           {
              char buf[64];
-             snprintf(buf, sizeof(buf), "SENDING:\n<<<<<<<<<<<<<\n%%.%is%%.%" PRIi64 "s\n<<<<<<<<<<<<<", (int)eina_strbuf_length_get(header), content->length);
-             RPC_INFO(buf, eina_strbuf_string_get(header), content->buffer);
+             snprintf(buf, sizeof(buf), "SENDING:\n<<<<<<<<<<<<<\n%%.%is%%.%" PRIi64 "s\n<<<<<<<<<<<<<", (int)eina_strbuf_length_get(header), EBUFLEN(content->buffer));
+             RPC_INFO(buf, eina_strbuf_string_get(header), EBUF(content->buffer));
           }
         else
           RPC_INFO("SENDING:\n<<<<<<<<<<<<<\n%s\n<<<<<<<<<<<<<", eina_strbuf_string_get(header));
@@ -766,10 +758,10 @@ _azy_server_client_send(Azy_Server_Client *client,
 
    EINA_SAFETY_ON_TRUE_GOTO(!ecore_con_client_send(net->conn, eina_strbuf_string_get(header), eina_strbuf_length_get(header)), error);
    INFO("Send [1/2] complete! %zu bytes queued for sending.", eina_strbuf_length_get(header));
-   if (content && content->buffer && content->length)
+   if (content && EBUF(content->buffer) && EBUFLEN(content->buffer))
      {
-        EINA_SAFETY_ON_TRUE_GOTO(!ecore_con_client_send(net->conn, content->buffer, content->length), error);
-        INFO("Send [2/2] complete! %" PRIi64 " bytes queued for sending.", content->length);
+        EINA_SAFETY_ON_TRUE_GOTO(!ecore_con_client_send(net->conn, EBUF(content->buffer), EBUFLEN(content->buffer)), error);
+        INFO("Send [2/2] complete! %" PRIi64 " bytes queued for sending.", EBUFLEN(content->buffer));
      }
    ecore_con_client_flush(net->conn);
    /* http 1.0 requires that we disconnect after every request has been served */
@@ -828,9 +820,12 @@ _azy_server_client_handler_request(Azy_Server_Client *client)
    EINA_SAFETY_ON_TRUE_RETURN_VAL(client->dead, EINA_TRUE);
    if (client->suspend)
      {
+        Eina_Stringshare *host;
         INFO("Storing new call for suspended client");
         client->suspended_nets = eina_list_append(client->suspended_nets, client->net);
+        host = eina_stringshare_ref(client->net->http.req.host);
         client->net = azy_net_new(client->net->conn);
+        client->net->http.req.host = host;
         client->net->server_client = EINA_TRUE;
         return EINA_TRUE;
      }
@@ -843,6 +838,7 @@ _azy_server_client_handler_request(Azy_Server_Client *client)
         net->transport = client->net->transport;
         net->proto = client->net->proto;
         net->type = client->net->type;
+        net->http.req.host = eina_stringshare_ref(client->net->http.req.host);
         client->current = client->net;
         client->net = net;
      }
@@ -863,7 +859,7 @@ _azy_server_client_handler_request(Azy_Server_Client *client)
 
       case AZY_NET_TYPE_POST:
         if (!client->current->transport)
-          client->current->transport = azy_transport_get(azy_net_header_get(client->current, "content-type"));
+          client->current->transport = azy_util_transport_get(azy_net_header_get(client->current, "content-type"));
         switch (client->current->transport)
           {
            case AZY_NET_TRANSPORT_JSON:
@@ -1040,9 +1036,7 @@ _azy_server_client_handler_del(Azy_Server_Client *client,
 }
 
 static Eina_Bool
-_azy_server_client_handler_upgrade(Azy_Server_Client *cl,
-                                   int type                    __UNUSED__,
-                                   Ecore_Con_Event_Client_Upgrade *ev)
+_azy_server_client_handler_upgrade(Azy_Server_Client *cl, int type __UNUSED__, Ecore_Con_Event_Client_Upgrade *ev)
 {
    DBG("(cl=%p, cl->client=%p)", cl, ecore_con_server_data_get(ecore_con_client_server_get(ev->client)));
    if (cl != ecore_con_server_data_get(ecore_con_client_server_get(ev->client)))
@@ -1051,7 +1045,9 @@ _azy_server_client_handler_upgrade(Azy_Server_Client *cl,
         return ECORE_CALLBACK_PASS_ON;
      }
 
-   ecore_event_add(AZY_SERVER_CLIENT_UPGRADE, cl, _azy_event_handler_fake_free, NULL);
+   /* FIXME: ref */
+   ecore_event_add(AZY_SERVER_CLIENT_UPGRADE, cl->upgrading_module, (Ecore_End_Cb)_azy_event_handler_fake_free, NULL);
+   cl->upgrading_module = NULL;
    return ECORE_CALLBACK_RENEW;
 }
 

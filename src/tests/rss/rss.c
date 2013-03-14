@@ -79,9 +79,9 @@ main(void)
    cli = azy_client_new();
 
    EINA_SAFETY_ON_NULL_RETURN_VAL(cli, 1);
-   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "http://cyber.law.harvard.edu", 80), 1);
-//   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "http://www.enlightenment.org", 80), 1);
-//   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "http://rss.cnn.com", 80), 1);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "cyber.law.harvard.edu", 80), 1);
+//   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "www.enlightenment.org", 80), 1);
+//   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "rss.cnn.com", 80), 1);
 
    EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_connect(cli, EINA_FALSE), 1);
 
@@ -97,7 +97,7 @@ main(void)
    ecore_event_handler_add(AZY_EVENT_TRANSFER_PROGRESS, (Ecore_Event_Handler_Cb)download_status, NULL);
    ecore_main_loop_begin();
 
-   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "https://github.com", 443), 1);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "github.com", 443), 1);
    EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_connect(cli, EINA_TRUE), 1);
    azy_net_uri_set(azy_client_net_get(cli), "/zmike/shotgun/commits/master.atom");
    ecore_main_loop_begin();

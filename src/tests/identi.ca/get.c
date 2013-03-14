@@ -117,7 +117,7 @@ main(void)
 
    EINA_SAFETY_ON_NULL_RETURN_VAL(cli, 1);
 
-   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "https://identi.ca", 443), 1);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "identi.ca", 443), 1);
 
    EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_connect(cli, EINA_TRUE), 1);
 

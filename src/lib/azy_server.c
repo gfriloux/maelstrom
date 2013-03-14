@@ -63,6 +63,7 @@ azy_server_new(Eina_Bool secure)
    if (!(server->add = ecore_event_handler_add(ECORE_CON_EVENT_CLIENT_ADD, (Ecore_Event_Handler_Cb)azy_server_client_handler_add, server)))
      goto err;
    server->security.secure = !!secure;
+   server->refcount = 1;
 
    AZY_MAGIC_SET(server, AZY_MAGIC_SERVER);
    return server;
@@ -88,7 +89,8 @@ azy_server_free(Azy_Server *server)
         AZY_MAGIC_FAIL(server, AZY_MAGIC_SERVER);
         return;
      }
-
+   if (server->refcount) server->refcount--;
+   if (server->refcount) return;
    eina_hash_free(server->module_defs);
    AZY_MAGIC_SET(server, AZY_MAGIC_NONE);
    free(server);
