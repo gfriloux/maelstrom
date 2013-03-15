@@ -76,7 +76,7 @@ int azy_log_dom = -1;
 int azy_rpc_log_dom = -1;
 static int azy_init_count_ = 0;
 
-EAPI int AZY_EVENT_TRANSFER_PROGRESS = -1;
+EAPI int AZY_EVENT_CLIENT_TRANSFER_PROGRESS = -1;
 
 static void
 azy_lib_register_errors_(void)
@@ -171,13 +171,12 @@ azy_init(void)
    AZY_CLIENT_CONNECTED = ecore_event_type_new();
    AZY_CLIENT_TRANSFER_COMPLETE = ecore_event_type_new();
    AZY_CLIENT_RESULT = ecore_event_type_new();
-   AZY_CLIENT_ERROR = ecore_event_type_new();
 
    AZY_SERVER_CLIENT_ADD = ecore_event_type_new();
    AZY_SERVER_CLIENT_UPGRADE = ecore_event_type_new();
    AZY_SERVER_CLIENT_DEL = ecore_event_type_new();
 
-   AZY_EVENT_TRANSFER_PROGRESS = ecore_event_type_new();
+   AZY_EVENT_CLIENT_TRANSFER_PROGRESS = ecore_event_type_new();
 
    eina_magic_string_set(AZY_MAGIC_SERVER, "Azy_Server");
    eina_magic_string_set(AZY_MAGIC_SERVER_CLIENT, "Azy_Server_Client");

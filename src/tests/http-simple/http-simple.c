@@ -38,9 +38,10 @@ ret_cb(Azy_Client *cli, Azy_Content *content, Eina_Binbuf *data)
 }
 
 static Eina_Bool
-ret_(Azy_Client *cli __UNUSED__, int type __UNUSED__, Azy_Content *content)
+ret_(Azy_Client *cli __UNUSED__, int type __UNUSED__, Azy_Event_Client_Transfer_Complete *cse)
 {
    Eina_Strbuf *buf;
+   Azy_Content *content = cse->content;
 
    if (azy_content_error_is_set(content))
      printf("Error encountered: %s\n", azy_content_error_message_get(content));
@@ -64,7 +65,7 @@ ret_(Azy_Client *cli __UNUSED__, int type __UNUSED__, Azy_Content *content)
 }
 
 static Eina_Bool
-download_status(void *data __UNUSED__, int type __UNUSED__, Azy_Event_Transfer_Progress *ev)
+download_status(void *data __UNUSED__, int type __UNUSED__, Azy_Event_Client_Transfer_Progress *ev)
 {
    void *buffer;
    size_t len;
@@ -140,7 +141,7 @@ main(void)
    //ecore_event_handler_add(AZY_CLIENT_CONNECTED, (Ecore_Event_Handler_Cb)connected, NULL);
    ecore_event_handler_add(AZY_CLIENT_TRANSFER_COMPLETE, (Ecore_Event_Handler_Cb)ret_, NULL);
    ecore_event_handler_add(AZY_CLIENT_DISCONNECTED, (Ecore_Event_Handler_Cb)disconnected, NULL);
-   ecore_event_handler_add(AZY_EVENT_TRANSFER_PROGRESS, (Ecore_Event_Handler_Cb)download_status, NULL);
+   ecore_event_handler_add(AZY_EVENT_CLIENT_TRANSFER_PROGRESS, (Ecore_Event_Handler_Cb)download_status, NULL);
    ecore_main_loop_begin();
    azy_client_free(cli);
 

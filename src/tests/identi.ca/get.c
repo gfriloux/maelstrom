@@ -11,10 +11,11 @@
 #include "identica_Common_Azy.h"
 
 static Eina_Error
-ret_(Azy_Client *cli __UNUSED__, int type __UNUSED__, Azy_Content *content)
+ret_(Azy_Client *cli __UNUSED__, int type __UNUSED__, Azy_Event_Client_Transfer_Complete *cse)
 {
    Eina_List *l, *r;
    identica_Ident *ret;
+   Azy_Content *content = cse->content;
 
    if (azy_content_error_is_set(content))
      {
@@ -70,16 +71,16 @@ azy_value_to_Array_identica_Ident(Azy_Value *_array, Eina_List **_narray)
 }
 
 static Eina_Bool
-download_status(void *data __UNUSED__, int type __UNUSED__, Azy_Event_Transfer_Progress *ev)
+download_status(void *data __UNUSED__, int type __UNUSED__, Azy_Event_Client_Transfer_Progress *ev)
 {
    int total = -1;
 
    if (ev->net)
      total = azy_net_content_length_get(ev->net);
    if (total > 0)
-     printf("%zu bytes (%i total) transferred for id %u\n", ev->size, total, ev->id);
+     printf("%zu bytes (%i total) transferred for id %u\n", ev->current, total, ev->id);
    else
-     printf("%zu bytes transferred for id %u\n", ev->size, ev->id);
+     printf("%zu bytes transferred for id %u\n", ev->current, ev->id);
    return ECORE_CALLBACK_RENEW;
 }
 
@@ -127,7 +128,7 @@ main(void)
    ecore_event_handler_add(AZY_CLIENT_CONNECTED, (Ecore_Event_Handler_Cb)connected, NULL);
    ecore_event_handler_add(AZY_CLIENT_TRANSFER_COMPLETE, (Ecore_Event_Handler_Cb)ret_, NULL);
    ecore_event_handler_add(AZY_CLIENT_DISCONNECTED, (Ecore_Event_Handler_Cb)disconnected, NULL);
-   ecore_event_handler_add(AZY_EVENT_TRANSFER_PROGRESS, (Ecore_Event_Handler_Cb)download_status, NULL);
+   ecore_event_handler_add(AZY_EVENT_CLIENT_TRANSFER_PROGRESS, (Ecore_Event_Handler_Cb)download_status, NULL);
 
    ecore_main_loop_begin();
 

@@ -52,19 +52,16 @@ EAPI extern int AZY_CLIENT_DISCONNECTED; /**< Event emitted upon client disconne
 EAPI extern int AZY_CLIENT_CONNECTED; /**< Event emitted upon client connecting, sends #Azy_Client object */
 EAPI extern int AZY_CLIENT_UPGRADE; /**< Event emitted upon client successfully upgrading to TLS, sends #Azy_Client object */
 EAPI extern int AZY_CLIENT_TRANSFER_COMPLETE; /**< Event emitted upon client method returning if
-                                                 no callback was set, sends #Azy_Content */
+                                                 no callback was set, sends #Azy_Event_Client_Transfer_Complete */
 EAPI extern int AZY_CLIENT_RESULT; /**< Event emitted upon client method returning if
                                       a callback for the method has been set, sends #Eina_Error */
-EAPI extern int AZY_CLIENT_ERROR; /**< Event emitted upon client method encountering
-                                     an error, sends #Azy_Content containing error */
-
 EAPI extern int AZY_SERVER_CLIENT_ADD; /**< Event emitted upon client connecting to server,
                                           sends #Azy_Server object */
 EAPI extern int AZY_SERVER_CLIENT_UPGRADE; /**< Event emitted upon client successfully upgrading to TLS, sends #Azy_Server_Module object */
 EAPI extern int AZY_SERVER_CLIENT_DEL; /**< Event emitted upon client disconnecting from server,
                                           sends #Azy_Server object */
 
-EAPI extern int AZY_EVENT_TRANSFER_PROGRESS; /**< Event emitted when a GET request makes progress, sends #Azy_Event_Transfer_Progress */
+EAPI extern int AZY_EVENT_CLIENT_TRANSFER_PROGRESS; /**< Event emitted when a GET request makes progress, sends #Azy_Event_Client_Transfer_Progress */
 /**@}*/
 /**
  * @defgroup Azy_Typedefs Azy types
@@ -165,17 +162,28 @@ typedef struct Azy_Content Azy_Content;
 typedef unsigned int       Azy_Client_Call_Id;
 
 /**
- * @typedef Azy_Event_Transfer_Progress
- * The event object for AZY_EVENT_TRANSFER_PROGRESS
+ * @typedef Azy_Event_Client_Transfer_Progress
+ * The event object for AZY_EVENT_CLIENT_TRANSFER_PROGRESS
  */
-typedef struct Azy_Event_Transfer_Progress
+typedef struct Azy_Event_Client_Transfer_Complete
+{
+   Azy_Client_Call_Id id; /**< The id of the transfer */
+   Azy_Content       *content; /**< The received content object */
+   Azy_Client        *client; /**< The client making the transfer */
+} Azy_Event_Client_Transfer_Complete;
+
+/**
+ * @typedef Azy_Event_Client_Transfer_Progress
+ * The event object for AZY_EVENT_CLIENT_TRANSFER_PROGRESS
+ */
+typedef struct Azy_Event_Client_Transfer_Progress
 {
    Azy_Client_Call_Id id; /**< The id of the transfer */
    size_t             size; /**< The number of bytes transferred in the event */
    size_t             current; /**< The total number of bytes transferred at the time of the event */
    Azy_Net           *net; /**< The receiving net object */
    Azy_Client        *client; /**< The client making the transfer */
-} Azy_Event_Transfer_Progress;
+} Azy_Event_Client_Transfer_Progress;
 
 /**
  * @typedef Azy_Net_Cookie_Flags

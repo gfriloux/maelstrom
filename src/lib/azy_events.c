@@ -851,7 +851,7 @@ azy_events_length_overflows(int64_t current, int64_t max)
 }
 
 static void
-_azy_events_transfer_progress_event_free(void *d EINA_UNUSED, Azy_Event_Transfer_Progress *dse)
+_azy_events_client_transfer_progress_event_free(void *d EINA_UNUSED, Azy_Event_Client_Transfer_Progress *dse)
 {
    azy_client_free(dse->client);
    azy_net_free(dse->net);
@@ -859,11 +859,11 @@ _azy_events_transfer_progress_event_free(void *d EINA_UNUSED, Azy_Event_Transfer
 }
 
 inline void
-azy_events_transfer_progress_event(const Azy_Client_Handler_Data *hd, size_t size)
+azy_events_client_transfer_progress_event(const Azy_Client_Handler_Data *hd, size_t size)
 {
-   Azy_Event_Transfer_Progress *dse;
+   Azy_Event_Client_Transfer_Progress *dse;
 
-   dse = malloc(sizeof(Azy_Event_Transfer_Progress));
+   dse = malloc(sizeof(Azy_Event_Client_Transfer_Progress));
    EINA_SAFETY_ON_NULL_RETURN(dse);
    dse->id = hd->id;
    dse->size = size;
@@ -872,7 +872,54 @@ azy_events_transfer_progress_event(const Azy_Client_Handler_Data *hd, size_t siz
    dse->client->refcount++;
    dse->net = hd->recv;
    dse->net->refcount++;
-   ecore_event_add(AZY_EVENT_TRANSFER_PROGRESS, dse, (Ecore_End_Cb)_azy_events_transfer_progress_event_free, NULL);
+   ecore_event_add(AZY_EVENT_CLIENT_TRANSFER_PROGRESS, dse, (Ecore_End_Cb)_azy_events_client_transfer_progress_event_free, NULL);
+}
+
+void
+azy_events_client_transfer_complete_cleanup(Azy_Client *client, Azy_Content *content)
+{
+   Ecore_Cb callback;
+
+   DBG("(client=%p, content=%p)", client, content);
+
+   if (client)
+     {
+        callback = eina_hash_find(client->free_callbacks, &content->id);
+        if (callback)
+          {
+             callback(content->ret);
+             eina_hash_del_by_key(client->free_callbacks, &content->id);
+          }
+     }
+   /* http 1.0 requires that we disconnect after every response */
+   if ((!content->recv_net->proto) || (client && client->net && (!client->net->proto)))
+     {
+        ecore_con_server_del(client->net->conn);
+        client->net->conn = content->recv_net->conn = NULL;
+     }
+   azy_content_free(content);
+}
+
+void
+azy_events_client_transfer_complete_event_free(Azy_Client *client, Azy_Event_Client_Transfer_Complete *cse)
+{
+   azy_events_client_transfer_complete_cleanup(client, cse->content);
+   azy_client_free(client);
+   free(cse);
+}
+
+inline void
+azy_events_client_transfer_complete_event(const Azy_Client_Handler_Data *hd, Azy_Content *content)
+{
+   Azy_Event_Client_Transfer_Complete *cse;
+
+   cse = malloc(sizeof(Azy_Event_Client_Transfer_Complete));
+   EINA_SAFETY_ON_NULL_RETURN(cse);
+   cse->id = hd->id;
+   cse->client = hd->client;
+   cse->client->refcount++;
+   cse->content = content;
+   ecore_event_add(AZY_EVENT_CLIENT_TRANSFER_PROGRESS, cse, (Ecore_End_Cb)azy_events_client_transfer_complete_event_free, hd->client);
 }
 
 Eina_Binbuf *

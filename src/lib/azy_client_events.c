@@ -17,39 +17,12 @@
 
 #include "azy_private.h"
 
-static void      _azy_client_handler_call_free(Azy_Client *client,
-                                               Azy_Content *content);
 static Eina_Bool _azy_client_handler_get(Azy_Client_Handler_Data *hd);
 static Eina_Bool _azy_client_handler_call(Azy_Client_Handler_Data *hd);
 static void      _azy_client_handler_data_free(Azy_Client_Handler_Data *data);
 static Eina_Bool _azy_client_recv_timer(Azy_Client_Handler_Data *hd);
 static void      _azy_client_handler_redirect(Azy_Client_Handler_Data *hd);
 
-static void
-_azy_client_handler_call_free(Azy_Client *client,
-                              Azy_Content *content)
-{
-   Ecore_Cb callback;
-
-   DBG("(client=%p, content=%p)", client, content);
-
-   if (client)
-     {
-        callback = eina_hash_find(client->free_callbacks, &content->id);
-        if (callback)
-          {
-             callback(content->ret);
-             eina_hash_del_by_key(client->free_callbacks, &content->id);
-          }
-     }
-   /* http 1.0 requires that we disconnect after every response */
-   if ((!content->recv_net->proto) || (client && client->net && (!client->net->proto)))
-     {
-        ecore_con_server_del(client->net->conn);
-        client->net->conn = content->recv_net->conn = NULL;
-     }
-   azy_content_free(content);
-}
 
 static void
 _azy_client_handler_data_free(Azy_Client_Handler_Data *hd)
@@ -128,26 +101,20 @@ _azy_client_transfer_complete(Azy_Client_Handler_Data *hd, Azy_Content *content)
    client = hd->client;
    hd->recv = NULL;
 
-   _azy_client_handler_data_free(hd);
-
    cb = eina_hash_find(client->callbacks, &content->id);
    if (cb)
      {
         Eina_Error r;
 
         r = cb(client, content, content->ret);
-
+#warning USELESS!
         ecore_event_add(AZY_CLIENT_RESULT, &r, (Ecore_End_Cb)_azy_event_handler_fake_free, NULL);
         eina_hash_del_by_key(client->callbacks, &content->id);
-        _azy_client_handler_call_free(client, content);
+        azy_events_client_transfer_complete_cleanup(client, content);
      }
    else
-     {
-        if (!azy_content_error_is_set(content))
-          ecore_event_add(AZY_CLIENT_TRANSFER_COMPLETE, content, (Ecore_End_Cb)_azy_client_handler_call_free, client);
-        else
-          ecore_event_add(AZY_CLIENT_ERROR, content, (Ecore_End_Cb)_azy_client_handler_call_free, client);
-     }
+     azy_events_client_transfer_complete_event(hd, content);
+   _azy_client_handler_data_free(hd);
 }
 
 static Eina_Bool
@@ -470,7 +437,7 @@ _azy_client_handler_data(Azy_Client_Handler_Data *hd,
    if (!hd->recv->headers_read)
      return ECORE_CALLBACK_RENEW;
 
-   azy_events_transfer_progress_event(hd, ev ? (size_t)ev->size : EBUFLEN(hd->recv->buffer));
+   azy_events_client_transfer_progress_event(hd, ev ? (size_t)ev->size : EBUFLEN(hd->recv->buffer));
    if ((hd->recv->http.content_length > 0) && (hd->recv->progress < (size_t)hd->recv->http.content_length))
      {
         if (!hd->recv->timer)

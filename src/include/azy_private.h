@@ -424,7 +424,10 @@ Eina_Bool        azy_events_header_parse(Azy_Net *net, unsigned char *event_data
 Eina_Bool        azy_events_connection_kill(void *conn, Eina_Bool server_client, const char *msg);
 
 void             azy_events_recv_progress(Azy_Net *net, const void *data, size_t len);
-inline void      azy_events_transfer_progress_event(const Azy_Client_Handler_Data *hd, size_t size);
+inline void      azy_events_client_transfer_progress_event(const Azy_Client_Handler_Data *hd, size_t size);
+void azy_events_client_transfer_complete_cleanup(Azy_Client *client, Azy_Content *content);
+void azy_events_client_transfer_complete_event_free(Azy_Client *client, Azy_Event_Client_Transfer_Complete *cse);
+inline void      azy_events_client_transfer_complete_event(const Azy_Client_Handler_Data *hd, Azy_Content *content);
 inline Eina_Bool azy_events_length_overflows(int64_t current, int64_t max);
 size_t           azy_events_transfer_decode(Azy_Net *net, unsigned char *start, int len);
 inline Eina_Bool azy_events_chunks_done(const Azy_Net *net);

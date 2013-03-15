@@ -122,7 +122,7 @@ azy_net_buffer_new(void *buf, size_t size, Azy_Net_Transport transport, Eina_Boo
  * @brief Steal the contents of a network buffer
  *
  * This function can be used to clear the current buffer of a network
- * object. It is intended for use with AZY_EVENT_TRANSFER_PROGRESS events.
+ * object. It is intended for use with AZY_EVENT_CLIENT_TRANSFER_PROGRESS events.
  * @param net The network object
  * @param size Pointer to store the size of the stolen buffer
  * @return the current content of the network buffer
