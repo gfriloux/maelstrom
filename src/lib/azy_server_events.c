@@ -731,9 +731,9 @@ _azy_server_client_send(Azy_Server_Client *client,
    if (!net->http.content_length)
      {
         if (content && EBUFLEN(content->buffer))
-          azy_net_message_length_set(net, EBUFLEN(content->buffer));
+          azy_net_content_length_set(net, EBUFLEN(content->buffer));
         else if (data && data->size)
-          azy_net_message_length_set(net, data->size);
+          azy_net_content_length_set(net, data->size);
      }
 
    header = azy_net_header_create(net);

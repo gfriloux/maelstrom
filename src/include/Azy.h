@@ -172,6 +172,7 @@ typedef struct Azy_Event_Transfer_Progress
 {
    Azy_Client_Call_Id id; /**< The id of the transfer */
    size_t             size; /**< The number of bytes transferred in the event */
+   size_t             current; /**< The total number of bytes transferred at the time of the event */
    Azy_Net           *net; /**< The receiving net object */
    Azy_Client        *client; /**< The client making the transfer */
 } Azy_Event_Transfer_Progress;
@@ -425,13 +426,13 @@ EAPI int                       azy_net_code_get(Azy_Net *net);
 EAPI void                      azy_net_code_set(Azy_Net *net, int code);
 EAPI const char               *azy_net_ip_get(Azy_Net *net);
 EAPI Azy_Net_Type              azy_net_type_get(Azy_Net *net);
-EAPI int                       azy_net_message_length_get(Azy_Net *net);
+EAPI int                       azy_net_content_length_get(Azy_Net *net);
 EAPI void                      azy_net_header_set(Azy_Net *net, const char *name, const char *value);
 EAPI void                      azy_net_headers_reset(Azy_Net *net);
 EAPI void                      azy_net_type_set(Azy_Net *net, Azy_Net_Type type);
 EAPI void                      azy_net_transport_set(Azy_Net *net, Azy_Net_Transport transport);
 EAPI Azy_Net_Transport         azy_net_transport_get(Azy_Net *net);
-EAPI void                      azy_net_message_length_set(Azy_Net *net, int length);
+EAPI void                      azy_net_content_length_set(Azy_Net *net, int length);
 EAPI Eina_Strbuf              *azy_net_header_create(Azy_Net *net);
 EAPI const char               *azy_net_http_msg_get(int code);
 EAPI Azy_Net_Transfer_Encoding azy_net_transfer_encoding_get(const Azy_Net *net);

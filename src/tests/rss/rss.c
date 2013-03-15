@@ -33,7 +33,7 @@ download_status(void *data __UNUSED__, int type __UNUSED__, Azy_Event_Transfer_P
    int total = -1;
 
    if (ev->net)
-     total = azy_net_message_length_get(ev->net);
+     total = azy_net_content_length_get(ev->net);
    if (total > 0)
      printf("%zu bytes (%i total) transferred for id %u\n", ev->size, total, ev->id);
    else

@@ -532,7 +532,7 @@ azy_net_type_set(Azy_Net *net,
  * @return The content length, or -1 on error
  */
 int
-azy_net_message_length_get(Azy_Net *net)
+azy_net_content_length_get(Azy_Net *net)
 {
    DBG("(net=%p)", net);
    if (!AZY_MAGIC_CHECK(net, AZY_MAGIC_NET))
@@ -554,7 +554,7 @@ azy_net_message_length_get(Azy_Net *net)
  * @param length The content length (length > 1)
  */
 void
-azy_net_message_length_set(Azy_Net *net,
+azy_net_content_length_set(Azy_Net *net,
                            int length)
 {
    DBG("(net=%p)", net);

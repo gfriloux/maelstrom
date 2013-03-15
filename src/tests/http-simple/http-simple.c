@@ -69,7 +69,7 @@ download_status(void *data __UNUSED__, int type __UNUSED__, Azy_Event_Transfer_P
    void *buffer;
    size_t len;
 
-   printf("%zu bytes (%i total) transferred for id %u\n", ev->size, azy_net_message_length_get(ev->net), ev->id);
+   printf("%zu bytes (%i total) transferred for id %u\n", ev->size, azy_net_content_length_get(ev->net), ev->id);
    buffer = azy_net_buffer_steal(ev->net, &len);
    if (!buf) buf = eina_binbuf_manage_new_length(buffer, len);
    else

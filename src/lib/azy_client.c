@@ -533,7 +533,7 @@ azy_client_call(Azy_Client *client,
         azy_net_uri_set(client->net, "/");
      }
 
-   azy_net_message_length_set(client->net, EBUFLEN(content->buffer));
+   azy_net_content_length_set(client->net, EBUFLEN(content->buffer));
    msg = azy_net_header_create(client->net);
    EINA_SAFETY_ON_NULL_GOTO(msg, error);
 
@@ -623,7 +623,7 @@ azy_client_blank(Azy_Client *client,
    if (type == AZY_NET_TYPE_GET)
      netdata = NULL;
    if (type == AZY_NET_TYPE_PUT)
-     azy_net_message_length_set(client->net, netdata->size);
+     azy_net_content_length_set(client->net, netdata->size);
 
    if (!client->net->http.req.http_path)
      {
@@ -631,7 +631,7 @@ azy_client_blank(Azy_Client *client,
         azy_net_uri_set(client->net, "/");
      }
    if (netdata && netdata->size && (type == AZY_NET_TYPE_POST))
-     azy_net_message_length_set(client->net, netdata->size);
+     azy_net_content_length_set(client->net, netdata->size);
 
    msg = azy_net_header_create(client->net);
    EINA_SAFETY_ON_NULL_GOTO(msg, error);

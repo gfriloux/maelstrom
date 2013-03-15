@@ -429,7 +429,7 @@ azy_value_string_get(Azy_Value *val,
       {
          char *buf;
          size_t len;
-         buf = azy_util_base64_decode(val->str_val, eina_stringshare_strlen(val->str_val), &len);
+         buf = (char*)azy_util_base64_decode(val->str_val, eina_stringshare_strlen(val->str_val), &len);
          EINA_SAFETY_ON_NULL_RETURN_VAL(buf, EINA_FALSE);
          *nval = eina_stringshare_add_length(buf, len);
          free(buf);

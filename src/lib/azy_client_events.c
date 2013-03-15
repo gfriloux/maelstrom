@@ -334,7 +334,7 @@ _azy_client_handler_redirect(Azy_Client_Handler_Data *hd)
    EINA_SAFETY_ON_NULL_RETURN(msg);
    if (hd->send)
      {
-        azy_net_message_length_set(hd->client->net, eina_strbuf_length_get(hd->send));
+        azy_net_content_length_set(hd->client->net, eina_strbuf_length_get(hd->send));
         eina_strbuf_prepend_length(hd->send, eina_strbuf_string_get(msg), eina_strbuf_length_get(msg));
         eina_strbuf_free(msg);
      }

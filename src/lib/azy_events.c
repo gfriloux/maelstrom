@@ -867,6 +867,7 @@ azy_events_transfer_progress_event(const Azy_Client_Handler_Data *hd, size_t siz
    EINA_SAFETY_ON_NULL_RETURN(dse);
    dse->id = hd->id;
    dse->size = size;
+   dse->current = EBUFLEN(hd->recv->buffer);
    dse->client = hd->client;
    dse->client->refcount++;
    dse->net = hd->recv;

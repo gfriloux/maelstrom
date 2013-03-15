@@ -654,7 +654,7 @@ azy_server_module_send(Azy_Server_Module *module,
    if (net)
      {
         Eina_Bool s;
-        if (data) azy_net_message_length_set(net, data->size);
+        if (data) azy_net_content_length_set(net, data->size);
         if (!net->http.res.http_code)
           azy_net_code_set(net, 200);  /* OK */
         azy_net_type_set(net, AZY_NET_TYPE_RESPONSE);
