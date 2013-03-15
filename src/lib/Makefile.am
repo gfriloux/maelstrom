@@ -15,7 +15,8 @@ libazy_la_LIBADD = \
   $(AZY_LIBS) \
   -lm \
   extras/libcJSON.la \
-  extras/libb64.la
+  extras/libb64.la \
+  extras/libstrmatch.la
 
 if HAVE_XML
 libazy_la_LIBADD += extras/libpugixml.la

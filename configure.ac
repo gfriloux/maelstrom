@@ -130,6 +130,101 @@ if test "x$want_extern_rec" != "xno" ; then
 fi
 AM_CONDITIONAL([NEED_RE2C], [test -z $RE2C])
 
+## SSE
+build_cpu_sse="yes"
+AC_MSG_CHECKING(whether to build sse code)
+AC_ARG_ENABLE(cpu-sse,
+  AS_HELP_STRING([--enable-cpu-sse], [enable sse code]),
+  [
+      if test "x$enableval" = "xyes" ; then
+        oldcppflags="$CPPFLAGS"
+        CPPFLAGS+=" -msse"
+        AC_CHECK_HEADER(xmmintrin.h,
+          [
+            AC_MSG_RESULT(yes)
+            AC_DEFINE(USE_SSE, 1, [Build sse Code])
+            build_cpu_sse="yes"
+           ],
+          [
+            AC_MSG_RESULT(no)
+            build_cpu_sse="no"
+          ])
+        CPPFLAGS="$oldcppflags"
+      else
+        AC_MSG_RESULT(no)
+        build_cpu_sse="no"
+      fi
+  ],
+  [
+    AC_MSG_RESULT($build_cpu_sse)
+    if test "x$build_cpu_sse" = "xyes" ; then
+      oldcppflags="$CPPFLAGS"
+      CPPFLAGS+=" -msse"
+      AC_CHECK_HEADER(xmmintrin.h,
+        [
+          AC_MSG_RESULT(yes)
+          AC_DEFINE(USE_SSE, 1, [Build sse Code])
+          build_cpu_sse="yes"
+         ],
+        [
+          AC_MSG_RESULT(no)
+          build_cpu_sse="no"
+        ])
+      CPPFLAGS="$oldcflags"
+    fi
+  ]
+)
+build_cpu_sse4="yes"
+AC_MSG_CHECKING(whether to build sse4 code)
+AC_ARG_ENABLE(cpu-sse4,
+  AS_HELP_STRING([--enable-cpu-sse4], [enable sse4 code]),
+  [
+      if test "x$enableval" = "xyes" ; then
+        oldcppflags="$CPPFLAGS"
+        CPPFLAGS+=" -msse2 -msse4"
+        AC_CHECK_HEADER(nmmintrin.h,
+          [
+            AC_MSG_RESULT(yes)
+            AC_DEFINE(USE_SSE4, 1, [Build sse4 Code])
+            build_cpu_sse4="yes"
+           ],
+          [
+            AC_MSG_RESULT(no)
+            build_cpu_sse4="no"
+          ])
+        CPPFLAGS="$oldcppflags"
+      else
+        AC_MSG_RESULT(no)
+        build_cpu_sse4="no"
+      fi
+  ],
+  [
+    AC_MSG_RESULT($build_cpu_sse4)
+    if test "x$build_cpu_sse4" = "xyes" ; then
+      oldcppflags="$CPPFLAGS"
+      CPPFLAGS+=" -msse2 -msse4"
+      AC_CHECK_HEADER(nmmintrin.h,
+        [
+          AC_MSG_RESULT(yes)
+          AC_DEFINE(USE_SSE4, 1, [Build sse4 Code])
+          build_cpu_sse4="yes"
+         ],
+        [
+          AC_MSG_RESULT(no)
+          build_cpu_sse4="no"
+        ])
+      CPPFLAGS="$oldcppflags"
+    fi
+  ]
+)
+SSE_CFLAGS=
+if test "x$build_cpu_sse" = "xyes" ; then
+   SSE_CFLAGS+=" -msse"
+fi
+if test "x$build_cpu_sse4" = "xyes" ; then
+   SSE_CFLAGS+=" -msse2 -msse4"
+fi
+AC_SUBST(SSE_CFLAGS)
 
 AC_CHECK_HEADERS([Rpcdce.h])
 EFL_CHECK_DOXYGEN([build_doc="yes"], [build_doc="no"])

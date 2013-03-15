@@ -15,6 +15,7 @@
 #include <Ecore.h>
 #include <Ecore_Con.h>
 #include <Azy.h>
+#include "match.h"
 
 #ifdef HAVE_ALLOCA_H
 #include <alloca.h>

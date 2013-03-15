@@ -109,22 +109,15 @@ azy_util_base64_decode(const char *string, size_t len, size_t *size)
  * This can be considered strnstr, a utility function for finding a bounded string
  * in another bounded string.  It compares using unsigned char, however, so non-ascii
  * data can be found as well.
+ * @note This function uses the Boyer-Moore algorithm
  */
 unsigned char *
-azy_util_memstr(const unsigned char *big,
-           const unsigned char *small,
-           size_t big_len,
-           size_t small_len)
+azy_util_memstr(const unsigned char *big, const unsigned char *small, size_t big_len, size_t small_len)
 {
-   unsigned char *x = (unsigned char *)big;
-
    if ((!big) || (!small) || (big_len < 1) || (small_len < 1) || (big_len < small_len))
      return NULL;
 
-   for (; big_len >= small_len; x++, big_len--)
-     if (!memcmp(x, small, small_len))
-       return x;
-   return NULL;
+   return (void*)Sbm2((void*)big, (void*)small, big_len, small_len);
 }
 
 /**
