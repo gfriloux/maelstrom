@@ -410,7 +410,7 @@ azy_client_close(Azy_Client *client)
    EINA_SAFETY_ON_FALSE_RETURN(client->connected);
    EINA_SAFETY_ON_NULL_RETURN(client->net);
 
-   ecore_con_server_del(client->net->conn);
+   if (client->net->conn) ecore_con_server_del(client->net->conn);
 
    azy_net_free(client->net);
    client->net = NULL;
