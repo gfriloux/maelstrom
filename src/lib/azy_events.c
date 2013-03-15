@@ -919,7 +919,7 @@ azy_events_client_transfer_complete_event(const Azy_Client_Handler_Data *hd, Azy
    cse->client = hd->client;
    cse->client->refcount++;
    cse->content = content;
-   ecore_event_add(AZY_EVENT_CLIENT_TRANSFER_PROGRESS, cse, (Ecore_End_Cb)azy_events_client_transfer_complete_event_free, hd->client);
+   ecore_event_add(AZY_EVENT_CLIENT_TRANSFER_COMPLETE, cse, (Ecore_End_Cb)azy_events_client_transfer_complete_event_free, hd->client);
 }
 
 Eina_Binbuf *
