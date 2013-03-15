@@ -19,11 +19,11 @@
 
 static Azy_Client_Call_Id azy_client_send_id__ = 0;
 
-EAPI int AZY_CLIENT_DISCONNECTED;
-EAPI int AZY_CLIENT_CONNECTED;
-EAPI int AZY_CLIENT_UPGRADE;
-EAPI int AZY_CLIENT_TRANSFER_COMPLETE;
-EAPI int AZY_CLIENT_RESULT;
+EAPI int AZY_EVENT_CLIENT_DISCONNECTED;
+EAPI int AZY_EVENT_CLIENT_CONNECTED;
+EAPI int AZY_EVENT_CLIENT_UPGRADE;
+EAPI int AZY_EVENT_CLIENT_TRANSFER_COMPLETE;
+EAPI int AZY_EVENT_CLIENT_RESULT;
 
 /**
  * @defgroup Azy_Client Client Functions
@@ -224,7 +224,7 @@ azy_client_port_set(Azy_Client *client,
  * @brief Upgrade a client's connection to SSL/TLS
  *
  * This function begins the SSL handshake process on connected client @p client.
- * An AZY_CLIENT_UPGRADE event will be emitted on success, and EINA_FALSE will be
+ * An AZY_EVENT_CLIENT_UPGRADE event will be emitted on success, and EINA_FALSE will be
  * returned immediately on failure.
  * @param client The client object (NOT NULL)
  * @return #EINA_TRUE if successful, or #EINA_FALSE on failure
@@ -422,7 +422,7 @@ azy_client_close(Azy_Client *client)
  * @brief Set a callback for an #Azy_Client_Call_Id
  *
  * This function is used to setup a callback to be called for the response of
- * a transmission with @p id, overriding (disabling) the AZY_CLIENT_TRANSFER_COMPLETE event
+ * a transmission with @p id, overriding (disabling) the AZY_EVENT_CLIENT_TRANSFER_COMPLETE event
  * for that call.  If a previous callback was set for @p id, this will overwrite it.
  * @param client The client (NOT NULL)
  * @param id The transmission id (> 0)
@@ -735,7 +735,7 @@ azy_client_call_checker(Azy_Client *cli,
 /**
  * @brief Helper function to automatically handle redirection
  *
- * This function is used inside an AZY_CLIENT_DISCONNECTED callback to automatically
+ * This function is used inside an AZY_EVENT_CLIENT_DISCONNECTED callback to automatically
  * reconnect to the server if necessary (HTTP 301/302/303 returned).
  * @param cli The client object (NOT NULL)
  * @return #EINA_TRUE only if reconnection has succeeded, else #EINA_FALSE

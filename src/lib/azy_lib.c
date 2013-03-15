@@ -166,15 +166,15 @@ azy_init(void)
    if (!azy_net_cookie_init_()) goto azy_fail2;
    azy_lib_register_errors_();
 
-   AZY_CLIENT_DISCONNECTED = ecore_event_type_new();
-   AZY_CLIENT_UPGRADE = ecore_event_type_new();
-   AZY_CLIENT_CONNECTED = ecore_event_type_new();
-   AZY_CLIENT_TRANSFER_COMPLETE = ecore_event_type_new();
-   AZY_CLIENT_RESULT = ecore_event_type_new();
+   AZY_EVENT_CLIENT_DISCONNECTED = ecore_event_type_new();
+   AZY_EVENT_CLIENT_UPGRADE = ecore_event_type_new();
+   AZY_EVENT_CLIENT_CONNECTED = ecore_event_type_new();
+   AZY_EVENT_CLIENT_TRANSFER_COMPLETE = ecore_event_type_new();
+   AZY_EVENT_CLIENT_RESULT = ecore_event_type_new();
 
-   AZY_SERVER_CLIENT_ADD = ecore_event_type_new();
-   AZY_SERVER_CLIENT_UPGRADE = ecore_event_type_new();
-   AZY_SERVER_CLIENT_DEL = ecore_event_type_new();
+   AZY_EVENT_SERVER_CLIENT_ADD = ecore_event_type_new();
+   AZY_EVENT_SERVER_CLIENT_UPGRADE = ecore_event_type_new();
+   AZY_EVENT_SERVER_CLIENT_DEL = ecore_event_type_new();
 
    AZY_EVENT_CLIENT_TRANSFER_PROGRESS = ecore_event_type_new();
 

@@ -246,8 +246,8 @@ main(void)
    if (!azy_client_host_set(cli, "127.0.0.1", 4444))
      return 1;
 
-   handler = ecore_event_handler_add(AZY_CLIENT_CONNECTED, (Ecore_Event_Handler_Cb)connected, cli);
-   handler = ecore_event_handler_add(AZY_CLIENT_DISCONNECTED, (Ecore_Event_Handler_Cb)_disconnected, cli);
+   handler = ecore_event_handler_add(AZY_EVENT_CLIENT_CONNECTED, (Ecore_Event_Handler_Cb)connected, cli);
+   handler = ecore_event_handler_add(AZY_EVENT_CLIENT_DISCONNECTED, (Ecore_Event_Handler_Cb)_disconnected, cli);
 
    /* connect to the servlet on the server specified by uri */
    if (!azy_client_connect(cli, EINA_FALSE))

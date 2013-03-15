@@ -17,9 +17,9 @@
 
 #include "azy_private.h"
 
-EAPI int AZY_SERVER_CLIENT_ADD;
-EAPI int AZY_SERVER_CLIENT_UPGRADE;
-EAPI int AZY_SERVER_CLIENT_DEL;
+EAPI int AZY_EVENT_SERVER_CLIENT_ADD;
+EAPI int AZY_EVENT_SERVER_CLIENT_UPGRADE;
+EAPI int AZY_EVENT_SERVER_CLIENT_DEL;
 
 #if 0
 static const char *error400 = "HTTP/1.1 400 Bad Request\r\n"
@@ -441,7 +441,7 @@ _azy_server_client_new(Azy_Server *server,
 
    server->clients++;
    server->refcount++;
-   ecore_event_add(AZY_SERVER_CLIENT_ADD, server, (Ecore_End_Cb)_azy_event_handler_fake_free, azy_server_free);
+   ecore_event_add(AZY_EVENT_SERVER_CLIENT_ADD, server, (Ecore_End_Cb)_azy_event_handler_fake_free, azy_server_free);
 
    /* FIXME: is there other data I want to shove into these handlers? */
    AZY_MAGIC_SET(client, AZY_MAGIC_SERVER_CLIENT);
@@ -487,7 +487,7 @@ _azy_server_client_free(Azy_Server_Client *client)
 
    client->server->clients--;
    client->server->refcount++;
-   ecore_event_add(AZY_SERVER_CLIENT_DEL, client->server, (Ecore_End_Cb)_azy_event_handler_fake_free, azy_server_free);
+   ecore_event_add(AZY_EVENT_SERVER_CLIENT_DEL, client->server, (Ecore_End_Cb)_azy_event_handler_fake_free, azy_server_free);
    free(client);
 }
 
@@ -1046,7 +1046,7 @@ _azy_server_client_handler_upgrade(Azy_Server_Client *cl, int type __UNUSED__, E
      }
 
    /* FIXME: ref */
-   ecore_event_add(AZY_SERVER_CLIENT_UPGRADE, cl->upgrading_module, (Ecore_End_Cb)_azy_event_handler_fake_free, NULL);
+   ecore_event_add(AZY_EVENT_SERVER_CLIENT_UPGRADE, cl->upgrading_module, (Ecore_End_Cb)_azy_event_handler_fake_free, NULL);
    cl->upgrading_module = NULL;
    return ECORE_CALLBACK_RENEW;
 }

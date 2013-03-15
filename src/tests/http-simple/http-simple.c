@@ -138,9 +138,9 @@ main(void)
         id = azy_client_blank(cli, AZY_NET_TYPE_GET, NULL, NULL, NULL);
         EINA_SAFETY_ON_TRUE_RETURN_VAL(!id, ECORE_CALLBACK_RENEW);
         azy_client_callback_set(cli, id, (Azy_Client_Transfer_Complete_Cb)ret_cb);
-   //ecore_event_handler_add(AZY_CLIENT_CONNECTED, (Ecore_Event_Handler_Cb)connected, NULL);
-   ecore_event_handler_add(AZY_CLIENT_TRANSFER_COMPLETE, (Ecore_Event_Handler_Cb)ret_, NULL);
-   ecore_event_handler_add(AZY_CLIENT_DISCONNECTED, (Ecore_Event_Handler_Cb)disconnected, NULL);
+   //ecore_event_handler_add(AZY_EVENT_CLIENT_CONNECTED, (Ecore_Event_Handler_Cb)connected, NULL);
+   ecore_event_handler_add(AZY_EVENT_CLIENT_TRANSFER_COMPLETE, (Ecore_Event_Handler_Cb)ret_, NULL);
+   ecore_event_handler_add(AZY_EVENT_CLIENT_DISCONNECTED, (Ecore_Event_Handler_Cb)disconnected, NULL);
    ecore_event_handler_add(AZY_EVENT_CLIENT_TRANSFER_PROGRESS, (Ecore_Event_Handler_Cb)download_status, NULL);
    ecore_main_loop_begin();
    azy_client_free(cli);

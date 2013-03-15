@@ -48,17 +48,17 @@
  * @brief Events that are emitted from the library
  * @{
  */
-EAPI extern int AZY_CLIENT_DISCONNECTED; /**< Event emitted upon client disconnecting, sends #Azy_Client object */
-EAPI extern int AZY_CLIENT_CONNECTED; /**< Event emitted upon client connecting, sends #Azy_Client object */
-EAPI extern int AZY_CLIENT_UPGRADE; /**< Event emitted upon client successfully upgrading to TLS, sends #Azy_Client object */
-EAPI extern int AZY_CLIENT_TRANSFER_COMPLETE; /**< Event emitted upon client method returning if
+EAPI extern int AZY_EVENT_CLIENT_DISCONNECTED; /**< Event emitted upon client disconnecting, sends #Azy_Client object */
+EAPI extern int AZY_EVENT_CLIENT_CONNECTED; /**< Event emitted upon client connecting, sends #Azy_Client object */
+EAPI extern int AZY_EVENT_CLIENT_UPGRADE; /**< Event emitted upon client successfully upgrading to TLS, sends #Azy_Client object */
+EAPI extern int AZY_EVENT_CLIENT_TRANSFER_COMPLETE; /**< Event emitted upon client method returning if
                                                  no callback was set, sends #Azy_Event_Client_Transfer_Complete */
-EAPI extern int AZY_CLIENT_RESULT; /**< Event emitted upon client method returning if
+EAPI extern int AZY_EVENT_CLIENT_RESULT; /**< Event emitted upon client method returning if
                                       a callback for the method has been set, sends #Eina_Error */
-EAPI extern int AZY_SERVER_CLIENT_ADD; /**< Event emitted upon client connecting to server,
+EAPI extern int AZY_EVENT_SERVER_CLIENT_ADD; /**< Event emitted upon client connecting to server,
                                           sends #Azy_Server object */
-EAPI extern int AZY_SERVER_CLIENT_UPGRADE; /**< Event emitted upon client successfully upgrading to TLS, sends #Azy_Server_Module object */
-EAPI extern int AZY_SERVER_CLIENT_DEL; /**< Event emitted upon client disconnecting from server,
+EAPI extern int AZY_EVENT_SERVER_CLIENT_UPGRADE; /**< Event emitted upon client successfully upgrading to TLS, sends #Azy_Server_Module object */
+EAPI extern int AZY_EVENT_SERVER_CLIENT_DEL; /**< Event emitted upon client disconnecting from server,
                                           sends #Azy_Server object */
 
 EAPI extern int AZY_EVENT_CLIENT_TRANSFER_PROGRESS; /**< Event emitted when a GET request makes progress, sends #Azy_Event_Client_Transfer_Progress */

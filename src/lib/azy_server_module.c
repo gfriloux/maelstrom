@@ -678,7 +678,7 @@ azy_server_module_send(Azy_Server_Module *module,
  * @brief Upgrade a client's connection to SSL/TLS
  *
  * This function begins the SSL handshake process on connected client represented by @p module.
- * An AZY_SERVER_CLIENT_UPGRADE event will be emitted on success, and EINA_FALSE will be
+ * An AZY_EVENT_SERVER_CLIENT_UPGRADE event will be emitted on success, and EINA_FALSE will be
  * returned immediately on failure.
  * @param module The client object (NOT NULL)
  * @return #EINA_TRUE if successful, or #EINA_FALSE on failure
