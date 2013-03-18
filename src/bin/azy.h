@@ -22,7 +22,6 @@ typedef enum
    TD_BASE,
    TD_STRUCT,
    TD_ARRAY,
-   TD_ANY,
 } Azy_Base_Type;
 
 typedef struct _Azy_Typedef       Azy_Typedef;
@@ -36,11 +35,13 @@ typedef struct _Azy_Error_Code    Azy_Error_Code;
 struct _Azy_Typedef
 {
    Azy_Base_Type       type; /* typedef node type */
-   const char         *name; /* name of the type (for use in ZER) */
-   const char         *cname; /* name of the type (for use in ZER) */
-   const char         *ctype; /* C type name */
-   const char         *cnull; /* null value in C for this type */
-   Azy_Server_Module *module;         /* module owning this type */
+   Eina_Stringshare   *name; /* name of the type (for use in ZER) */
+   Eina_Stringshare   *cname; /* name of the type (for use in ZER) */
+   Eina_Stringshare   *ctype; /* C type name */
+   Eina_Stringshare   *cnull; /* null value in C for this type */
+   size_t             csize; /* size of type */
+   Azy_Server_Module *module; /* module owning this type */
+   Eina_Stringshare   *etype; /* eina value type for parsing */
 
    const char         *march_name;
    const char         *demarch_name;
@@ -51,7 +52,6 @@ struct _Azy_Typedef
    const char         *fmt_str;
    const char         *isnull_func;
    const char         *hash_func;
-   const char         *esql_func;
 
    Eina_List          *struct_members; /* struct members list */
    Azy_Typedef       *item_type; /* array item type */

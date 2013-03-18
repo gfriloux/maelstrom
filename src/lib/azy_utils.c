@@ -290,4 +290,29 @@ azy_util_domain_match(const char *domain, const char *match)
    return eina_str_has_suffix(domain, match);
 }
 
+/**
+ * @brief strdup function which takes @c NULL
+ * @param str The string to copy
+ * @return the copied string, must be freed
+ */
+char *
+azy_util_strdup(const char *str)
+{
+   return str ? strdup(str) : NULL;
+}
+
+/**
+ * @brief streq function which takes @c NULL
+ * @param a string a
+ * @param b string b
+ * @return true if strings are equal
+ */
+Eina_Bool
+azy_util_streq(const char *a, const char *b)
+{
+   if ((!a) && (!b)) return EINA_TRUE;
+   if (!a) return EINA_FALSE;
+   if (!b) return EINA_FALSE;
+   return !strcmp(a, b);
+}
 /** @} */

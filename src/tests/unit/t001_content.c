@@ -109,11 +109,11 @@ deserialize_request_3(void)
    int method_match = !strcmp(method, "test");
    TEST_ASSERT(method_match);
 
-   Azy_Value *val = azy_content_param_get(content, 0);
-   TEST_ASSERT(val != 0);
-   TEST_ASSERT(azy_value_type_get(val) == AZY_VALUE_STRING);
+   Eina_Value *val = azy_content_param_get(content, 0);
+   TEST_ASSERT(val != NULL);
+   TEST_ASSERT(azy_value_util_type_get(val) == AZY_VALUE_STRING);
    const char *str_val = 0;
-   rs = azy_value_string_get(val, &str_val);
+   rs = eina_value_get(val, &str_val);
    TEST_ASSERT(rs);
    TEST_ASSERT(str_val != 0);
    int param_match = !strcmp(str_val, "");
@@ -122,9 +122,9 @@ deserialize_request_3(void)
 
    val = azy_content_param_get(content, 1);
    TEST_ASSERT(val != 0);
-   TEST_ASSERT(azy_value_type_get(val) == AZY_VALUE_STRING);
+   TEST_ASSERT(azy_value_util_type_get(val) == AZY_VALUE_STRING);
    str_val = 0;
-   rs = azy_value_string_get(val, &str_val);
+   rs = eina_value_get(val, &str_val);
    TEST_ASSERT(rs);
    TEST_ASSERT(str_val != 0);
    param_match = !strcmp(str_val, "s2");
@@ -139,10 +139,10 @@ _assert_param_type(Azy_Content   *content,
                    int            no,
                    Azy_Value_Type type)
 {
-   Azy_Value *val = azy_content_param_get(content, no);
+   Eina_Value *val = azy_content_param_get(content, no);
    TEST_ASSERT(val != NULL);
-   TEST_ASSERT(azy_value_type_get(val) == type);
-   return azy_value_type_get(val) == type;
+   TEST_ASSERT(azy_value_util_type_get(val) == type);
+   return azy_value_util_type_get(val) == type;
 }
 
 static Eina_Bool

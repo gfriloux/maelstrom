@@ -19,126 +19,155 @@
 #include "cJSON.h"
 #include <math.h>
 
-cJSON *
-azy_value_serialize_json(Azy_Value *val)
+static Eina_Value *azy_value_deserialize_json(cJSON *object);
+static cJSON *azy_value_serialize_json(const Eina_Value *val);
+
+static inline const Eina_Value_Type *
+_azy_value_type_get(cJSON *object)
 {
-   Eina_List *l;
-   Azy_Value *v;
-   cJSON *object;
-
-   EINA_SAFETY_ON_NULL_RETURN_VAL(val, NULL);
-
-   switch (azy_value_type_get(val))
+   switch (object->type)
      {
-      case AZY_VALUE_ARRAY:
-      {
-         object = cJSON_CreateArray();
-         EINA_LIST_FOREACH(val->children, l, v)
-           cJSON_AddItemToArray(object, azy_value_serialize_json(v));
-         return object;
-      }
+        case cJSON_False:
+        case cJSON_True:
+          return EINA_VALUE_TYPE_UCHAR;
+        case cJSON_Number:
+        {
+         double d = object->valuedouble;
 
-      case AZY_VALUE_STRUCT:
-      {
-         object = cJSON_CreateObject();
-         EINA_LIST_FOREACH(val->children, l, v)
-           cJSON_AddItemToObject(object, v->member_name,
-                                 azy_value_serialize_json(v->member_value));
-         return object;
-      }
+         //this is some crazy from cJSON.c for int detection
+         if ((fabs(((double)object->valueint) - d) <= __DBL_EPSILON__) && (d <= __INT_MAX__) && (d >= -__INT_MAX__ - 1))
+           return EINA_VALUE_TYPE_INT;
+         return EINA_VALUE_TYPE_DOUBLE;
+        }
+        case cJSON_String: return EINA_VALUE_TYPE_STRINGSHARE;
+        case cJSON_Array: return EINA_VALUE_TYPE_ARRAY;
+        case cJSON_Object: return EINA_VALUE_TYPE_STRUCT;
+        default: break;
+     }
+   return NULL;
+}
 
-      case AZY_VALUE_MEMBER:
-        /* FIXME: I think this is right? */
-        return azy_value_serialize_json(val->member_value);
-
+static cJSON *
+azy_value_serialize_basic_json(const Eina_Value *val)
+{
+   switch (azy_value_util_type_get(val))
+     {
       case AZY_VALUE_INT:
-      {
-         int int_val = -1;
-         azy_value_int_get(val, &int_val);
-         return cJSON_CreateNumber(int_val);
-      }
+        {
+           int int_val = -1;
+           eina_value_get(val, &int_val);
+           return cJSON_CreateNumber(int_val);
+        }
+
+      case AZY_VALUE_TIME:
+        {
+           time_t t;
+           struct tm *tim;
+           char buf[1024];
+
+           eina_value_get(val, &t);
+           tim = localtime(&t);
+           strftime(buf, sizeof(buf), "%Y%m%dT%H:%M:%S", tim);
+           return cJSON_CreateString(buf);
+        }
 
       case AZY_VALUE_STRING:
-      case AZY_VALUE_TIME:
-      {
-         const char *str_val;
-         azy_value_string_get(val, &str_val);
-         object = cJSON_CreateString(str_val);
-         eina_stringshare_del(str_val);
-         return object;
-      }
+      case AZY_VALUE_BASE64:
+        {
+           const char *str_val;
+           eina_value_get(val, &str_val);
+           return cJSON_CreateString(str_val);
+        }
 
       case AZY_VALUE_BOOL:
-      {
-         Eina_Bool bool_val = -1;
-         azy_value_bool_get(val, &bool_val);
+        {
+           Eina_Bool bool_val;
+           eina_value_get(val, &bool_val);
 
-         if (bool_val)
-           return cJSON_CreateTrue();
+           if (bool_val)
+             return cJSON_CreateTrue();
 
-         return cJSON_CreateFalse();
-      }
+           return cJSON_CreateFalse();
+        }
 
       case AZY_VALUE_DOUBLE:
-      {
-         double dbl_val = -1;
-         azy_value_double_get(val, &dbl_val);
-         return cJSON_CreateNumber(dbl_val);
-      }
-
-      case AZY_VALUE_BASE64:
-      {
-         object = cJSON_CreateString(val->str_val);
-         return object;
-      }
+        {
+           double dbl_val = -1;
+           eina_value_get(val, &dbl_val);
+           return cJSON_CreateNumber(dbl_val);
+        }
+      default: break;
      }
 
-   object = cJSON_CreateNull();
+   return NULL;
+}
+
+static cJSON *
+azy_value_serialize_struct_json(const Eina_Value *val)
+{
+   Eina_Value_Struct st;
+   cJSON *object;
+   unsigned int x;
+
+   eina_value_pget(val, &st);
+   object = cJSON_CreateObject();
+   for (x = 0; x < st.desc->member_count; x++)
+     {
+        Eina_Value m;
+
+        eina_value_struct_value_get(val, st.desc->members[x].name, &m);
+        cJSON_AddItemToObject(object, st.desc->members[x].name, azy_value_serialize_json(&m));
+        eina_value_flush(&m);
+     }
    return object;
 }
 
-Azy_Value *
-azy_value_deserialize_json(cJSON *object)
+static cJSON *
+azy_value_serialize_array_json(const Eina_Value *val)
 {
-   if (!object)
-     return NULL;
+   unsigned int x, total;
+   cJSON *object;
 
+   total = eina_value_array_count(val);
+   object = cJSON_CreateArray();
+   for (x = 0; x < total; x++)
+     {
+        Eina_Value m;
+
+        eina_value_array_value_get(val, x, &m);
+        cJSON_AddItemToArray(object, azy_value_serialize_json(&m));
+        eina_value_flush(&m);
+     }
+   return object;
+}
+
+static cJSON *
+azy_value_serialize_json(const Eina_Value *val)
+{
+   const Eina_Value_Type *type;
+
+   EINA_SAFETY_ON_NULL_RETURN_VAL(val, NULL);
+
+   type = eina_value_type_get(val);
+   if (type == EINA_VALUE_TYPE_ARRAY)
+     return azy_value_serialize_array_json(val);
+   if (type == EINA_VALUE_TYPE_STRUCT)
+     return azy_value_serialize_struct_json(val);
+   else if (type)
+     return azy_value_serialize_basic_json(val);
+   return cJSON_CreateNull();
+}
+
+static Eina_Value *
+azy_value_deserialize_basic_json(cJSON *object, Eina_Value *arr)
+{
    switch (object->type)
      {
-      case cJSON_Object:
-      {
-         Azy_Value *str;
-         const char *name;
-
-         str = azy_value_struct_new();
-
-         EINA_SAFETY_ON_NULL_RETURN_VAL(str, NULL);
-         cJSON *child = object->child;
-
-         while (child)
-           {
-              name = child->string;
-              azy_value_struct_member_set(str, name, azy_value_deserialize_json(child));
-              child = child->next;
-           }
-         return str;
-      }
-
-      case cJSON_Array:
-      {
-         uint32_t i;
-         Azy_Value *arr = azy_value_array_new();
-         uint32_t arr_len = cJSON_GetArraySize(object);
-
-         for (i = 0; i < arr_len; i++)
-           azy_value_array_push(arr, azy_value_deserialize_json(cJSON_GetArrayItem(object, i)));
-
-         return arr;
-      }
-
       case cJSON_False:
       case cJSON_True:
-        return azy_value_bool_new(object->valueint);
+        if (!arr) return azy_value_util_bool_new(object->valueint);
+        eina_value_array_append(arr, object->valueint);
+        return (Eina_Value*)1;
 
       case cJSON_Number:
       {
@@ -146,15 +175,156 @@ azy_value_deserialize_json(cJSON *object)
 
          //this is some crazy from cJSON.c for int detection
          if ((fabs(((double)object->valueint) - d) <= __DBL_EPSILON__) && (d <= __INT_MAX__) && (d >= -__INT_MAX__ - 1))
-           return azy_value_int_new(object->valueint);
-
-         return azy_value_double_new(object->valuedouble);
+           {
+              if (!arr) return azy_value_util_int_new(object->valueint);
+              eina_value_array_append(arr, object->valueint);
+           }
+         else
+           {
+              if (!arr) return azy_value_util_double_new(object->valuedouble);
+              eina_value_array_append(arr, object->valuedouble);
+           }
+         return (Eina_Value*)1;
       }
 
       case cJSON_String:
-        return azy_value_string_new(object->valuestring);
+        if (!arr) return azy_value_util_string_new(object->valuestring);
+        eina_value_array_append(arr, object->valuestring);
+        return (Eina_Value*)1;
+
+      default: break;
+     }
+   return NULL;
+}
+
+static Eina_Value *
+azy_value_deserialize_struct_json(cJSON *object)
+{
+   Eina_Array *st_members, *st_values;
+   unsigned int offset = 0, z;
+   Eina_Value *value_st = NULL;
+   Eina_Value_Struct_Member *members;
+   Eina_Value_Struct_Desc *st_desc;
+   const char *name;
+   cJSON *child;
+
+   st_desc = azy_value_util_struct_desc_new();
+   st_members = eina_array_new(1);
+   st_values = eina_array_new(1);
+
+   for (child = object->child; child; child = child->next)
+     {
+        Eina_Value_Struct_Member *m;
+        const Eina_Value_Type *type;
+        Eina_Value *v;
+
+        type = _azy_value_type_get(child);
+        if (!type) goto end;
+        name = child->string;
+        m = (Eina_Value_Struct_Member*)calloc(1, sizeof(Eina_Value_Struct_Member));
+        m->name = eina_stringshare_add(name);
+        offset = azy_value_util_type_offset(type, offset);
+        m->offset = offset;
+        offset += azy_value_util_type_size(type);
+        m->type = type;
+        eina_array_push(st_members, m);
+
+        v = azy_value_deserialize_json(child);
+        if (!v) goto end;
+        eina_array_push(st_values, v);
+        z++;
+     }
+   if (!z)
+     {
+        free(st_desc);
+        goto end;
      }
 
+   members = (Eina_Value_Struct_Member*)malloc(eina_array_count(st_members) * sizeof(Eina_Value_Struct_Member));
+   for (z = 0; z < eina_array_count(st_members); z++)
+     {
+        Eina_Value_Struct_Member *m = (Eina_Value_Struct_Member*)eina_array_data_get(st_members, z);
+        members[z].name = m->name;
+        members[z].offset = m->offset;
+        members[z].type = m->type;
+        free(m);
+     }
+
+   //setup
+   st_desc->members = members;
+   st_desc->member_count = eina_array_count(st_members);
+   st_desc->size = offset;
+   value_st = eina_value_struct_new(st_desc);
+
+   //filling with data
+   for (z = 0; z < eina_array_count(st_values); z++)
+     {
+        Eina_Value *v = (Eina_Value*)eina_array_data_get(st_values, z);
+        eina_value_struct_value_set(value_st, members[z].name, v);
+        eina_value_free(v);
+     }
+
+end:
+   eina_array_free(st_members);
+   eina_array_free(st_values);
+   return value_st;
+}
+
+static Eina_Value *
+azy_value_deserialize_array_json(cJSON *object)
+{
+   Eina_Value *arr;
+   const Eina_Value_Type *type;
+   int x = 0;
+   cJSON *child;
+
+   child = cJSON_GetArrayItem(object, 0);
+   type = _azy_value_type_get(child);
+   arr = eina_value_array_new(type, 0);
+   for (; x < cJSON_GetArraySize(object); x++)
+     {
+        if (x) child = cJSON_GetArrayItem(object, x);
+        if (type == EINA_VALUE_TYPE_ARRAY)
+          {
+             Eina_Value_Array inner_array;
+             Eina_Value *data = azy_value_deserialize_array_json(child);
+             if (!data) goto error;
+             eina_value_get(data, &inner_array);
+             eina_value_array_append(arr, inner_array);
+          }
+        else if (type == EINA_VALUE_TYPE_STRUCT)
+          {
+             Eina_Value_Struct st;
+             Eina_Value *data = azy_value_deserialize_struct_json(child);
+             if (!data) goto error;
+             eina_value_get(data, &st);
+             eina_value_array_append(arr, st);
+          }
+        else
+          {
+             if (!azy_value_deserialize_basic_json(child, arr)) goto error;
+          }
+     }
+   return arr;
+error:
+   eina_value_free(arr);
+   return NULL;
+}
+
+static Eina_Value *
+azy_value_deserialize_json(cJSON *object)
+{
+   if (!object) return NULL;
+
+   switch (object->type)
+     {
+      case cJSON_Object:
+        return azy_value_deserialize_struct_json(object);
+      case cJSON_Array:
+        return azy_value_deserialize_array_json(object);
+      default:
+        return azy_value_deserialize_basic_json(object, NULL);
+     }
    return NULL;
 }
 
@@ -162,7 +332,7 @@ Eina_Bool
 azy_content_serialize_request_json(Azy_Content *content)
 {
    Eina_List *l;
-   Azy_Value *v;
+   Eina_Value *v;
    cJSON *object, *params;
    char *msg;
 
@@ -290,7 +460,7 @@ azy_content_deserialize_request_json(Azy_Content *content,
 
    for (i = 0; grab && (i < cJSON_GetArraySize(grab)); i++)
      {
-        Azy_Value *v;
+        Eina_Value *v;
 
         if (!(v = azy_value_deserialize_json(cJSON_GetArrayItem(grab, i))))
           {
@@ -312,7 +482,7 @@ azy_content_deserialize_response_json(Azy_Content *content,
                                       ssize_t len  __UNUSED__)
 {
    cJSON *object, *grab, *error;
-   Azy_Value *ret;
+   Eina_Value *ret;
 
    if ((!content) || (!buf))
      return EINA_FALSE;

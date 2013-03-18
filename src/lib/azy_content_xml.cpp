@@ -22,6 +22,9 @@
 
 using namespace pugi;
 
+static void azy_value_serialize_xml(xml_node node, const Eina_Value *val);
+static Eina_Value *azy_value_deserialize_xml(xml_node node);
+
 struct xml_memory_writer : xml_writer
 {
    char  *buffer;
@@ -66,7 +69,7 @@ azy_content_xmlnode_to_buf(xml_node node,
    char *buffer;
 
    node.print(counter);
-   buffer = static_cast<char *>(calloc(1, counter.result + 1));
+   buffer = static_cast<char *>(malloc(counter.result + 1));
    xml_memory_writer writer(buffer, counter.result);
    node.print(writer);
    buffer[writer.written_size()] = 0;
@@ -75,8 +78,37 @@ azy_content_xmlnode_to_buf(xml_node node,
    return buffer;
 }
 
-static Azy_Value *
-azy_value_deserialize_xml(xml_node node)
+static inline const Eina_Value_Type *
+_azy_value_type_get(const char *type)
+{
+   switch (type[0]) /* yaaay micro-optimizing! */
+     {
+      case 'b':
+        if (!strcmp(type + 1, "oolean")) return EINA_VALUE_TYPE_UCHAR;
+        if (!strcmp(type + 1, "ase64")) return EINA_VALUE_TYPE_STRING;
+        break;
+      case 'i':
+        if ((!strcmp(type + 1, "nt")) || (!strcmp(type + 1, "4"))) return EINA_VALUE_TYPE_INT;
+        break;
+      case 's':
+        if (!strcmp(type + 1, "tring")) return EINA_VALUE_TYPE_STRINGSHARE;
+        if (!strcmp(type + 1, "truct")) return EINA_VALUE_TYPE_STRUCT;
+        break;
+      case 'd':
+        if (!strcmp(type + 1, "ouble")) return EINA_VALUE_TYPE_DOUBLE;
+        if (!strcmp(type + 1, "ateTime.iso8601")) return EINA_VALUE_TYPE_TIMESTAMP;
+        break;
+      case 'a':
+        if (!strcmp(type + 1, "rray")) return EINA_VALUE_TYPE_ARRAY;
+        break;
+      default:
+        break;
+     }
+   return NULL;
+}
+
+static Eina_Value *
+azy_value_deserialize_basic_xml(xml_node node, Eina_Value *arr)
 {
    const char *name;
 
@@ -85,6 +117,7 @@ azy_value_deserialize_xml(xml_node node)
    name = node.name();
    if ((!name) || (!name[0])) return NULL;
 
+   _azy_value_type_get(name);
    switch (name[0]) /* yaaay micro-optimizing! */
      {
       case 'b':
@@ -97,11 +130,23 @@ azy_value_deserialize_xml(xml_node node)
 
              x = strtol(node.child_value(), NULL, 10);
              if ((x != 0) && (x != 1)) return NULL;
-             return azy_value_bool_new(x);
+             if (arr)
+               {
+                  eina_value_array_append(arr, x);
+                  return (Eina_Value*)1;
+               }
+             return azy_value_util_bool_new(x);
           }
         if (!strcmp(name + 1, "ase64"))
-          return azy_value_base64_new(node.child_value());
-
+          {
+             if (arr)
+               {
+                  eina_value_array_append(arr, node.child_value());
+                  return (Eina_Value*)1;
+               }
+             return azy_value_util_base64_new(node.child_value());
+          }
+        break;
       case 'i':
         if (std::distance(node.begin(), node.end()) != 1)
           return NULL;
@@ -113,53 +158,27 @@ azy_value_deserialize_xml(xml_node node)
              errno = 0;
              x = strtol(node.child_value(), NULL, 10);
              if (errno) return NULL;
-             return azy_value_int_new(x);
+             if (arr)
+               {
+                  eina_value_array_append(arr, x);
+                  return (Eina_Value*)1;
+               }
+             return azy_value_util_int_new(x);
           }
-
+        break;
       case 's':
         if (!strcmp(name + 1, "tring"))
           {
              if (std::distance(node.begin(), node.end()) > 1)
                return NULL;
-             return azy_value_string_new(node.child_value());
-          }
-        if (!strcmp(name + 1, "truct"))
-          {
-             Azy_Value *v;
-
-             if (std::distance(node.begin(), node.end()) < 1)
-               return NULL;
-             node = node.child("member");
-             if (node.empty()) return NULL;
-
-             v = azy_value_struct_new();
-             if (!v) return NULL;
-             for (xml_node it = node; it; it = it.next_sibling())
+             if (arr)
                {
-                  Azy_Value *val;
-                  const char *name;
-
-                  if ((std::distance(it.begin(), it.end()) != 2) || /* member */
-                      (std::distance(it.first_child().begin(), it.first_child().end()) != 1) || /* name/value */
-                      (std::distance(it.first_child().first_child().begin(), it.first_child().first_child().end()))) /* name */
-                    {
-                       azy_value_unref(v);
-                       return NULL;
-                    }
-                  name = it.child("name").child_value();
-                  if (!name)
-                    {
-                       ERR("%s", eina_error_msg_get(AZY_ERROR_XML_UNSERIAL));
-                       azy_value_unref(v);
-                       return NULL;
-                    }
-
-                  val = azy_value_deserialize_xml(it.child("value").first_child());
-                  azy_value_struct_member_set(v, name, val);
+                  eina_value_array_append(arr, node.child_value());
+                  return (Eina_Value*)1;
                }
-             return v;
+             return azy_value_util_string_new(node.child_value());
           }
-
+        break;
       case 'd':
         if (std::distance(node.begin(), node.end()) != 1)
           return NULL;
@@ -171,117 +190,310 @@ azy_value_deserialize_xml(xml_node node)
              errno = 0;
              x = strtod(node.child_value(), NULL);
              if (errno) return NULL;
-             return azy_value_double_new(x);
+             if (arr)
+               {
+                  eina_value_array_append(arr, x);
+                  return (Eina_Value*)1;
+               }
+             return azy_value_util_double_new(x);
           }
         if (!strcmp(name + 1, "ateTime.iso8601"))
-          return azy_value_time_new(node.child_value());
-
-      case 'a':
-        if (std::distance(node.begin(), node.end()) != 1)
-          return NULL;
-
-        if (!strcmp(name + 1, "rray"))
           {
-             Azy_Value *v;
-
-             node = node.child("data");
-             if (node.empty()) return NULL;
-             if (std::distance(node.begin(), node.end()) < 1)
-               return NULL;
-             node = node.child("value");
-             if (node.empty()) return NULL;
-
-             v = azy_value_array_new();
-             if (!v) return NULL;
-             for (xml_node it = node; it; it = it.next_sibling())
+             if (arr)
                {
-                  Azy_Value *val;
+                  struct tm tim;
+                  time_t t;
 
-                  if (std::distance(node.begin(), node.end()) != 1)
-                    {
-                       azy_value_unref(v);
-                       ERR("%s", eina_error_msg_get(AZY_ERROR_XML_UNSERIAL));
-                       return NULL;
-                    }
-                  val = azy_value_deserialize_xml(it.first_child());
-                  if (!val)
-                    {
-                       azy_value_unref(v);
-                       ERR("%s", eina_error_msg_get(AZY_ERROR_XML_UNSERIAL));
-                       return NULL;
-                    }
-                  azy_value_array_push(v, val);
+                  if (!strptime(node.child_value(), "%Y%m%dT%H:%M:%S", &tim)) break;
+                  t = mktime(&tim);
+                  eina_value_array_append(arr, t);
+                  return (Eina_Value*)1;
                }
-             return v;
+             return azy_value_util_time_string_new(node.child_value());
           }
 
       default:
-        return NULL;
+        break;
      }
 
    return NULL;
 }
 
+static Eina_Value *
+azy_value_deserialize_struct_xml(xml_node node)
+{
+   Eina_Array *st_members, *st_values;
+   unsigned int offset = 0, z;
+   Eina_Value *value_st = NULL;
+   Eina_Value_Struct_Member *members;
+   Eina_Value_Struct_Desc *st_desc;
+   const char *name;
+
+   if (node.empty()) return NULL;
+
+   if (std::distance(node.begin(), node.end()) < 1)
+     return NULL;
+   node = node.child("member");
+   if (node.empty()) return NULL;
+
+   st_desc = azy_value_util_struct_desc_new();
+   st_members = eina_array_new(1);
+   st_values = eina_array_new(1);
+
+   for (xml_node it = node; it; it = it.next_sibling())
+     {
+        Eina_Value_Struct_Member *m;
+        const Eina_Value_Type *type;
+        xml_node child;
+        Eina_Value *v;
+
+        if ((std::distance(it.begin(), it.end()) != 2) || /* member */
+            (std::distance(it.first_child().begin(), it.first_child().end()) != 1) || /* name/value */
+            (std::distance(it.first_child().first_child().begin(), it.first_child().first_child().end()))) /* name */
+          {
+             ERR("%s", eina_error_msg_get(AZY_ERROR_XML_UNSERIAL));
+             goto end;
+          }
+        child = it.child("value").first_child();
+        if (child.empty())
+          {
+             ERR("%s", eina_error_msg_get(AZY_ERROR_XML_UNSERIAL));
+             goto end;
+          }
+        type = _azy_value_type_get(child.name());
+        if (!type)
+          {
+             ERR("%s", eina_error_msg_get(AZY_ERROR_XML_UNSERIAL));
+             goto end;
+          }
+        name = it.child("name").child_value();
+        if (!name)
+          {
+             ERR("%s", eina_error_msg_get(AZY_ERROR_XML_UNSERIAL));
+             goto end;
+          }
+        m = (Eina_Value_Struct_Member*)calloc(1, sizeof(Eina_Value_Struct_Member));
+        m->name = eina_stringshare_add(name);
+        offset = azy_value_util_type_offset(type, offset);
+        m->offset = offset;
+        offset += azy_value_util_type_size(type);
+        m->type = type;
+        eina_array_push(st_members, m);
+
+        v = azy_value_deserialize_xml(child);
+        eina_array_push(st_values, v ?: (void*)1);
+        z++;
+     }
+   if (!z)
+     {
+        free(st_desc);
+        goto end;
+     }
+
+   members = (Eina_Value_Struct_Member*)malloc(eina_array_count(st_members) * sizeof(Eina_Value_Struct_Member));
+   for (z = 0; z < eina_array_count(st_members); z++)
+     {
+        Eina_Value_Struct_Member *m = (Eina_Value_Struct_Member*)eina_array_data_get(st_members, z);
+        members[z].name = m->name;
+        members[z].offset = m->offset;
+        members[z].type = m->type;
+        free(m);
+     }
+
+   //setup
+   st_desc->members = members;
+   st_desc->member_count = eina_array_count(st_members);
+   st_desc->size = offset;
+   value_st = eina_value_struct_new(st_desc);
+
+   //filling with data
+   for (z = 0; z < eina_array_count(st_values); z++)
+     {
+        Eina_Value *v = (Eina_Value*)eina_array_data_get(st_values, z);
+        if (v == (void*)1) continue;
+        eina_value_struct_value_set(value_st, members[z].name, v);
+        eina_value_free(v);
+     }
+
+end:
+   eina_array_free(st_members);
+   eina_array_free(st_values);
+   return value_st;
+}
+
+static Eina_Value *
+azy_value_deserialize_array_xml(xml_node node)
+{
+   Eina_Value *arr;
+   const char *name;
+   const Eina_Value_Type *type;
+
+   if (node.empty()) return NULL;
+
+   node = node.child("data");
+   if (node.empty()) return NULL;
+   if (std::distance(node.begin(), node.end()) < 1)
+     return NULL;
+   node = node.child("value");
+   if (node.empty()) return NULL;
+
+   name = node.first_child().name();
+   if ((!name) || (!name[0])) return NULL; //incorrectly formed blank array
+   type = _azy_value_type_get(name);
+   arr = eina_value_array_new(type, 0);
+   for (xml_node it = node; it; it = it.next_sibling())
+     {
+        if (std::distance(node.begin(), node.end()) != 1)
+          {
+             ERR("%s", eina_error_msg_get(AZY_ERROR_XML_UNSERIAL));
+             goto error;
+          }
+        if (type == EINA_VALUE_TYPE_ARRAY)
+          {
+             Eina_Value_Array inner_array;
+             Eina_Value *data = azy_value_deserialize_array_xml(it.first_child());
+             if (!data) continue;
+             eina_value_get(data, &inner_array);
+             eina_value_array_append(arr, inner_array);
+             eina_value_free(data);
+          }
+        else if (type == EINA_VALUE_TYPE_STRUCT)
+           {
+              Eina_Value_Struct st;
+              Eina_Value *data = azy_value_deserialize_struct_xml(it.first_child());
+              if (!data) continue;
+              eina_value_get(data, &st);
+              eina_value_array_append(arr, st);
+              eina_value_free(data);
+           }
+        else
+          {
+             if (!azy_value_deserialize_basic_xml(it.first_child(), arr)) goto error;
+          }
+     }
+   return arr;
+error:
+   eina_value_free(arr);
+   return NULL;
+}
+
 static void
-azy_value_serialize_xml(xml_node node,
-                        Azy_Value *val)
+azy_value_serialize_basic_xml(xml_node node, const Eina_Value *val)
+{
+   char buf[128];
+   xml_node n;
+
+   switch (azy_value_util_type_get(val))
+     {
+      case AZY_VALUE_INT:
+      {
+         int x;
+
+         eina_value_get(val, &x);
+         snprintf(buf, sizeof(buf), "%d", x);
+         node.append_child("int").append_child(node_pcdata).set_value(buf);
+         return;
+      }
+      case AZY_VALUE_STRING:
+      {
+         const char *txt;
+         eina_value_get(val, &txt);
+         n = node.append_child("string");
+         if (txt) n.append_child(node_pcdata).set_value(txt);
+         return;
+      }
+      case AZY_VALUE_BASE64:
+      {
+         const char *txt;
+         eina_value_get(val, &txt);
+         n = node.append_child("base64");
+         if (txt) n.append_child(node_pcdata).set_value(txt);
+         return;
+      }
+      case AZY_VALUE_BOOL:
+      {
+         Eina_Bool x;
+
+         eina_value_get(val, &x);
+         node.append_child("boolean").append_child(node_pcdata).set_value(x ? "1" : "0");
+         return;
+      }
+      case AZY_VALUE_DOUBLE:
+      {
+         double x;
+
+         eina_value_get(val, &x);
+         snprintf(buf, sizeof(buf), "%g", x);
+         node.append_child("double").append_child(node_pcdata).set_value(buf);
+         return;
+      }
+
+      case AZY_VALUE_TIME:
+      {
+         time_t t;
+         struct tm *tim;
+
+         eina_value_get(val, &t);
+         tim = localtime(&t);
+         strftime(buf, sizeof(buf), "%Y%m%dT%H:%M:%S", tim);
+         node.append_child("dateTime.iso8601").append_child(node_pcdata).set_value(buf);
+      }
+      default: break;
+     }
+}
+
+static void
+azy_value_serialize_struct_xml(xml_node node, const Eina_Value *val)
+{
+   Eina_Value_Struct st;
+   unsigned int x;
+
+   eina_value_pget(val, &st);
+   node = node.append_child("struct");
+   for (x = 0; x < st.desc->member_count; x++)
+     {
+        xml_node member, value;
+        Eina_Value m;
+
+        member = node.append_child("member");
+        member.append_child("name").append_child(node_pcdata).set_value(st.desc->members[x].name);
+        value = member.append_child("value");
+        eina_value_struct_value_get(val, st.desc->members[x].name, &m);
+        azy_value_serialize_xml(value, &m);
+        eina_value_flush(&m);
+     }
+}
+
+static void
+azy_value_serialize_array_xml(xml_node node, const Eina_Value *val)
+{
+   unsigned int x, total;
+
+   node = node.append_child("array").append_child("data");
+   total = eina_value_array_count(val);
+   for (x = 0; x < total; x++)
+     {
+        Eina_Value m;
+
+        eina_value_array_value_get(val, x, &m);
+        azy_value_serialize_xml(node.append_child("value"), &m);
+        eina_value_flush(&m);
+     }
+}
+
+
+static void
+azy_value_serialize_xml(xml_node node, const Eina_Value *val)
 {
    EINA_SAFETY_ON_TRUE_RETURN(node.empty());
    EINA_SAFETY_ON_NULL_RETURN(val);
 
-   if (val->type != AZY_VALUE_MEMBER)
-     node = node.append_child("value");
-
-   switch (val->type)
-     {
-        Eina_List *l;
-        void *v;
-        char buf[128];
-
-      case AZY_VALUE_ARRAY:
-        node = node.append_child("array").append_child("data");
-        EINA_LIST_FOREACH(val->children, l, v)
-          azy_value_serialize_xml(node, static_cast<Azy_Value *>(v));
-        return;
-
-      case AZY_VALUE_STRUCT:
-        node = node.append_child("struct");
-        EINA_LIST_FOREACH(val->children, l, v)
-          azy_value_serialize_xml(node, static_cast<Azy_Value *>(v));
-        return;
-
-      case AZY_VALUE_MEMBER:
-        node = node.append_child("member");
-        node.append_child("name").append_child(node_pcdata).set_value(val->member_name);
-        azy_value_serialize_xml(node, val->member_value);
-        return;
-
-      case AZY_VALUE_INT:
-        snprintf(buf, sizeof(buf), "%i", val->int_val);
-        node.append_child("int").append_child(node_pcdata).set_value(buf);
-        return;
-
-      case AZY_VALUE_STRING:
-        node.append_child("string").append_child(node_pcdata).set_value(val->str_val);
-        return;
-
-      case AZY_VALUE_BOOL:
-        node.append_child("boolean").append_child(node_pcdata).set_value(val->int_val ? "1" : "0");
-        return;
-
-      case AZY_VALUE_DOUBLE:
-        snprintf(buf, sizeof(buf), "%g", val->dbl_val);
-        node.append_child("double").append_child(node_pcdata).set_value(buf);
-        return;
-
-      case AZY_VALUE_TIME:
-        node.append_child("dateTime.iso8601").append_child(node_pcdata).set_value(val->str_val);
-        return;
-
-      case AZY_VALUE_BASE64:
-        node.append_child("base64").append_child(node_pcdata).set_value(val->str_val);
-        return;
-     }
+   if (eina_value_type_get(val) == EINA_VALUE_TYPE_ARRAY)
+     azy_value_serialize_array_xml(node, val);
+   if (eina_value_type_get(val) == EINA_VALUE_TYPE_STRUCT)
+     azy_value_serialize_struct_xml(node, val);
+   else
+     azy_value_serialize_basic_xml(node, val);
 }
 
 Eina_Bool
@@ -303,8 +515,8 @@ azy_content_serialize_request_xml(Azy_Content *content)
      {
         xml_node p;
 
-        p = node.append_child("param");
-        azy_value_serialize_xml(p, static_cast<Azy_Value *>(val));
+        p = node.append_child("param").append_child("value");
+        azy_value_serialize_xml(p, (Eina_Value*)val);
      }
    buf = (unsigned char *)azy_content_xmlnode_to_buf(doc, &len);
    content->buffer = eina_binbuf_manage_new_length(buf, len);
@@ -335,13 +547,24 @@ azy_content_serialize_response_xml(Azy_Content *content)
      }
    else
      {
-        node = node.append_child("params").append_child("param");
+        node = node.append_child("params").append_child("param").append_child("value");
         azy_value_serialize_xml(node, content->retval);
      }
 
    buf = (unsigned char *)azy_content_xmlnode_to_buf(doc, &len);
    content->buffer = eina_binbuf_manage_new_length(buf, len);
    return EINA_TRUE;
+}
+
+static Eina_Value *
+azy_value_deserialize_xml(xml_node node)
+{
+   const Eina_Value_Type *type = _azy_value_type_get(node.name());
+   if (type == EINA_VALUE_TYPE_ARRAY)
+     return azy_value_deserialize_array_xml(node);
+   if (type == EINA_VALUE_TYPE_STRUCT)
+     return azy_value_deserialize_struct_xml(node);
+   return azy_value_deserialize_basic_xml(node, NULL);
 }
 
 static Eina_Bool
@@ -377,38 +600,42 @@ azy_content_deserialize_request_xml(Azy_Content *content,
    content->method = eina_stringshare_add(mn);
 
    params = pquery.evaluate_node_set(doc);
-   if (!params.empty())
-     {
-        xpath_node_set fc, fs;
-        xml_node v, p;
+   if (params.empty()) return EINA_TRUE;
+   {
+      xpath_node_set fc, fs;
+      xml_node v, p;
 
-        v = params.first().node(); /* <value> */
-        p = v.parent(); /* <param> */
-        if (std::distance(p.parent().begin(), p.parent().end()) != static_cast<int64_t>(params.size())) /* that's a paddlin */
-          return EINA_FALSE;
-        if (std::distance(p.begin(), p.end()) != 1) /* that's a paddlin */
-          return EINA_FALSE;
-        if (std::distance(v.begin(), v.end()) != 1) /* that's also a paddlin */
-          return EINA_FALSE;
+      v = params.first().node(); /* <value> */
+      p = v.parent(); /* <param> */
+      if (std::distance(p.parent().begin(), p.parent().end()) != static_cast<int64_t>(params.size())) /* that's a paddlin */
+        return EINA_FALSE;
+      if (std::distance(p.begin(), p.end()) != 1) /* that's a paddlin */
+        return EINA_FALSE;
+      if (std::distance(v.begin(), v.end()) != 1) /* that's also a paddlin */
+        return EINA_FALSE;
 
-        for (xpath_node_set::const_iterator it = params.begin(); it != params.end(); ++it)
-          {
-             xpath_node n;
-             Azy_Value *val;
+      for (xpath_node_set::const_iterator it = params.begin(); it != params.end(); ++it)
+        {
+           xpath_node n;
+           Eina_Value *val;
+           void *v;
+           xml_node node;
 
-             n = *it;
+           n = *it;
 
-             if (std::distance(n.node().begin(), n.node().end()) != 1) return EINA_FALSE;
-             val = azy_value_deserialize_xml(n.node().first_child());
-             if (!val)
-               {
-                  azy_content_error_faultmsg_set(content, -1,
-                                                 "Can't parse XML-RPC XML request. Failed to deserialize parameter %i.", 1 + std::distance(params.begin(), it));
-                  return EINA_FALSE;
-               }
-             azy_content_param_add(content, val);
-          }
-     }
+           if (std::distance(n.node().begin(), n.node().end()) != 1) return EINA_FALSE;
+           val = azy_value_deserialize_xml(n.node().first_child());
+           if (!val)
+             {
+                azy_content_error_faultmsg_set(content, -1,
+                                               "Can't parse XML-RPC XML request. Failed to deserialize parameter %i.", 1 + std::distance(params.begin(), it));
+                EINA_LIST_FREE(content->params, v)
+                  eina_value_free((Eina_Value*)v);
+                return EINA_FALSE;
+             }
+           azy_content_param_add(content, val);
+        }
+   }
 
    return EINA_TRUE;
 }

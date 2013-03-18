@@ -35,7 +35,7 @@ azy_content_buffer_set_(Azy_Content *content, unsigned char *buffer, size_t leng
    if ((!buffer) || (length < 1))
      return EINA_FALSE;
 
-   eina_binbuf_free(content->buffer);
+   if (content->buffer) eina_binbuf_free(content->buffer);
 
    content->buffer = eina_binbuf_manage_new_length(buffer, length);
    return EINA_TRUE;
@@ -118,7 +118,7 @@ azy_content_new(const char *method)
 void
 azy_content_free(Azy_Content *content)
 {
-   Azy_Value *v;
+   Eina_Value *v;
 
    DBG("(content=%p)", content);
 
@@ -132,9 +132,9 @@ azy_content_free(Azy_Content *content)
    if (content->method && content->method[0])
      eina_stringshare_del(content->method);
    EINA_LIST_FREE(content->params, v)
-     azy_value_unref(v);
+     eina_value_free(v);
    if (content->retval)
-     azy_value_unref(content->retval);
+     eina_value_free(content->retval);
    if (content->buffer) eina_binbuf_free(content->buffer);
    if (content->faultmsg)
      eina_stringshare_del(content->faultmsg);
@@ -466,23 +466,17 @@ azy_content_net_get(Azy_Content *content)
  * This function adds @p val parameter to @p content for later serialization
  * and transmission to a client/server.
  * @param content The content object (NOT NULL)
- * @param val The #Azy_Value parameter object to add (NOT NULL)
+ * @param val The allocated #Eina_Value parameter object to add (NOT NULL)
  */
 void
 azy_content_param_add(Azy_Content *content,
-                      Azy_Value *val)
+                      Eina_Value *val)
 {
    DBG("(content=%p, val=%p)", content, val);
 
    if (!AZY_MAGIC_CHECK(content, AZY_MAGIC_CONTENT))
      {
         AZY_MAGIC_FAIL(content, AZY_MAGIC_CONTENT);
-        return;
-     }
-
-   if (!AZY_MAGIC_CHECK(val, AZY_MAGIC_VALUE))
-     {
-        AZY_MAGIC_FAIL(val, AZY_MAGIC_VALUE);
         return;
      }
 
@@ -498,7 +492,7 @@ azy_content_param_add(Azy_Content *content,
  * @param pos The position to return
  * @return The matching parameter, or NULL on failure
  */
-Azy_Value *
+Eina_Value *
 azy_content_param_get(Azy_Content *content,
                       unsigned int pos)
 {
@@ -516,7 +510,7 @@ azy_content_param_get(Azy_Content *content,
 /**
  * @brief Get the list of params
  *
- * This function returns an #Eina_List of #Azy_Value structs which
+ * This function returns an #Eina_List of #Eina_Value structs which
  * represent the parameters for the method call in @p content.
  * @param content The content object (NOT NULL)
  * @return The list of params, or NULL on failure
@@ -546,7 +540,7 @@ azy_content_params_get(Azy_Content *content)
  */
 void
 azy_content_retval_set(Azy_Content *content,
-                       Azy_Value *val)
+                       Eina_Value *val)
 {
    DBG("(content=%p, val=%p)", content, val);
 
@@ -567,7 +561,7 @@ azy_content_retval_set(Azy_Content *content,
  * @param content The content (NOT NULL)
  * @return The retval, or NULL on failure
  */
-Azy_Value *
+Eina_Value *
 azy_content_retval_get(Azy_Content *content)
 {
    DBG("(content=%p)", content);
@@ -852,7 +846,7 @@ azy_content_dump_string(const Azy_Content *content,
    char buf[256];
    char *ret;
    Eina_Bool single_line = EINA_TRUE;
-   Azy_Value *v;
+   Eina_Value *v;
 
    if (!AZY_MAGIC_CHECK(content, AZY_MAGIC_CONTENT))
      {
@@ -876,7 +870,7 @@ azy_content_dump_string(const Azy_Content *content,
    if (single_line)
      EINA_LIST_FOREACH(content->params, l, v)
        {
-          azy_value_dump(v, string, indent);
+          azy_value_util_dump(v, string, indent);
 
           if (l->next)
             eina_strbuf_append(string, ", ");
@@ -886,7 +880,7 @@ azy_content_dump_string(const Azy_Content *content,
         EINA_LIST_FOREACH(content->params, l, v)
           {
              eina_strbuf_append_printf(string, "\n%s  ", buf);
-             azy_value_dump(v, string, indent + 1);
+             azy_value_util_dump(v, string, indent + 1);
 
              if (l->next)
                eina_strbuf_append(string, ",");
@@ -900,7 +894,7 @@ azy_content_dump_string(const Azy_Content *content,
    if (content->retval)
      {
         eina_strbuf_append(string, " = ");
-        azy_value_dump(content->retval, string, indent);
+        azy_value_util_dump(content->retval, string, indent);
      }
 
    if (content->errcode)

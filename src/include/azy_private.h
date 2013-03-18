@@ -137,7 +137,7 @@ struct Azy_Content
    void                 *data;
    const char           *method;
    Eina_List            *params;
-   Azy_Value            *retval;
+   Eina_Value           *retval;
    void                 *ret;
    Azy_Client_Call_Id    id;
    Azy_Net              *recv_net;
@@ -327,22 +327,6 @@ struct Azy_Server_Module
    Azy_Server_Module_State state;
 };
 
-struct Azy_Value
-{
-   AZY_MAGIC;
-   EINA_REFCOUNT;
-   Azy_Value_Type type;
-
-   const char    *str_val;
-   int            int_val;
-   double         dbl_val;
-
-   Eina_List     *children;
-
-   const char    *member_name;
-   Azy_Value     *member_value;
-};
-
 struct Azy_Client
 {
    AZY_MAGIC;
@@ -376,7 +360,7 @@ struct Azy_Client_Handler_Data
    Azy_Net           *recv;
    Eina_Stringshare  *method;
    Eina_Stringshare  *uri;
-   Azy_Content_Cb     callback;  //callback set to convert from Azy_Value to Return_Type
+   Azy_Content_Cb     callback;  //callback set to convert from Eina_Value to Return_Type
    void              *content_data;
    Eina_Strbuf       *send;
    Eina_Bool          redirect : 1;
@@ -406,20 +390,24 @@ struct Azy_Server_Module_Method
    Azy_Server_Module_Content_Cb method;
 };
 
+
+typedef struct _Azy_Value_Struct_Desc
+{
+   Eina_Value_Struct_Desc base;
+   int refcount;
+} Azy_Value_Struct_Desc;
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 void             _azy_magic_fail(const void *d, Azy_Magic m, Azy_Magic req_m, const char *fname);
 
-Eina_Bool        azy_value_init(const char *);
 Eina_Bool        azy_rss_init(const char *);
 Eina_Bool        azy_rss_item_init(const char *);
-void             azy_value_shutdown(void);
 void             azy_rss_shutdown(void);
 void             azy_rss_item_shutdown(void);
 
-Eina_Bool        azy_value_multi_line_get_(Azy_Value *v, unsigned int max_strlen);
+Eina_Bool        azy_value_multi_line_get_(const Eina_Value *v, unsigned int max_strlen);
 int              azy_events_type_parse(Azy_Net *net, int type, const unsigned char *header, int64_t len);
 Eina_Bool        azy_events_header_parse(Azy_Net *net, unsigned char *event_data, size_t event_len, int offset);
 Eina_Bool        azy_events_connection_kill(void *conn, Eina_Bool server_client, const char *msg);

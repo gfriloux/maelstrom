@@ -23,778 +23,146 @@
  * @{
  */
 
-static Eina_Mempool *value_mempool = NULL;
 
-static Eina_Hash *string_values = NULL;
-static Eina_Hash *base64_values = NULL;
-static Eina_Hash *int_values = NULL;
-static Eina_Hash *time_values = NULL;
-
-static Azy_Value *azy_value_new_(void);
-static Eina_Bool  azy_value_list_multi_line_get_(Azy_Value *v);
-
-static Azy_Value bool_value_true = { AZY_MAGIC_VALUE, 1, AZY_VALUE_BOOL, NULL, 1, 0.0, NULL, NULL, NULL };
-static Azy_Value bool_value_false = { AZY_MAGIC_VALUE, 1, AZY_VALUE_BOOL, NULL, 0, 0.0, NULL, NULL, NULL };
-
-/* allocate a new Azy_Value */
-static inline Azy_Value *
-azy_value_new_(void)
+static void *
+_ops_malloc(const Eina_Value_Struct_Operations *ops EINA_UNUSED, const Eina_Value_Struct_Desc *desc)
 {
-   Azy_Value *v;
-
-   v = eina_mempool_malloc(value_mempool, sizeof(Azy_Value));
-
-   EINA_SAFETY_ON_NULL_RETURN_VAL(v, NULL);
-   memset(v, 0, sizeof(Azy_Value));
-   EINA_REFCOUNT_INIT(v);
-   AZY_MAGIC_SET(v, AZY_MAGIC_VALUE);
-   return v;
+   Azy_Value_Struct_Desc *edesc = (Azy_Value_Struct_Desc*)desc;
+   edesc->refcount++;
+   //DBG("%p refcount=%d", edesc, edesc->refcount);
+   return malloc(desc->size);
 }
+
+static void
+_ops_free(const Eina_Value_Struct_Operations *ops EINA_UNUSED, const Eina_Value_Struct_Desc *desc, void *memory)
+{
+   Azy_Value_Struct_Desc *edesc = (Azy_Value_Struct_Desc*) desc;
+   edesc->refcount--;
+   free(memory);
+   //DBG("%p refcount=%d", edesc, edesc->refcount);
+   if (edesc->refcount <= 0)
+     {
+        unsigned i;
+        for (i = 0; i < edesc->base.member_count; i++)
+          eina_stringshare_del((char *)edesc->base.members[i].name);
+        free((Eina_Value_Struct_Member *)edesc->base.members);
+        free(edesc);
+     }
+}
+
+static Eina_Value_Struct_Operations operations =
+{
+   EINA_VALUE_STRUCT_OPERATIONS_VERSION,
+   _ops_malloc,
+   _ops_free,
+   NULL,
+   NULL,
+   NULL
+};
+
+static Eina_Bool  azy_value_list_multi_line_get_(const Eina_Value *v);
+
 
 /* returns EINA_TRUE if a struct/array object requires multiple lines to print */
 static Eina_Bool
-azy_value_list_multi_line_get_(Azy_Value *v)
+azy_value_list_multi_line_get_(const Eina_Value *val)
 {
-   Eina_List *l;
-   Azy_Value *val;
+   const Eina_Value_Type *type;
 
-   if (!v) return EINA_FALSE;
-
-   if (v->type == AZY_VALUE_ARRAY)
+   if (!val) return EINA_FALSE;
+   type = eina_value_type_get(val);
+   if (type == EINA_VALUE_TYPE_ARRAY)
      {
-        if (eina_list_count(v->children) > 8)
-          return EINA_TRUE;
-        else
-          EINA_LIST_FOREACH(v->children, l, val)
-            if (azy_value_multi_line_get_(val, 35))
-              return EINA_TRUE;
+        unsigned int x, total = eina_value_array_count(val);
+        if (total > 8) return EINA_TRUE;
+        for (x = 0; x < total; x++)
+          {
+             Eina_Value m;
+
+             eina_value_array_value_get(val, x, &m);
+             if (azy_value_multi_line_get_(&m, 35)) return EINA_TRUE;
+             eina_value_flush(&m);
+          }
+        return EINA_FALSE;
      }
-   else if (v->type == AZY_VALUE_STRUCT)
+   else if (type == EINA_VALUE_TYPE_STRUCT)
      {
-        if (eina_list_count(v->children) > 5)
-          return EINA_TRUE;
-        else
-          EINA_LIST_FOREACH(v->children, l, val)
-            if (azy_value_multi_line_get_(val->member_value, 25))
-              return EINA_TRUE;
+        Eina_Value_Struct st;
+        unsigned int x;
+
+        eina_value_pget(val, &st);
+        if (st.desc->member_count > 5) return EINA_TRUE;
+        for (x = 0; x < st.desc->member_count; x++)
+          {
+             Eina_Value m;
+
+             eina_value_struct_value_get(val, st.desc->members[x].name, &m);
+             if (azy_value_multi_line_get_(&m, 25)) return EINA_TRUE;
+             eina_value_flush(&m);
+          }
+        return EINA_FALSE;
      }
 
    return EINA_FALSE;
-}
-
-Eina_Bool
-azy_value_init(const char *type)
-{
-   value_mempool = eina_mempool_add(type, "Azy_Value", NULL, sizeof(Azy_Value), 64);
-   if (!value_mempool)
-     {
-        if (!strcmp(type, "pass_through")) goto error;
-        value_mempool = eina_mempool_add("pass_through", "Azy_Value", NULL, sizeof(Azy_Value), 64);
-        if (!value_mempool) goto error;
-     }
-
-   string_values = eina_hash_string_superfast_new(NULL);
-   base64_values = eina_hash_string_superfast_new(NULL);
-   time_values = eina_hash_string_superfast_new(NULL);
-   int_values = eina_hash_int32_new(NULL);
-
-   return EINA_TRUE;
-error:
-   EINA_LOG_CRIT("Unable to set up mempool!");
-   return EINA_FALSE;
-}
-
-void
-azy_value_shutdown(void)
-{
-   eina_hash_free(string_values);
-   eina_hash_free(base64_values);
-   eina_hash_free(time_values);
-   eina_hash_free(int_values);
-   string_values = base64_values = int_values = time_values = NULL;
-   eina_mempool_del(value_mempool);
-   value_mempool = NULL;
 }
 
 /* returns EINA_TRUE if the line requires multiple lines to print */
 Eina_Bool
-azy_value_multi_line_get_(Azy_Value *val,
+azy_value_multi_line_get_(const Eina_Value *val,
                           unsigned int max_strlen)
 {
-   switch (val->type)
+   const Eina_Value_Type *type;
+
+   type = eina_value_type_get(val);
+   if (type == EINA_VALUE_TYPE_STRUCT)
      {
-      case AZY_VALUE_STRUCT:
-      case AZY_VALUE_ARRAY:
-        if (val->children)
-          return EINA_TRUE;
-        break;
+        Eina_Value_Struct st;
 
-      case AZY_VALUE_STRING:
-        if (val->str_val && (eina_strlen_bounded(val->str_val, max_strlen + 1) > max_strlen))
-          return EINA_TRUE;
-        break;
-
-      default:
-        break;
+        eina_value_pget(val, &st);
+        return !!st.desc->member_count;
+     }
+   if (type == EINA_VALUE_TYPE_ARRAY)
+     {
+        return !!eina_value_array_count(val);
+     }
+   if ((type == EINA_VALUE_TYPE_STRING) || (type == EINA_VALUE_TYPE_STRINGSHARE))
+     {
+        char *str;
+        eina_value_get(val, &str);
+        return eina_strlen_bounded(str, max_strlen + 1) > max_strlen;
      }
    return EINA_FALSE;
 }
 
 /**
- * @brief Increase the refcount of an existing #Azy_Value
- *
- * This function can be used to increase the reference count of @p val,
- * effectively copying the struct.  Note that only the struct itself has
- * its refcount increased, not the members.
- * @param val The #Azy_Value to ref (NOT NULL)
- * @return The same variable, or NULL on error
- */
-Azy_Value *
-azy_value_ref(Azy_Value *val)
-{
-   if (!AZY_MAGIC_CHECK(val, AZY_MAGIC_VALUE))
-     {
-        AZY_MAGIC_FAIL(val, AZY_MAGIC_VALUE);
-        return NULL;
-     }
-   if (val->type != AZY_VALUE_BOOL) EINA_REFCOUNT_REF(val);
-   return val;
-}
-
-/**
- * @brief Decrease the refcount of an existing #Azy_Value
- *
- * This function can be used to decrease the reference count of @p val,
- * effectively deleting an instance of the struct.  Note that only the
- * struct itself has its refcount decreased, not the members.  If the refcount
- * of an object reaches 0, it and its data are automatically freed.
- * @param val The #Azy_Value to ref (NOT NULL)
- */
-void
-azy_value_unref(Azy_Value *val)
-{
-   Azy_Value *v;
-
-   if (!AZY_MAGIC_CHECK(val, AZY_MAGIC_VALUE))
-     {
-        AZY_MAGIC_FAIL(val, AZY_MAGIC_VALUE);
-        return;
-     }
-   if (val->type == AZY_VALUE_BOOL) return;
-
-   EINA_REFCOUNT_UNREF(val)
-   {
-      Eina_Hash *h;
-      AZY_MAGIC_SET(val, AZY_MAGIC_NONE);
-      switch (val->type)
-        {
-         case AZY_VALUE_STRING:
-           h = string_values;
-           break;
-
-         case AZY_VALUE_TIME:
-           h = time_values;
-           break;
-
-         case AZY_VALUE_BASE64:
-           h = base64_values;
-           break;
-
-         case AZY_VALUE_INT:
-           h = int_values;
-           break;
-
-         default:
-           h = NULL;
-        }
-
-      if (h) eina_hash_del_by_data(h, val);
-      eina_stringshare_del(val->str_val);
-      eina_stringshare_del(val->member_name);
-      if (val->member_value)
-        azy_value_unref(val->member_value);
-      EINA_LIST_FREE(val->children, v)
-        azy_value_unref(v);
-      eina_mempool_free(value_mempool, val);
-   }
-}
-
-/* base types */
-/**
- * @brief Create an #Azy_Value of type #AZY_VALUE_STRING
- *
- * This function allocates memory around and stringshares a string into
- * an #Azy_Value struct.
- * @param val The string
- * @return The allocated struct, or NULL on error
- */
-Azy_Value *
-azy_value_string_new(const char *val)
-{
-   Azy_Value *v;
-
-   v = eina_hash_find(string_values, val ? val : "");
-   if (v)
-     {
-        EINA_REFCOUNT_REF(v);
-        return v;
-     }
-
-   v = azy_value_new_();
-   EINA_SAFETY_ON_NULL_RETURN_VAL(v, NULL);
-   v->type = AZY_VALUE_STRING;
-   v->str_val = eina_stringshare_add(val ? val : "");
-   eina_hash_add(string_values, v->str_val, v);
-   return v;
-}
-
-/**
- * @brief Create an #Azy_Value of type #AZY_VALUE_INT
- *
- * This function allocates memory around an int into
- * an #Azy_Value struct.
- * @param val The int
- * @return The allocated struct, or NULL on error
- */
-Azy_Value *
-azy_value_int_new(int val)
-{
-   Azy_Value *v;
-
-   v = eina_hash_find(int_values, &val);
-   if (v)
-     {
-        EINA_REFCOUNT_REF(v);
-        return v;
-     }
-
-   v = azy_value_new_();
-   EINA_SAFETY_ON_NULL_RETURN_VAL(v, NULL);
-   v->type = AZY_VALUE_INT;
-   v->int_val = val;
-   eina_hash_add(int_values, &v->int_val, v);
-   return v;
-}
-
-/**
- * @brief Create an #Azy_Value of type #AZY_VALUE_BOOL
- *
- * This function allocates memory around a boolean value into
- * an #Azy_Value struct.
- * @param val The boolean value
- * @return The allocated struct, or NULL on error
- */
-Azy_Value *
-azy_value_bool_new(Eina_Bool val)
-{
-   val = !!val;
-   if (val) return &bool_value_true;
-   return &bool_value_false;
-}
-
-/**
- * @brief Create an #Azy_Value of type #AZY_VALUE_DOUBLE
- *
- * This function allocates memory around a double into
- * an #Azy_Value struct.
- * @param val The double
- * @return The allocated struct, or NULL on error
- */
-Azy_Value *
-azy_value_double_new(double val)
-{
-   Azy_Value *v;
-
-   v = azy_value_new_();
-   EINA_SAFETY_ON_NULL_RETURN_VAL(v, NULL);
-   v->type = AZY_VALUE_DOUBLE;
-   v->dbl_val = val;
-   return v;
-}
-
-/**
- * @brief Create an #Azy_Value of type #AZY_VALUE_TIME
- *
- * This function allocates memory around and stringshares a time string into
- * an #Azy_Value struct.
- * @param val The time string
- * @return The allocated struct, or NULL on error
- */
-Azy_Value *
-azy_value_time_new(const char *val)
-{
-   Azy_Value *v;
-
-   v = eina_hash_find(time_values, val ? val : "");
-   if (v)
-     {
-        EINA_REFCOUNT_REF(v);
-        return v;
-     }
-
-   v = azy_value_new_();
-   EINA_SAFETY_ON_NULL_RETURN_VAL(v, NULL);
-   v->type = AZY_VALUE_TIME;
-   v->str_val = eina_stringshare_add(val ? val : "");
-   eina_hash_add(time_values, v->str_val, v);
-   return v;
-}
-
-/**
- * @brief Create an #Azy_Value of type #AZY_VALUE_BASE64
- *
- * This function allocates memory around a base64 encoded
- * string into an #Azy_Value struct.
- * @param base64 The base64 string
- * @return The allocated struct, or NULL on error
- */
-Azy_Value *
-azy_value_base64_new(const char *base64)
-{
-   Azy_Value *val;
-
-   if (!base64) return NULL;
-
-   val = eina_hash_find(base64_values, base64);
-   if (val)
-     {
-        EINA_REFCOUNT_REF(val);
-        return val;
-     }
-
-   val = azy_value_new_();
-   EINA_SAFETY_ON_NULL_RETURN_VAL(val, NULL);
-   val->type = AZY_VALUE_BASE64;
-   val->str_val = eina_stringshare_add(base64);
-   eina_hash_add(base64_values, val->str_val, val);
-   return val;
-}
-
-/* conversion functions */
-/**
- * @brief Retrieve the int value from an #Azy_Value struct of type #AZY_VALUE_INT
- *
- * This function gets the int value previously stored in the struct,
- * returning success or failure.
- * @param val The #Azy_Value (NOT NULL)
- * @param nval The pointer to store the int in (NOT NULL)
- * @return EINA_TRUE on success, else EINA_FALSE
- */
-Eina_Bool
-azy_value_int_get(Azy_Value *val,
-                  int *nval)
-{
-   if (!AZY_MAGIC_CHECK(val, AZY_MAGIC_VALUE))
-     {
-        AZY_MAGIC_FAIL(val, AZY_MAGIC_VALUE);
-        return EINA_FALSE;
-     }
-   if ((!nval) || (val->type != AZY_VALUE_INT))
-     return EINA_FALSE;
-
-   *nval = val->int_val;
-   return EINA_TRUE;
-}
-
-/**
- * @brief Retrieve the string value from an #Azy_Value struct of type
- *
- * #AZY_VALUE_STRING, #AZY_VALUE_TIME, or #AZY_VALUE_BASE64
- * This function stringshare_refs the string value previously stored in the struct,
- * returning success or failure.  It accepts all string type values, and
- * will automatically decode base64 strings.
- * @param val The #Azy_Value (NOT NULL)
- * @param nval The pointer to store the value in (NOT NULL)
- * @return EINA_TRUE on success, else EINA_FALSE
- */
-Eina_Bool
-azy_value_string_get(Azy_Value *val,
-                     const char **nval)
-{
-   if (!AZY_MAGIC_CHECK(val, AZY_MAGIC_VALUE))
-     {
-        AZY_MAGIC_FAIL(val, AZY_MAGIC_VALUE);
-        return EINA_FALSE;
-     }
-   if (!nval) return EINA_FALSE;
-
-   switch (val->type)
-     {
-      case AZY_VALUE_STRING:
-      case AZY_VALUE_TIME:
-        *nval = eina_stringshare_ref(val->str_val);
-        break;
-
-      case AZY_VALUE_BASE64:
-      {
-         char *buf;
-         size_t len;
-         buf = (char*)azy_util_base64_decode(val->str_val, eina_stringshare_strlen(val->str_val), &len);
-         EINA_SAFETY_ON_NULL_RETURN_VAL(buf, EINA_FALSE);
-         *nval = eina_stringshare_add_length(buf, len);
-         free(buf);
-         break;
-      }
-
-      default:
-        return EINA_FALSE;
-     }
-
-   return EINA_TRUE;
-}
-
-/**
- * @brief Retrieve the string value from an #Azy_Value struct of type #AZY_VALUE_BASE64
- *
- * This function stringshare_refs the base64 encoded string previously stored in
- * the struct into a new pointer.
- * To retrieve the value and decode it in one call, @see azy_value_string_get
- * @param val The #Azy_Value (NOT NULL)
- * @param nval The pointer to store the value in (NOT NULL)
- * @return EINA_TRUE on success, else EINA_FALSE
- */
-Eina_Bool
-azy_value_base64_get(Azy_Value *val,
-                     const char **nval)
-{
-   if (!AZY_MAGIC_CHECK(val, AZY_MAGIC_VALUE))
-     {
-        AZY_MAGIC_FAIL(val, AZY_MAGIC_VALUE);
-        return EINA_FALSE;
-     }
-   if ((!nval) || (val->type != AZY_VALUE_BASE64)) return EINA_FALSE;
-
-   *nval = eina_stringshare_ref(val->str_val);
-   return EINA_TRUE;
-}
-
-/**
- * @brief Retrieve the int value from an #Azy_Value struct of type #AZY_VALUE_BOOL
- *
- * This function gets the bool value previously stored in the struct,
- * returning success or failure.
- * @param val The #Azy_Value (NOT NULL)
- * @param nval The pointer to store the bool in (NOT NULL)
- * @return EINA_TRUE on success, else EINA_FALSE
- */
-Eina_Bool
-azy_value_bool_get(Azy_Value *val,
-                   Eina_Bool *nval)
-{
-   if (!AZY_MAGIC_CHECK(val, AZY_MAGIC_VALUE))
-     {
-        AZY_MAGIC_FAIL(val, AZY_MAGIC_VALUE);
-        return EINA_FALSE;
-     }
-   if ((!nval) || (val->type != AZY_VALUE_BOOL))
-     return EINA_FALSE;
-
-   *nval = !!val->int_val;
-   return EINA_TRUE;
-}
-
-/**
- * @brief Retrieve the double value from an #Azy_Value struct of type
- *
- * #AZY_VALUE_DOUBLE, or #AZY_TYPE_INT
- * This function gets the double value previously stored in the struct,
- * returning success or failure.
- * @param val The #Azy_Value (NOT NULL)
- * @param nval The pointer to store the value in (NOT NULL)
- * @return EINA_TRUE on success, else EINA_FALSE
- */
-Eina_Bool
-azy_value_double_get(Azy_Value *val,
-                     double *nval)
-{
-   if (!AZY_MAGIC_CHECK(val, AZY_MAGIC_VALUE))
-     {
-        AZY_MAGIC_FAIL(val, AZY_MAGIC_VALUE);
-        return EINA_FALSE;
-     }
-   if ((!nval) || ((val->type != AZY_VALUE_DOUBLE) && (val->type != AZY_VALUE_INT)))
-     return EINA_FALSE;
-
-   if (val->type == AZY_VALUE_DOUBLE)
-     *nval = val->dbl_val;
-   else
-     *nval = (double)val->int_val;
-   return EINA_TRUE;
-}
-
-/**
- * @brief Increases the refcount of an #Azy_Value
- *
- * This function increases the refcount of an #Azy_Value, returning
- * success or failure.
- * @param val The #Azy_Value (NOT NULL)
- * @param nval The pointer to store the value in (NOT NULL)
- * @return EINA_TRUE on success, else EINA_FALSE
- */
-Eina_Bool
-azy_value_value_get(Azy_Value *val,
-                    Azy_Value **nval)
-{
-   if (!AZY_MAGIC_CHECK(val, AZY_MAGIC_VALUE))
-     {
-        AZY_MAGIC_FAIL(val, AZY_MAGIC_VALUE);
-        return EINA_FALSE;
-     }
-
-   if (!nval)
-     return EINA_FALSE;
-
-   *nval = azy_value_ref(val);
-   return EINA_TRUE;
-}
-
-/**
- * @brief Return the type of an #Azy_Value
+ * @brief Return the type of an #Eina_Value
  *
  * This function is used to return the type of value in
- * an #Azy_Value.
- * @param val The #Azy_Value struct (NOT NULL)
- * @return The #Azy_Value_Type, or -1 on error
+ * an #Eina_Value, mapped to an int for use in switches.
+ * @param val The #Eina_Value struct (NOT NULL)
+ * @return The #Azy_Value_Type, or AZY_VALUE_LAST on error
  */
 Azy_Value_Type
-azy_value_type_get(Azy_Value *val)
+azy_value_util_type_get(const Eina_Value *val)
 {
-   if (!AZY_MAGIC_CHECK(val, AZY_MAGIC_VALUE))
-     {
-        AZY_MAGIC_FAIL(val, AZY_MAGIC_VALUE);
-        return -1;
-     }
+   const Eina_Value_Type *type;
 
-   return val->type;
+   EINA_SAFETY_ON_NULL_RETURN_VAL(val, AZY_VALUE_LAST);
+   type = eina_value_type_get(val);
+   if (type == EINA_VALUE_TYPE_ARRAY) return AZY_VALUE_ARRAY;
+   if (type == EINA_VALUE_TYPE_STRUCT) return AZY_VALUE_STRUCT;
+   if (type == EINA_VALUE_TYPE_STRING) return AZY_VALUE_BASE64;
+   if (type == EINA_VALUE_TYPE_STRINGSHARE) return AZY_VALUE_STRING;
+   if (type == EINA_VALUE_TYPE_UCHAR) return AZY_VALUE_BOOL;
+   if (type == EINA_VALUE_TYPE_INT) return AZY_VALUE_INT;
+   if (type == EINA_VALUE_TYPE_DOUBLE) return AZY_VALUE_DOUBLE;
+   if (type == EINA_VALUE_TYPE_TIMESTAMP) return AZY_VALUE_TIME;
+   return AZY_VALUE_LAST;
 }
 
-/**
- * @brief Set the type of an #Azy_Value
- *
- * This function is used to set the type of value in
- * an #Azy_Value.
- * @param val The #Azy_Value struct (NOT NULL)
- * @param type The #Azy_Value_Type
- */
-void
-azy_value_type_set(Azy_Value *val, Azy_Value_Type type)
-{
-   if (!AZY_MAGIC_CHECK(val, AZY_MAGIC_VALUE))
-     {
-        AZY_MAGIC_FAIL(val, AZY_MAGIC_VALUE);
-        return;
-     }
-
-   val->type = type;
-}
 
 /**
- * @brief Returns the name of the #Azy_Value struct member
- *
- * This function returns the name of the struct member that the #Azy_Value
- * contains.  Note that the name is still owned by the #Azy_Value, but is
- * guaranteed to be stringshared.
- * @param val The #Azy_Value of type #AZY_VALUE_MEMBER (NOT NULL)
- * @return The struct member's name, or NULL on failure
- */
-const char *
-azy_value_struct_member_name_get(Azy_Value *val)
-{
-   if (!AZY_MAGIC_CHECK(val, AZY_MAGIC_VALUE))
-     {
-        AZY_MAGIC_FAIL(val, AZY_MAGIC_VALUE);
-        return NULL;
-     }
-   if (val->type != AZY_VALUE_MEMBER)
-     return NULL;
-
-   return val->member_name;
-}
-
-/**
- * @brief Returns the value of the #Azy_Value struct member
- *
- * This function returns the value of the struct member that the specified
- * #Azy_Value contains.  Note that the returned value is still owned by the
- * specified #Azy_Value.
- * @param val The #Azy_Value of type #AZY_VALUE_MEMBER (NOT NULL)
- * @return The struct member's value, or NULL on failure
- */
-Azy_Value *
-azy_value_struct_member_value_get(Azy_Value *val)
-{
-   if (!AZY_MAGIC_CHECK(val, AZY_MAGIC_VALUE))
-     {
-        AZY_MAGIC_FAIL(val, AZY_MAGIC_VALUE);
-        return NULL;
-     }
-   if (val->type != AZY_VALUE_MEMBER)
-     return NULL;
-
-   return val->member_value;
-}
-
-/**
- * @brief Returns the #Azy_Value struct member that matches a name
- *
- * This function returns the struct member that the specified
- * #Azy_Value contains which matches @p name.
- * Note that the returned value is still owned by the
- * specified #Azy_Value.
- * @param val The #Azy_Value of type #AZY_VALUE_STRUCT (NOT NULL)
- * @param name The name of the member to return (NOT NULL)
- * @return The #Azy_Value of the named struct member, or NULL on failure
- */
-Azy_Value *
-azy_value_struct_member_get(Azy_Value *val,
-                            const char *name)
-{
-   Eina_List *l;
-   Azy_Value *m;
-
-   if (!AZY_MAGIC_CHECK(val, AZY_MAGIC_VALUE))
-     {
-        AZY_MAGIC_FAIL(val, AZY_MAGIC_VALUE);
-        return NULL;
-     }
-   EINA_SAFETY_ON_NULL_RETURN_VAL(name, NULL);
-
-   if (val->type != AZY_VALUE_STRUCT)
-     return NULL;
-
-   EINA_LIST_FOREACH(val->children, l, m)
-     if (m->member_name && (!strcmp(m->member_name, name)))
-       return m->member_value;
-
-   return NULL;
-}
-
-/**
- * @brief Returns a list of the child members of an #Azy_Value
- *
- * This function returns the list of struct member that the specified
- * #Azy_Value contains.
- * Note that the returned values (including the list) are still owned by the
- * specified #Azy_Value.
- * @param val The #Azy_Value of type #AZY_VALUE_ARRAY or #AZY_VALUE_STRUCT (NOT NULL)
- * @return An #Eina_List of #Azy_Value members, or NULL on failure
- */
-Eina_List *
-azy_value_children_items_get(Azy_Value *val)
-{
-   if (!AZY_MAGIC_CHECK(val, AZY_MAGIC_VALUE))
-     {
-        AZY_MAGIC_FAIL(val, AZY_MAGIC_VALUE);
-        return NULL;
-     }
-   if ((val->type != AZY_VALUE_ARRAY) && (val->type != AZY_VALUE_STRUCT))
-     return NULL;
-
-   return val->children;
-}
-
-/* composite types */
-/**
- * @brief This function allocates and returns a new #Azy_Value of type AZY_VALUE_STRUCT
- * @return The new #Azy_Value struct, or NULL on failure
- */
-Azy_Value *
-azy_value_struct_new(void)
-{
-   Azy_Value *v;
-
-   v = azy_value_new_();
-   EINA_SAFETY_ON_NULL_RETURN_VAL(v, NULL);
-   v->type = AZY_VALUE_STRUCT;
-   return v;
-}
-
-/**
- * @brief This function allocates and returns a new #Azy_Value of type AZY_VALUE_ARRAY
- * @return The new #Azy_Value array struct, or NULL on failure
- */
-Azy_Value *
-azy_value_array_new(void)
-{
-   Azy_Value *v;
-
-   v = azy_value_new_();
-   EINA_SAFETY_ON_NULL_RETURN_VAL(v, NULL);
-   v->type = AZY_VALUE_ARRAY;
-   return v;
-}
-
-/**
- * @brief Set a struct member in an #Azy_Value to use a name and a value
- *
- * This function sets member with name @p name to @p val.  If a previous member
- * with @p name exists, unref it and use @p val instead.
- * @param struc The #Azy_Value struct to set the member in (NOT NULL)
- * @param name The member name (NOT NULL)
- * @param val The struct member value
- */
-void
-azy_value_struct_member_set(Azy_Value *struc,
-                            const char *name,
-                            Azy_Value *val)
-{
-   Eina_List *l;
-   Azy_Value *m, *v;
-
-   if (!AZY_MAGIC_CHECK(struc, AZY_MAGIC_VALUE))
-     {
-        AZY_MAGIC_FAIL(struc, AZY_MAGIC_VALUE);
-        return;
-     }
-
-   EINA_SAFETY_ON_NULL_RETURN(name);
-
-   if (struc->type != AZY_VALUE_STRUCT)
-     return;
-
-   EINA_LIST_FOREACH(struc->children, l, m)
-     if (!strcmp(m->member_name, name))
-       {
-          azy_value_unref(m->member_value);
-          m->member_value = val;
-          return;
-       }
-
-   v = azy_value_new_();
-   EINA_SAFETY_ON_NULL_RETURN(v);
-   v->type = AZY_VALUE_MEMBER;
-   v->member_name = eina_stringshare_add(name);
-   v->member_value = val;
-   struc->children = eina_list_append(struc->children, v);
-}
-
-/**
- * @brief Add a value to an array
- *
- * This function adds @p val to array @p arr.
- * @param arr The array (NOT NULL)
- * @param val The value to add (NOT NULL)
- */
-void
-azy_value_array_push(Azy_Value *arr,
-                     Azy_Value *val)
-{
-   if (!AZY_MAGIC_CHECK(val, AZY_MAGIC_VALUE))
-     {
-        AZY_MAGIC_FAIL(val, AZY_MAGIC_VALUE);
-        return;
-     }
-   if (!AZY_MAGIC_CHECK(arr, AZY_MAGIC_VALUE))
-     {
-        AZY_MAGIC_FAIL(arr, AZY_MAGIC_VALUE);
-        return;
-     }
-
-   arr->children = eina_list_append(arr->children, val);
-}
-
-/**
- * @brief Check if an #Azy_Value is an RPC error
+ * @brief Check if an #Eina_Value is an RPC error
  *
  * This function checks to see if @p val is an RPC error
  * with a faultcode and faultstring, returning both if
@@ -806,30 +174,33 @@ azy_value_array_push(Azy_Value *arr,
  * @return EINA_FALSE if @p val is not an error value, else EINA_TRUE
  */
 Eina_Bool
-azy_value_retval_is_error(Azy_Value *val,
-                          int *errcode,
-                          const char **errmsg)
+azy_value_util_retval_is_error(const Eina_Value *val, int *errcode, const char **errmsg)
 {
-   Azy_Value *c, *s;
+   const Eina_Value_Struct_Member *c, *s;
+   Eina_Value m;
+   Eina_Value_Struct st;
 
-   if (!AZY_MAGIC_CHECK(val, AZY_MAGIC_VALUE))
-     {
-        AZY_MAGIC_FAIL(val, AZY_MAGIC_VALUE);
-        return EINA_FALSE;
-     }
-   if ((val->type != AZY_VALUE_STRUCT) || (!errcode) || (!errmsg))
+   if ((azy_value_util_type_get(val) != AZY_VALUE_STRUCT) || (!errcode) || (!errmsg))
      return EINA_FALSE;
 
-   c = azy_value_struct_member_get(val, "faultCode");
-   s = azy_value_struct_member_get(val, "faultString");
+   eina_value_pget(val, &st);
+   c = eina_value_struct_member_find(&st, "faultCode");
+   s = eina_value_struct_member_find(&st, "faultString");
 
-   if ((!c) && (!s))
-     return EINA_FALSE;
+   if ((!c) && (!s)) return EINA_FALSE;
 
    if (s)
-     *errmsg = s->str_val;
+     {
+        eina_value_struct_member_value_get(val, s, &m);
+        eina_value_get(&m, errmsg);
+        eina_value_flush(&m);
+     }
    if (c)
-     *errcode = c->int_val;
+     {
+        if (s) eina_value_flush(&m);
+        eina_value_struct_member_value_get(val, c, &m);
+        eina_value_get(&m, errcode);
+     }
 
    return EINA_TRUE;
 }
@@ -846,116 +217,279 @@ azy_value_retval_is_error(Azy_Value *val,
  * @param indent The number of spaces to indent
  */
 void
-azy_value_dump(Azy_Value *v,
+azy_value_util_dump(const Eina_Value *v,
                Eina_Strbuf *string,
                unsigned int indent)
 {
-   Eina_List *l;
-   Azy_Value *val;
+   unsigned int x, total;
+   Eina_Value val;
    char buf[256];
+   Eina_Bool multi;
 
    EINA_SAFETY_ON_NULL_RETURN(v);
    EINA_SAFETY_ON_NULL_RETURN(string);
 
    memset(buf, ' ', MIN(indent * 2, sizeof(buf) - 1));
 
-   switch (azy_value_type_get(v))
+   switch (azy_value_util_type_get(v))
      {
       case AZY_VALUE_ARRAY:
-      {
-         if (!v->children)
-           eina_strbuf_append(string, "[]");
-         else if (!azy_value_list_multi_line_get_(v))
-           {
-              eina_strbuf_append(string, "[ ");
-              EINA_LIST_FOREACH(v->children, l, val)
-                {
-                   azy_value_dump(val, string, indent + 1);
-                   eina_strbuf_append_printf(string, "%s ", l->next ? "," : "");
-                }
-              eina_strbuf_append_char(string, ']');
-           }
-         else
-           {
-              eina_strbuf_append_char(string, '[');
-              EINA_LIST_FOREACH(v->children, l, val)
-                {
-                   eina_strbuf_append_printf(string, "\n%s  ", buf);
-                   azy_value_dump(val, string, indent + 1);
-
-                   if (l->next)
-                     eina_strbuf_append_char(string, ',');
-                }
-              eina_strbuf_append_printf(string, "\n%s]", buf);
-           }
-
-         break;
-      }
+        if (!eina_value_array_count(v))
+          {
+             eina_strbuf_append(string, "[]");
+             break;
+          }
+        multi = azy_value_list_multi_line_get_(v);
+        eina_strbuf_append(string, "[ ");
+        total = eina_value_array_count(v);
+        for (x = 0; x < total; x++)
+          {
+             eina_value_array_value_get(v, x, &val);
+             if (multi) eina_strbuf_append_printf(string, "\n%s  ", buf);
+             azy_value_util_dump(&val, string, indent + 1);
+             if (multi)
+               {
+                  if (x + 1 < eina_value_array_count(v))
+                    eina_strbuf_append_char(string, ',');
+               }
+             else
+               eina_strbuf_append_printf(string, "%s ", (x + 1 < total) ? "," : "");
+             eina_value_flush(&val);
+          }
+        if (multi)
+          eina_strbuf_append_printf(string, "\n%s]", buf);
+        else
+          eina_strbuf_append_char(string, ']');
+        break;
 
       case AZY_VALUE_STRUCT:
       {
-         if (!v->children)
-           eina_strbuf_append(string, "{}");
-         else if (!azy_value_list_multi_line_get_(v))
-           {
-              eina_strbuf_append(string, "{ ");
-              EINA_LIST_FOREACH(v->children, l, val)
-                {
-                   azy_value_dump(val, string, indent);
-                   eina_strbuf_append_printf(string, "%s ", l->next ? "," : "");
-                }
-              eina_strbuf_append_char(string, '}');
-           }
-         else
-           {
-              eina_strbuf_append_char(string, '{');
-              EINA_LIST_FOREACH(v->children, l, val)
-                {
-                   eina_strbuf_append_printf(string, "\n%s  ", buf);
-                   azy_value_dump(val, string, indent);
+         Eina_Value_Struct st;
 
-                   if (l->next)
+         eina_value_pget(v, &st);
+         if (!st.desc->member_count)
+           {
+              eina_strbuf_append(string, "{}");
+              break;
+           }
+         multi = azy_value_list_multi_line_get_(v);
+         eina_strbuf_append(string, "{ ");
+
+         for (x = 0; x < st.desc->member_count; x++)
+           {
+              eina_value_struct_value_get(v, st.desc->members[x].name, &val);
+              if (multi) eina_strbuf_append_printf(string, "\n%s  ", buf);
+              azy_value_util_dump(&val, string, indent);
+              if (multi)
+                {
+                   if (x + 1 < st.desc->member_count)
                      eina_strbuf_append_char(string, ',');
                 }
-              eina_strbuf_append_printf(string, "\n%s}", buf);
+              else
+                eina_strbuf_append_printf(string, "%s ", (x + 1 < st.desc->member_count) ? "," : "");
+              eina_value_flush(&val);
            }
-
-         break;
-      }
-
-      case AZY_VALUE_MEMBER:
-      {
-         eina_strbuf_append_printf(string, "%s: ", azy_value_struct_member_name_get(v));
-         azy_value_dump(v->member_value, string, indent + 1);
+         if (multi)
+           eina_strbuf_append_printf(string, "\n%s}", buf);
+         else
+           eina_strbuf_append_char(string, '}');
          break;
       }
 
       case AZY_VALUE_INT:
       {
-         eina_strbuf_append_printf(string, "%d", v->int_val);
+         int i;
+
+         eina_value_get(v, &i);
+         eina_strbuf_append_printf(string, "%d", i);
          break;
       }
 
-      case AZY_VALUE_STRING:
       case AZY_VALUE_TIME:
+      {
+           time_t t;
+           struct tm *tim;
+           char tbuf[1024];
+
+           eina_value_get(v, &t);
+           tim = localtime(&t);
+           strftime(tbuf, sizeof(tbuf), "%Y%m%dT%H:%M:%S", tim);
+           eina_strbuf_append_printf(string, "\"%s\"", tbuf);
+           break;
+      }
+      case AZY_VALUE_STRING:
       case AZY_VALUE_BASE64:
       {
-         eina_strbuf_append_printf(string, "\"%s\"", v->str_val);
+         char *str;
+
+         eina_value_get(v, &str);
+         eina_strbuf_append_printf(string, "\"%s\"", str);
          break;
       }
 
       case AZY_VALUE_BOOL:
       {
-         eina_strbuf_append_printf(string, "%s", v->int_val ? "true" : "false");
+         Eina_Bool b;
+
+         eina_value_get(v, &b);
+         eina_strbuf_append_printf(string, "%s", b ? "true" : "false");
          break;
       }
 
       case AZY_VALUE_DOUBLE:
       {
-         eina_strbuf_append_printf(string, "%g", v->dbl_val);
+         double d;
+
+         eina_value_get(v, &d);
+         eina_strbuf_append_printf(string, "%g", d);
          break;
       }
+      default: break;
      }
 }
 
 /** @} */
+////////////////////////////////////////////
+
+Eina_Value *
+azy_value_util_int_new(int i)
+{
+   Eina_Value *v;
+
+   v = eina_value_new(EINA_VALUE_TYPE_INT);
+   if (v) eina_value_set(v, i);
+   return v;
+}
+
+Eina_Value *
+azy_value_util_double_new(double d)
+{
+   Eina_Value *v;
+
+   v = eina_value_new(EINA_VALUE_TYPE_DOUBLE);
+   if (v) eina_value_set(v, d);
+   return v;
+}
+
+Eina_Value *
+azy_value_util_bool_new(Eina_Bool b)
+{
+   Eina_Value *v;
+
+   v = eina_value_new(EINA_VALUE_TYPE_UCHAR);
+   if (v) eina_value_set(v, b);
+   return v;
+}
+
+Eina_Value *
+azy_value_util_base64_new(const char *b64)
+{
+   Eina_Value *v;
+
+   v = eina_value_new(EINA_VALUE_TYPE_STRING);
+   if (v) eina_value_set(v, b64);
+   return v;
+}
+
+Eina_Value *
+azy_value_util_string_new(const char *str)
+{
+   Eina_Value *v;
+
+   v = eina_value_new(EINA_VALUE_TYPE_STRINGSHARE);
+   if (v) eina_value_set(v, str);
+   return v;
+}
+
+Eina_Value *
+azy_value_util_time_new(time_t t)
+{
+   Eina_Value *v;
+
+   v = eina_value_new(EINA_VALUE_TYPE_TIMESTAMP);
+   if (v) eina_value_set(v, t);
+   return v;
+}
+
+Eina_Value *
+azy_value_util_time_string_new(const char *timestr)
+{
+   Eina_Value *v;
+   struct tm tm;
+   time_t t;
+
+   if (!strptime(timestr, "%Y%m%dT%H:%M:%S", &tm)) return NULL;
+   t = mktime(&tm);
+   v = eina_value_new(EINA_VALUE_TYPE_TIMESTAMP);
+   if (v) eina_value_set(v, t);
+   return v;
+}
+
+Eina_Value *
+azy_value_util_copy(const Eina_Value *val)
+{
+   Eina_Value *v;
+
+   v = eina_value_new(eina_value_type_get(val));
+   EINA_SAFETY_ON_NULL_RETURN_VAL(v, NULL);
+   eina_value_copy(val, v);
+   return v;
+}
+
+Eina_Bool
+azy_value_util_string_copy(const Eina_Value *val, Eina_Stringshare **str)
+{
+   EINA_SAFETY_ON_NULL_RETURN_VAL(val, EINA_FALSE);
+   EINA_SAFETY_ON_NULL_RETURN_VAL(str, EINA_FALSE);
+   if (!eina_value_get(val, str)) return EINA_FALSE;
+   eina_stringshare_ref(*str);
+   return EINA_TRUE;
+}
+
+Eina_Bool
+azy_value_util_base64_copy(const Eina_Value *val, char **str)
+{
+   char *s;
+   EINA_SAFETY_ON_NULL_RETURN_VAL(val, EINA_FALSE);
+   EINA_SAFETY_ON_NULL_RETURN_VAL(str, EINA_FALSE);
+   if (!eina_value_get(val, &s)) return EINA_FALSE;
+   *str = azy_util_strdup(s);
+   return EINA_TRUE;
+}
+
+unsigned int
+azy_value_util_type_offset(const Eina_Value_Type *type, unsigned base)
+{
+   unsigned size, padding;
+   size = azy_value_util_type_size(type);
+   if (!(base % size))
+     return base;
+   padding = abs(base - size);
+   return base + padding;
+}
+
+size_t
+azy_value_util_type_size(const Eina_Value_Type *type)
+{
+   if (type == EINA_VALUE_TYPE_INT) return sizeof(int32_t);
+   if (type == EINA_VALUE_TYPE_UCHAR) return sizeof(unsigned char);
+   if ((type == EINA_VALUE_TYPE_STRING) || (type == EINA_VALUE_TYPE_STRINGSHARE)) return sizeof(char*);
+   if (type == EINA_VALUE_TYPE_TIMESTAMP) return sizeof(time_t);
+   if (type == EINA_VALUE_TYPE_ARRAY) return sizeof(Eina_Value_Array);
+   if (type == EINA_VALUE_TYPE_DOUBLE) return sizeof(double);
+   if (type == EINA_VALUE_TYPE_STRUCT) return sizeof(Eina_Value_Struct);
+   return 0;
+}
+
+Eina_Value_Struct_Desc *
+azy_value_util_struct_desc_new(void)
+{
+   Azy_Value_Struct_Desc *st_desc;
+
+   st_desc = calloc(1, sizeof(Azy_Value_Struct_Desc));
+   EINA_SAFETY_ON_NULL_RETURN_VAL(st_desc, NULL);
+   st_desc->base.version = EINA_VALUE_STRUCT_DESC_VERSION;
+   st_desc->base.ops = &operations;
+   return (Eina_Value_Struct_Desc*)st_desc;
+}
+

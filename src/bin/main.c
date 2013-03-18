@@ -81,11 +81,10 @@ static Eina_Bool isnull_funcs = EINA_FALSE;
 static Eina_Bool print_funcs = EINA_FALSE;
 static Eina_Bool eq_funcs = EINA_FALSE;
 static Eina_Bool suspend_funcs = EINA_FALSE;
-static Eina_Bool esql_funcs = EINA_FALSE;
 static char *out_dir = ".";
 static char *azy_file;
 static FILE *f;
-static const char *i, *b, *d, *c, *e, *ti, *b64;
+static Eina_Stringshare *i, *b, *d, *c, *e, *ti, *b64;
 static const char *sep;
 static const char *name;
 
@@ -107,7 +106,6 @@ static const Ecore_Getopt opts = {
       ECORE_GETOPT_STORE_TRUE('n', "null", "Do not generate isnull functions"),
       ECORE_GETOPT_STORE_TRUE('p', "print", "Do not generate print functions"),
       ECORE_GETOPT_STORE_TRUE('e', "eq", "Do not generate eq functions"),
-      ECORE_GETOPT_STORE_TRUE('E', "esql", "Generate esql functions"),
       ECORE_GETOPT_STORE_TRUE('s', "suspend", "Suspend methods by default"),
       ECORE_GETOPT_VERSION('V', "version"),
       ECORE_GETOPT_COPYRIGHT('R', "copyright"),
@@ -145,22 +143,23 @@ gen_type_marshalizers(Azy_Typedef *t,
 {
    Eina_List *l;
    Azy_Struct_Member *m;
+   unsigned int x = 0;
 
    if (header)
      {
         if (t->type == TD_STRUCT)
           {
-             EL(0, "Azy_Value *%s(%s azy_user_type) EINA_WARN_UNUSED_RESULT;", t->march_name,
+             EL(0, "Eina_Value *%s(const %s azy_user_type) EINA_WARN_UNUSED_RESULT;", t->march_name,
                 ((t->ctype == i) || (t->ctype == b)) ? "int32_t" : t->ctype);
-             EL(0, "Eina_Bool %s(Azy_Value *azy_value_struct, %s* azy_user_type) EINA_WARN_UNUSED_RESULT;",
+             EL(0, "Eina_Bool %s(const Eina_Value *value_struct, %s* azy_user_type);",
                 t->demarch_name, t->ctype);
           }
         else
           {
-             if (t->ctype == b) return;
-             EL(0, "Azy_Value *%s(%s azy_user_type) EINA_WARN_UNUSED_RESULT;",
+             if (t->type == TD_BASE) return;
+             EL(0, "Eina_Value *%s(const %s azy_user_type) EINA_WARN_UNUSED_RESULT;",
                 t->march_name, t->ctype);
-             EL(0, "Eina_Bool %s(Azy_Value *azy_value_array, %s* azy_user_type) EINA_WARN_UNUSED_RESULT;",
+             EL(0, "Eina_Bool %s(const Eina_Value *value_array, %s* azy_user_type);",
                 t->demarch_name, t->ctype);
           }
         return;
@@ -168,157 +167,167 @@ gen_type_marshalizers(Azy_Typedef *t,
 
    if (t->type == TD_STRUCT)
      {
-        EL(0, "Azy_Value *%s(%s azy_user_type)", t->march_name,
+        /* marshalizers */
+        EL(0, "Eina_Value *%s(const %s azy_user_type)", t->march_name,
            ((t->ctype == i) || (t->ctype == b)) ? "int32_t" : t->ctype);
         EL(0, "{");
-        EL(1, "Azy_Value *azy_value_struct = NULL;");
+        EL(1, "Eina_Value *value_struct = NULL;");
+        EL(1, "size_t offset = 0;");
+        EL(1, "Eina_Value_Struct_Member *members = NULL;");
+        EL(1, "Eina_Value *val = NULL;");
+        EL(1, "Eina_Value_Struct_Desc *st_desc;");
+
+        NL;
+        EL(1, "if (!azy_user_type) return NULL;");
+        NL;
+
+        EL(1, "st_desc = azy_value_util_struct_desc_new();");
+        EL(1, "members = malloc(%u * sizeof(Eina_Value_Struct_Member));", eina_list_count(t->struct_members));
+        EL(1, "st_desc->members = members;");
+        EL(1, "st_desc->member_count = %u;", eina_list_count(t->struct_members));
 
         EINA_LIST_FOREACH(t->struct_members, l, m)
           {
-             EL(1, "Azy_Value *%s = NULL;", m->name);
+             EL(1, "members[%u].name = eina_stringshare_add(\"%s\");", x, m->strname ? m->strname : m->name);
+             EL(1, "offset = azy_value_util_type_offset(%s, offset);", m->type->etype);
+             EL(1, "members[%u].offset = offset;", x);
+             EL(1, "offset += azy_value_util_type_size(%s);", m->type->etype);
+             EL(1, "members[%u].type = %s;", x, m->type->etype);
+             x++;
           }
-
+        EL(1, "st_desc->size = offset;");
+        EL(1, "value_struct = eina_value_struct_new(st_desc);");
         NL;
-        EL(1, "if (!azy_user_type)");
-        EL(2, "return NULL;");
-        NL;
-
+        
         EINA_LIST_FOREACH(t->struct_members, l, m)
           {
-             EL(2, "if (!(%s = %s(azy_user_type->%s)))", m->name, m->type->march_name, m->name);
-             EL(3, "goto error;");
-             if (m->type->name == ti)
-               EL(2, "azy_value_type_set(%s, AZY_VALUE_TIME);", m->name);
-             else if (m->type->name == b64)
-               EL(2, "azy_value_type_set(%s, AZY_VALUE_BASE64);", m->name);
+             EL(1, "val = %s(azy_user_type->%s);", m->type->march_name, m->name);
+             EL(1, "eina_value_struct_value_set(value_struct, \"%s\", val);", m->strname ? m->strname : m->name);
+             EL(1, "eina_value_free(val);");
           }
 
-        NL;
-        EL(1, "azy_value_struct = azy_value_struct_new();");
 
-        EINA_LIST_FOREACH(t->struct_members, l, m)
-          {
-             EL(1, "azy_value_struct_member_set(azy_value_struct, \"%s\", %s);", m->strname ? m->strname : m->name, m->name);
-          }
-
-        EL(1, "return azy_value_struct;");
-        EL(0, "error:");
-        EINA_LIST_FOREACH(t->struct_members, l, m)
-          EL(1, "if (%s) azy_value_unref(%s);", m->name, m->name);
-        EL(1, "return NULL;");
+        EL(1, "return value_struct;");
         EL(0, "}");
         NL;
 
-        EL(0, "Eina_Bool %s(Azy_Value *azy_value_struct, %s *azy_user_type)",
+        /* demarshalizers */
+        EL(0, "Eina_Bool %s(const Eina_Value *value_struct, %s *azy_user_type)",
            t->demarch_name, t->ctype);
         EL(0, "{");
         EL(1, "%s azy_user_type_tmp = NULL;", t->ctype);
-        EL(1, "Azy_Value *v;");
+        EL(1, "Eina_Value val;");
         NL;
         EL(1, "EINA_SAFETY_ON_NULL_RETURN_VAL(azy_user_type, EINA_FALSE);");
-        EL(1, "EINA_SAFETY_ON_NULL_RETURN_VAL(azy_value_struct, EINA_FALSE);");
+        EL(1, "EINA_SAFETY_ON_NULL_RETURN_VAL(value_struct, EINA_FALSE);");
         NL;
-        EL(1, "EINA_SAFETY_ON_TRUE_RETURN_VAL(azy_value_type_get(azy_value_struct) != AZY_VALUE_STRUCT, EINA_FALSE);");
+        EL(1, "EINA_SAFETY_ON_TRUE_RETURN_VAL(eina_value_type_get(value_struct) != EINA_VALUE_TYPE_STRUCT, EINA_FALSE);");
         NL;
         EL(1, "azy_user_type_tmp = %s_new();", t->cname);
 
         EINA_LIST_FOREACH(t->struct_members, l, m)
           {
-             EL(1, "v = azy_value_struct_member_get(azy_value_struct, \"%s\");", m->strname ? m->strname : m->name);
-             /* ensure correct types */
-             if (m->type->name == ti)
-               EL(2, "azy_value_type_set(v, AZY_VALUE_TIME);");
-             else if (m->type->name == b64)
-               EL(2, "azy_value_type_set(v, AZY_VALUE_BASE64);");
-             EL(1, "if (v && (!%s(v, &azy_user_type_tmp->%s)))", m->type->demarch_name, m->name);
-             EL(2, "goto error;");
+             EL(1, "if (eina_value_struct_value_get(value_struct, \"%s\", &val))", m->strname ? m->strname : m->name);
+             EL(1, "{");
+             EL(2, "%s(&val, &azy_user_type_tmp->%s);", m->type->demarch_name, m->name);
+             EL(2, "eina_value_flush(&val);");
+             EL(1, "}");
           }
 
         NL;
         EL(1, "*azy_user_type = azy_user_type_tmp;");
         EL(1, "return EINA_TRUE;");
-        EL(0, "error:");
-        EL(1, "%s(azy_user_type_tmp);", t->free_func);
-        EL(1, "return EINA_FALSE;");
         EL(0, "}");
         NL;
      }
    else if (t->type == TD_ARRAY)
      {
+        /* marshalizers */
         const char *type;
-        if ((t->item_type->ctype == i) || (t->item_type->ctype == b))
+        if ((t->item_type->ctype == i) || (t->item_type->ctype == b) || (t->item_type->ctype == ti))
           type = "int32_t *";
         else if (t->item_type->ctype == d)
           type = "double *";
         else
           type = t->item_type->ctype;
-        EL(0, "Azy_Value *%s(%s azy_user_type)", t->march_name, t->ctype);
+        EL(0, "Eina_Value *%s(const %s azy_user_type)", t->march_name, t->ctype);
         EL(0, "{");
-        EL(1, "Eina_List *l;");
+        EL(1, "const Eina_List *l;");
+        if (t->item_type->type == TD_ARRAY)
+          EL(1, "Eina_Value_Array arr;");
+        else if (t->item_type->type == TD_STRUCT)
+          EL(1, "Eina_Value_Struct st;");
         EL(1, "%s v;", type);
-        EL(1, "Azy_Value *azy_value_array = azy_value_array_new();");
+        EL(1, "Eina_Value *value_array = eina_value_array_new(%s, 0);", t->item_type->etype);
         NL;
         EL(1, "EINA_LIST_FOREACH(azy_user_type, l, v)");
         EL(1, "{");
 
-        if ((t->item_type->ctype == i) || (t->item_type->ctype == b) || (t->item_type->ctype == d))
-          EL(2, "Azy_Value *azy_item_value = %s(*v);", t->item_type->march_name);
+        if (t->item_type->ctype == d)
+          EL(2, "Eina_Value *item_value = %s(*v);", t->item_type->march_name);
+        else if (!t->item_type->free_func)
+          EL(2, "Eina_Value *item_value = %s((long)(intptr_t)v);", t->item_type->march_name);
         else
-          EL(2, "Azy_Value *azy_item_value = %s((%s)v);", t->item_type->march_name, t->item_type->ctype);
+          EL(2, "Eina_Value *item_value = %s((%s)v);", t->item_type->march_name, t->item_type->ctype);
 
         NL;
-        EL(2, "if (!azy_item_value)");
-        EL(2, "{");
-        EL(3, "azy_value_unref(azy_value_array);");
-        EL(3, "return NULL;");
-        EL(2, "}");
-        NL;
-        if (t->item_type->name == ti)
-          EL(2, "azy_value_type_set(azy_item_value, AZY_VALUE_TIME);");
-        else if (t->item_type->name == b64)
-          EL(2, "azy_value_type_set(azy_item_value, AZY_VALUE_BASE64);");
-        EL(2, "azy_value_array_push(azy_value_array, azy_item_value);");
+        if (t->item_type->type == TD_ARRAY)
+          {
+             EL(2, "eina_value_get(item_value, &arr);");
+             EL(2, "eina_value_array_append(value_array, arr);");
+          }
+        else if (t->item_type->type == TD_STRUCT)
+          {
+             EL(2, "eina_value_get(item_value, &st);");
+             EL(2, "eina_value_array_append(value_array, st);");
+          }
+        else
+          EL(2, "eina_value_array_append(value_array, item_value);");
+        EL(2, "eina_value_free(item_value);");
         EL(1, "}");
         NL;
-        EL(1, "return azy_value_array;");
+        EL(1, "return value_array;");
         EL(0, "}");
         NL;
 
-        EL(0, "Eina_Bool %s(Azy_Value *azy_value_array, %s* azy_user_type)", t->demarch_name, t->ctype);
+        /* demarshalizers */
+        EL(0, "Eina_Bool %s(const Eina_Value *value_array, %s* azy_user_type)", t->demarch_name, t->ctype);
         EL(0, "{");
-        EL(1, "Eina_List *azy_user_type_tmp = NULL, *l;");
-        EL(1, "Azy_Value *v;");
+        EL(1, "Eina_List *azy_user_type_tmp = NULL;");
+        EL(1, "unsigned int x, total;");
         NL;
         EL(1, "EINA_SAFETY_ON_NULL_RETURN_VAL(azy_user_type, EINA_FALSE);");
         NL;
-        EL(1, "if ((!azy_value_array) || (azy_value_type_get(azy_value_array) != AZY_VALUE_ARRAY))");
+        EL(1, "if ((!value_array) || (eina_value_type_get(value_array) != EINA_VALUE_TYPE_ARRAY))");
         EL(2, "return EINA_FALSE;");
         NL;
-        EL(1, "EINA_LIST_FOREACH(azy_value_children_items_get(azy_value_array), l, v)");
+        EL(1, "total = eina_value_array_count(value_array);");
+        EL(1, "for (x = 0; x < total; x++)");
         EL(1, "{");
         if (t->item_type->ctype == d)
-        EL(2, "double *d;");
-        EL(2, "%s azy_item_value = %s;", t->item_type->ctype, t->item_type->cnull);
+          EL(2, "double *d;");
+        EL(2, "%s item_value = %s;", t->item_type->ctype, t->item_type->cnull);
+        EL(2, "Eina_Value val;");
         NL;
-        EL(2, "if (!%s(v, &azy_item_value))", t->item_type->demarch_name);
+        EL(2, "if (eina_value_array_value_get(value_array, x, &val))");
         EL(2, "{");
-        EL(3, "%s(azy_user_type_tmp);", t->free_func);
-        EL(3, "return EINA_FALSE;");
+        EL(3, "%s(&val, &item_value);", t->item_type->demarch_name);
+        EL(3, "eina_value_flush(&val);");
         EL(2, "}");
         NL;
 
-        if (t->item_type->ctype == i)
-          EL(2, "azy_user_type_tmp = eina_list_append(azy_user_type_tmp, (intptr_t*)azy_item_value);");
+        if ((t->item_type->ctype == i) || (t->item_type->ctype == ti))
+          EL(2, "azy_user_type_tmp = eina_list_append(azy_user_type_tmp, (intptr_t*)(long)item_value);");
         else if (t->item_type->ctype == b)
-          EL(2, "azy_user_type_tmp = eina_list_append(azy_user_type_tmp, (intptr_t*)(int)(azy_item_value));");
+          EL(2, "azy_user_type_tmp = eina_list_append(azy_user_type_tmp, (intptr_t*)(long)(item_value));");
         else if (t->item_type->ctype == d)
           {
              EL(2, "d = malloc(sizeof(double));");
-             EL(2, "*d = azy_item_value;");
+             EL(2, "*d = item_value;");
              EL(2, "azy_user_type_tmp = eina_list_append(azy_user_type_tmp, d);");
           }
         else
-          EL(2, "azy_user_type_tmp = eina_list_append(azy_user_type_tmp, azy_item_value);");
+          EL(2, "azy_user_type_tmp = eina_list_append(azy_user_type_tmp, item_value);");
 
         EL(1, "}");
         NL;
@@ -529,19 +538,19 @@ gen_type_print(Azy_Typedef *t,
         if (t->type == TD_STRUCT)
           {
              EL(0, "/** @brief Print, indenting @p indent times @p pre, a %s */", t->cname);
-             EL(0, "void %s_print(const char *pre, int indent, %sa);", t->cname, t->ctype);
+             EL(0, "void %s_print(const char *pre, int indent, const %sa);", t->cname, t->ctype);
           }
         else if (t->type == TD_ARRAY)
           {
              EL(0, "/** @brief Print, indenting @p indent times @p pre, an array of %s */", t->cname);
-             EL(0, "void %s(const char *pre, int indent, Eina_List *a);", t->print_func);
+             EL(0, "void %s(const char *pre, int indent, const Eina_List *a);", t->print_func);
           }
         return;
      }
 
    if (t->type == TD_STRUCT)
      {
-        EL(0, "void %s_print(const char *pre, int indent, %sa)", t->cname, t->ctype);
+        EL(0, "void %s_print(const char *pre, int indent, const %sa)", t->cname, t->ctype);
         EL(0, "{");
         EL(1, "int i;");
         EL(1, "if (!a)");
@@ -571,10 +580,10 @@ gen_type_print(Azy_Typedef *t,
      }
    else if (t->type == TD_ARRAY)
      {
-        EL(0, "void %s(const char *pre, int indent, %sa)", t->print_func, t->ctype);
+        EL(0, "void %s(const char *pre, int indent, const Eina_List *a)", t->print_func);
         EL(0, "{");
-        EL(1, "Eina_List *l;");
-        if ((t->item_type->ctype == i) || (t->item_type->ctype == b))
+        EL(1, "const Eina_List *l;");
+        if ((t->item_type->ctype == i) || (t->item_type->ctype == b) || (t->item_type->ctype == ti))
           EL(1, "intptr_t *t;");
         else if  (t->item_type->ctype == d)
           EL(1, "double *t;");
@@ -592,7 +601,7 @@ gen_type_print(Azy_Typedef *t,
              EL(2, "int i;");
              EL(2, "for (i = 0; i < indent; i++)");
              EL(3, "printf(\"%%s\", pre);");
-             if (t->item_type->ctype == i)
+             if ((t->item_type->ctype == i) || (t->item_type->ctype == ti))
                EL(2, "printf(\"%%\"PRIdPTR\", \", (intptr_t)t);");
              else if (t->item_type->ctype == b)
                EL(2, "printf(\"%s, \", ((intptr_t)t) ? \"yes\" : \"no\");", t->item_type->fmt_str);
@@ -602,242 +611,6 @@ gen_type_print(Azy_Typedef *t,
                EL(2, "printf(\"%s, \", t);", t->item_type->fmt_str);
              EL(1, "}");
           }
-        EL(0, "}");
-        NL;
-     }
-}
-
-static void
-gen_type_esql(Azy_Typedef *t,
-              Eina_Bool def)
-{
-   Eina_List *l;
-   Azy_Struct_Member *m;
-
-   if (def)
-     {
-        if (t->type == TD_STRUCT)
-          {
-             EL(0, "/** @brief Convert an Esql_Res to a %s */", t->cname);
-             EL(0, "%s%s_esql(Esql_Res *res);", t->ctype, t->cname);
-          }
-        else if (t->type == TD_ARRAY)
-          {
-             EL(0, "/** @brief Convert an Esql_Res to an array of %s */", t->cname);
-             EL(0, "Eina_List *%s(Esql_Res *res);", t->esql_func);
-          }
-        return;
-     }
-
-   if (t->type == TD_STRUCT)
-     {
-        EL(0, "%s%s_esql(Esql_Res *res)", t->ctype, t->cname);
-        EL(0, "{");
-        EL(1, "Eina_Iterator *it;");
-        EL(1, "Esql_Row *r;");
-        EL(1, "%sret;", t->ctype);
-        EL(1, "EINA_SAFETY_ON_NULL_RETURN_VAL(res, %s);", t->cnull);
-        EL(1, "EINA_SAFETY_ON_TRUE_RETURN_VAL(esql_res_rows_count(res) > 1, %s);", t->cnull);
-        NL;
-        EL(1, "if (!esql_res_rows_count(res))");
-        EL(2, "return %s;", t->cnull);
-        NL;
-        EL(2, "ret = %s_new();", t->cname);
-        EL(1, "it = esql_res_row_iterator_new(res);");
-        EL(1, "EINA_ITERATOR_FOREACH(it, r)");
-        EL(2, "{");
-        EL(3, "Eina_Inlist *l;");
-        EL(3, "Esql_Cell *c;");
-        NL;
-        EL(3, "l = esql_row_cells_get(r);");
-        EL(3, "EINA_INLIST_FOREACH(l, c)");
-        EL(4, "{");
-        EINA_LIST_FOREACH(t->struct_members, l, m)
-          {
-             if (l->prev) E(5, "else ");
-             else E(5, "");
-             EL(0, "if (!strcmp(c->colname, \"%s\"))", m->name);
-             if (m->type->ctype == b)
-               EL(6, "ret->%s = esql_cell_to_lli(c);", m->name);
-             else if (m->type->ctype == i)
-               EL(6, "ret->%s = esql_cell_to_lli(c);", m->name);
-             else if (m->type->ctype == d)
-               EL(6, "ret->%s = esql_cell_to_double(c);", m->name);
-             else if (m->type->ctype == c)
-               EL(6, "ret->%s = eina_stringshare_add(c->value.string);", m->name);
-             else if (m->type->ctype == b64)
-               {
-                  EL(6, "{");
-                  EL(7, "ret->%s = malloc(c->len);", m->name);
-                  EL(7, "memcpy(ret->%s, c->value.blob, c->len);");
-                  EL(6, "}");
-               }
-             else if ((!strcmp(m->name, "timestamp")) && (m->type->ctype == i))
-               EL(7, "ret->%s = (int)c->value.u;", m->name);
-             else if ((m->type->type == TD_ARRAY) && (m->type->item_type->ctype == i))
-               {
-                  EL(6, "{");
-                  EL(7, "const char *s;");
-                  EL(7, "char *n;");
-                  EL(7, "intptr_t i;");
-                  EL(7, "for (s = c->value.string; s && s[0] && s[1]; s = strchr(s, ','))");
-                  EL(8, "{");
-                  EL(9, "if (s[0] == ',') s++;");
-                  EL(9, "errno = 0;");
-                  EL(9, "i = strtol(s, &n, 10);");
-                  EL(9, "if (errno)");
-                  EL(10, "{");
-                  EL(11, "char strerr[128];");
-                  EL(11, "EINA_LOG_WARN(\"Failed to convert '%%s' to int: %%s\", s, strerror_r(errno, strerr, sizeof(strerr)));");
-                  EL(10, "}");
-                  EL(9, "ret->%s = eina_list_append(ret->%s, (intptr_t*)i);", m->name, m->name);
-                  EL(9, "if (n && *n) s = n;");
-                  EL(8, "}");
-                  EL(7, "if ((!ret->%s) && c->value.string && c->value.string[0])", m->name);
-                  EL(8, "{");
-                  EL(9, "intptr_t i;");
-                  EL(9, "errno = 0;");
-                  EL(9, "i = strtol(c->value.string, NULL, 10);");
-                  EL(9, "if (errno)");
-                  EL(10, "{");
-                  EL(11, "char strerr[128];");
-                  EL(11, "EINA_LOG_WARN(\"Failed to convert '%%s' to int: %%s\", s, strerror_r(errno, strerr, sizeof(strerr)));");
-                  EL(10, "}");
-                  EL(9, "ret->%s = eina_list_append(ret->%s, (intptr_t*)i);", m->name, m->name);
-                  EL(8, "}");
-                  EL(6, "}");
-               }
-             else
-               EL(6, "ret->%s = NULL;", m->name);
-          }
-        EL(4, "}");
-        EL(2, "}");
-        EL(1, "eina_iterator_free(it);");
-        EL(1, "return ret;");
-        EL(0, "}");
-        NL;
-     }
-   else if ((t->type == TD_ARRAY) && (t->item_type->type != TD_ARRAY))
-     {
-        EL(0, "Eina_List *%s(Esql_Res *res)", t->esql_func);
-        EL(0, "{");
-
-        EL(1, "Eina_Iterator *it;");
-        EL(1, "Esql_Row *r;");
-        EL(1, "Eina_List *ret = NULL;");
-        if ((t->item_type->ctype == b) || (t->item_type->ctype == i))
-          EL(1, "intptr_t tmp;");
-        else if (t->item_type->ctype == b64)
-          EL(1, "unsigned char *tmp;");
-        else
-          EL(1, "%s tmp;", t->item_type->ctype);
-        if (t->item_type->ctype == d)
-          EL(1, "double *d;");
-        EL(1, "EINA_SAFETY_ON_NULL_RETURN_VAL(res, NULL);");
-        NL;
-        EL(1, "if (!esql_res_rows_count(res)) return NULL;");
-        EL(1, "it = esql_res_row_iterator_new(res);");
-        EL(1, "EINA_ITERATOR_FOREACH(it, r)");
-        EL(2, "{");
-        EL(3, "Eina_Inlist *l;");
-        EL(3, "Esql_Cell *c;");
-        NL;
-        if (t->item_type->type == TD_STRUCT)
-          EL(3, "tmp = %s_new();", t->item_type->cname);
-        EL(3, "l = esql_row_cells_get(r);");
-        EL(3, "EINA_INLIST_FOREACH(l, c)");
-        EL(4, "{");
-        if (t->item_type->type == TD_BASE)
-          {
-             if ((t->item_type->ctype == b) || (t->item_type->ctype == i))
-               EL(5, "tmp = (intptr_t)esql_cell_to_lli(c);");
-             else if (t->item_type->ctype == d)
-               EL(5, "tmp = esql_cell_to_double(c);");
-             else if (t->item_type->ctype == c)
-               EL(5, "tmp = eina_stringshare_add(c->value.string);");
-             else if (t->item_type->ctype == b64)
-               {
-                  EL(5, "tmp = malloc(c->len);");
-                  EL(5, "memcpy(tmp, c->value.blob, c->len);");
-               }
-             if (t->item_type->ctype == i)
-               EL(5, "ret = eina_list_append(ret, (intptr_t*)tmp);");
-             else if (t->item_type->ctype == d)
-               {
-                  EL(5, "d = malloc(sizeof(double));");
-                  EL(5, "*d = tmp;");
-                  EL(5, "ret = eina_list_append(ret, d);");
-               }
-             else
-               EL(5, "ret = eina_list_append(ret, (void*)tmp);");
-          }
-        if (t->item_type->type == TD_STRUCT)
-          {
-             EINA_LIST_FOREACH(t->item_type->struct_members, l, m)
-               {
-                  if (l->prev) E(5, "else ");
-                  else E(5, "");
-                  EL(0, "if (!strcmp(c->colname, \"%s\"))", m->name);
-                  if (m->type->ctype == b)
-                    EL(6, "tmp->%s = esql_cell_to_lli(c);", m->name);
-                  else if (m->type->ctype == i)
-                    EL(6, "tmp->%s = esql_cell_to_lli(c);", m->name);
-                  else if (m->type->ctype == d)
-                    EL(6, "tmp->%s = esql_cell_to_double(c);", m->name);
-                  else if (m->type->ctype == c)
-                    EL(6, "tmp->%s = eina_stringshare_add(c->value.string);", m->name);
-                  else if (m->type->ctype == b64)
-                    {
-                       EL(6, "{");
-                       EL(7, "tmp->%s = malloc(c->len);", m->name);
-                       EL(7, "memcpy(tmp->%s, c->value.blob, c->len);");
-                       EL(6, "}");
-                    }
-                  else if ((!strcmp(m->name, "timestamp")) && (m->type->ctype == i))
-                    EL(7, "tmp->%s = (int)c->value.u;", m->name);
-                  else if ((m->type->type == TD_ARRAY) && (m->type->item_type->ctype == i))
-                    {
-                       EL(6, "{");
-                       EL(7, "const char *s;");
-                       EL(7, "char *n;");
-                       EL(7, "intptr_t i;");
-                       EL(7, "for (s = c->value.string; s && s[0] && s[1]; s = strchr(s, ','))");
-                       EL(8, "{");
-                       EL(9, "if (s[0] == ',') s++;");
-                       EL(9, "errno = 0;");
-                       EL(9, "i = strtol(s, &n, 10);");
-                       EL(9, "if (errno)");
-                       EL(10, "{");
-                       EL(11, "char strerr[128];");
-                       EL(11, "EINA_LOG_WARN(\"Failed to convert '%%s' to int: %%s\", s, strerror_r(errno, strerr, sizeof(strerr)));");
-                       EL(10, "}");
-                       EL(9, "tmp->%s = eina_list_append(tmp->%s, (intptr_t*)i);", m->name, m->name);
-                       EL(9, "if (n && *n) s = n;");
-                       EL(8, "}");
-                       EL(7, "if ((!tmp->%s) && c->value.string && c->value.string[0])", m->name);
-                       EL(8, "{");
-                       EL(9, "intptr_t i;");
-                       EL(9, "errno = 0;");
-                       EL(9, "i = strtol(c->value.string, NULL, 10);");
-                       EL(9, "if (errno)");
-                       EL(10, "{");
-                       EL(11, "char strerr[128];");
-                       EL(11, "EINA_LOG_WARN(\"Failed to convert '%%s' to int: %%s\", s, strerror_r(errno, strerr, sizeof(strerr)));");
-                       EL(10, "}");
-                       EL(9, "tmp->%s = eina_list_append(tmp->%s, (intptr_t*)i);", m->name, m->name);
-                       EL(8, "}");
-                       EL(6, "}");
-                    }
-                  else
-                    EL(6, "tmp->%s = NULL;", m->name);
-               }
-          }
-        EL(4, "}");
-        if (t->item_type->type != TD_BASE)
-          EL(3, "ret = eina_list_append(ret, tmp);");
-        EL(2, "}");
-        EL(1, "eina_iterator_free(it);");
-        EL(1, "return ret;");
         EL(0, "}");
         NL;
      }
@@ -1010,9 +783,7 @@ gen_marshalizers(Eina_Bool header)
 
    EINA_LIST_FOREACH(azy->types, j, t)
      {
-        if (t->type == TD_ANY)
-          continue;
-
+        if (t->type == TD_BASE) continue;
         gen_type_marshalizers(t, header);
      }
 }
@@ -1158,19 +929,6 @@ gen_common_headers(void)
 
    EL(0, "#endif");
    fclose(f);
-   if (esql_funcs)
-     {
-        OPEN("%s/%s%sCommon_Esskyuehl.h", out_dir, name, sep);
-        EL(0, "#ifndef %s_Common_ESQL_H", (azy->name) ? azy->name : "AZY");
-        EL(0, "#define %s_Common_ESQL_H", (azy->name) ? azy->name : "AZY");
-        EL(0, "#include <Esskyuehl.h>");
-        EL(0, "#include \"%s%sCommon.h\"", name, sep);
-        NL;
-        EINA_LIST_FOREACH(azy->types, j, t)
-          gen_type_esql(t, EINA_TRUE);
-        EL(0, "#endif");
-        fclose(f);
-     }
 }
 
 static void
@@ -1187,6 +945,7 @@ gen_common_impl(void)
    EL(0, "#include <string.h>");
    EL(0, "#include <inttypes.h>");
    EL(0, "#include <errno.h>");
+   EL(0, "#include <Azy.h>");
    NL;
 
    EL(0, "Eina_Bool");
@@ -1259,18 +1018,6 @@ gen_common_impl(void)
    gen_marshalizers(EINA_FALSE);
    gen_errors_impl(EINA_TRUE);
    fclose(f);
-   if (esql_funcs)
-     {
-        OPEN("%s/%s%sCommon_Esskyuehl.c", out_dir, name, sep);
-        EL(0, "#ifdef HAVE_CONFIG_H");
-        EL(0, "# include \"config.h\"");
-        EL(0, "#endif");
-        EL(0, "#include \"%s%sCommon_Esskyuehl.h\"", name, sep);
-        EL(0, "#include <errno.h>");
-        EINA_LIST_FOREACH(azy->types, j, t)
-          gen_type_esql(t, EINA_FALSE);
-        fclose(f);
-     }
 }
 
 static void
@@ -1668,7 +1415,7 @@ gen_server_impl(Azy_Server_Module *s)
         if (!suspend_funcs)
           {
              EL(1, "%s azy_return_module = %s;", method->return_type->ctype, method->return_type->cnull);
-             EL(1, "Azy_Value *azy_return_value;");
+             EL(1, "Eina_Value *azy_return_value;");
           }
         EINA_LIST_FOREACH(method->params, k, p)
           EL(1, "%s %s = %s;", p->type->ctype, p->name, p->type->cnull);
@@ -1693,30 +1440,30 @@ gen_server_impl(Azy_Server_Module *s)
              EL(2, "{");
              EINA_LIST_FOREACH(method->params, k, p)
                {
-                       if (p->type->ctype == d)
-                         {
-                            EL(3, "double *%s_ptr = NULL;", p->name);
-                            EL(3, "%s_ptr = azy_server_module_param_get(module, \"%s\");", p->name, p->name);
-                            EL(3, "if (!%s_ptr)", p->name);
-                            EL(4, "{");
-                            EL(5, "azy_content_error_faultmsg_set(content, -1, \"Stub parameter value demarshalization failed. (%s:%s)\");",
-                               method->name, p->name);
-                            EL(5, "return EINA_FALSE;");
-                            EL(4, "}");
-                            EL(3, "%s = *%s_ptr;", p->name, p->name);
-                         }
-                       else if (p->type->ctype == b)
-                         {
-                            EL(3, "if (azy_server_module_param_get(module, \"%s\"))", p->name);
-                            EL(4, "%s = EINA_TRUE;", p->name);
-                         }
+                  if (p->type->ctype == d)
+                    {
+                       EL(3, "double *%s_ptr = NULL;", p->name);
+                       EL(3, "%s_ptr = azy_server_module_param_get(module, \"%s\");", p->name, p->name);
+                       EL(3, "if (!%s_ptr)", p->name);
+                       EL(4, "{");
+                       EL(5, "azy_content_error_faultmsg_set(content, -1, \"Stub parameter value demarshalization failed. (%s:%s)\");",
+                          method->name, p->name);
+                       EL(5, "return EINA_FALSE;");
+                       EL(4, "}");
+                       EL(3, "%s = *%s_ptr;", p->name, p->name);
+                    }
+                  else if (p->type->ctype == b)
+                    {
+                       EL(3, "if (azy_server_module_param_get(module, \"%s\"))", p->name);
+                       EL(4, "%s = EINA_TRUE;", p->name);
+                    }
+                  else
+                    {
+                       if (p->type->ctype == i)
+                         EL(3, "%s = (intptr_t)azy_server_module_param_get(module, \"%s\");", p->name, p->name);
                        else
-                         {
-                            if (p->type->ctype == i)
-                              EL(3, "%s = (intptr_t)azy_server_module_param_get(module, \"%s\");", p->name, p->name);
-                            else
-                              EL(3, "%s = azy_server_module_param_get(module, \"%s\");", p->name, p->name);
-                         }
+                         EL(3, "%s = azy_server_module_param_get(module, \"%s\");", p->name, p->name);
+                    }
                }
              EL(2, "}");
              EL(1, "else");
@@ -1940,7 +1687,7 @@ gen_client_impl(Azy_Server_Module *s)
         EL(1, "Azy_Client_Call_Id retval = 0;");
 
         if (method->params)
-          EL(1, "Azy_Value *param_value;");
+          EL(1, "Eina_Value *param_value;");
 
         EL(1, "Azy_Content *content;");
         EL(1, "Azy_Net *net;");
@@ -2109,7 +1856,6 @@ main(int argc,
       ECORE_GETOPT_VALUE_BOOL(isnull_funcs),
       ECORE_GETOPT_VALUE_BOOL(print_funcs),
       ECORE_GETOPT_VALUE_BOOL(eq_funcs),
-      ECORE_GETOPT_VALUE_BOOL(esql_funcs),
       ECORE_GETOPT_VALUE_BOOL(suspend_funcs),
       ECORE_GETOPT_VALUE_BOOL(exit_option),
       ECORE_GETOPT_VALUE_BOOL(exit_option),
@@ -2139,7 +1885,7 @@ main(int argc,
    d = eina_stringshare_add("double");
    c = eina_stringshare_add("const char *");
    e = eina_stringshare_add("Eina_List *");
-   ti = eina_stringshare_add("time");
+   ti = eina_stringshare_add("time_t");
    b64 = eina_stringshare_add("base64");
 
    client_headers = strstr(modes, "all") || strstr(modes, "client-headers");

@@ -31,45 +31,6 @@ ret_(Azy_Client *cli __UNUSED__, int type __UNUSED__, Azy_Event_Client_Transfer_
    return AZY_ERROR_NONE;
 }
 
-static void
-Array_identica_Ident_free(Eina_List *array)
-{
-   identica_Ident *id;
-
-   EINA_SAFETY_ON_NULL_RETURN(array);
-
-   EINA_LIST_FREE(array, id)
-     identica_Ident_free(id);
-}
-
-static Eina_Bool
-azy_value_to_Array_identica_Ident(Azy_Value *_array, Eina_List **_narray)
-{
-  Eina_List *_tmp_narray = NULL, *_item;
-  Azy_Value *v;
-
-  EINA_SAFETY_ON_NULL_RETURN_VAL(_narray, EINA_FALSE);
-
-  if ((!_array) || (azy_value_type_get(_array) != AZY_VALUE_ARRAY))
-    return EINA_FALSE;
-
-  EINA_LIST_FOREACH(azy_value_children_items_get(_array), _item, v)
-  {
-    identica_Ident *_item_value = NULL;
-
-    if (!azy_value_to_identica_Ident(v, &_item_value))
-    {
-      Array_identica_Ident_free(_tmp_narray);
-      return EINA_FALSE;
-    }
-
-    _tmp_narray = eina_list_append(_tmp_narray, _item_value);
-  }
-
-  *_narray = _tmp_narray;
-  return EINA_TRUE;
-}
-
 static Eina_Bool
 download_status(void *data __UNUSED__, int type __UNUSED__, Azy_Event_Client_Transfer_Progress *ev)
 {

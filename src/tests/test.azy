@@ -116,6 +116,7 @@ Azy_Module Test1
     */
      (void)module; /** shut up compiler warnings */
      char *buf;
+     Eina_Value *val;
      /** the below line can be uncommented so you can see where it gets called
       * from when the method is called
       */
@@ -127,10 +128,11 @@ Azy_Module Test1
                                      * will result in a parser error (FIXME).
                                      */
      retval->v_string = eina_stringshare_add("Hi!");
-     retval->v_time = eina_stringshare_add("2011-01-01");
+     val = azy_value_util_time_string_new("20110101T12:24:36");
+     eina_value_get(val, &retval->v_time);
+     eina_value_free(val);
      buf = azy_util_base64_encode((void*)"Hi all!", sizeof("Hi all!"), NULL);
-     retval->v_base64 = eina_stringshare_add(buf);
-     free(buf);
+     retval->v_base64 = buf;
      retval->v_int = 5645;
      retval->v_boolean = EINA_FALSE;
      retval->v_double = 123.123e-3;
@@ -186,8 +188,7 @@ Azy_Module Test1
           buf = eina_stringshare_printf("BBBBBBBBBBBBBBBBBLOOOOOB%d", i);
           b64 = azy_util_base64_encode((void*)buf, eina_stringshare_strlen(buf), NULL);
           eina_stringshare_del(buf);
-          ADD(a_base64, eina_stringshare_add(b64));
-          free(b64);
+          ADD(a_base64, b64);
        }
 
      for (i = 0; i < 10; i++)

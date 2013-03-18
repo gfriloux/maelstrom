@@ -161,7 +161,6 @@ azy_init(void)
    type = getenv("EINA_MEMPOOL");
    if ((!type) || (!type[0])) type = "chained_mempool";
 
-   if (!azy_value_init(type)) goto ecore_con_fail;
    if (!azy_rss_init(type)) goto azy_fail;
    if (!azy_net_cookie_init_()) goto azy_fail2;
    azy_lib_register_errors_();
@@ -194,8 +193,6 @@ azy_init(void)
 azy_fail2:
    azy_rss_shutdown();
 azy_fail:
-   azy_value_shutdown();
-ecore_con_fail:
    ecore_con_shutdown();
 ecore_fail:
    ecore_shutdown();
@@ -228,7 +225,6 @@ azy_shutdown(void)
      eina_log_domain_unregister(azy_rpc_log_dom);
    azy_net_cookie_shutdown_();
    azy_rss_shutdown();
-   azy_value_shutdown();
    ecore_con_shutdown();
    ecore_shutdown();
    eina_shutdown();

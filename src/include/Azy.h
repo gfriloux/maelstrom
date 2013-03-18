@@ -143,11 +143,7 @@ typedef struct Azy_Rss_Contact
    const char *uri; /**< URI associated with the contact */
    const char *email; /**< Email address of the contact */
 } Azy_Rss_Contact;
-/**
- * @typedef Azy_Value
- * A general struct which can hold any type of value
- */
-typedef struct Azy_Value   Azy_Value;
+
 /**
  * @typedef Azy_Content
  * A struct which holds the content being sent/received in an rpc method call
@@ -260,13 +256,13 @@ typedef enum
 {
    AZY_VALUE_ARRAY, /**< Array object */
    AZY_VALUE_STRUCT, /**< Struct object */
-   AZY_VALUE_MEMBER, /**< Struct member object */
    AZY_VALUE_INT, /**< Int object */
    AZY_VALUE_STRING, /**< String (stringshared) object */
    AZY_VALUE_BOOL, /**< Boolean object */
    AZY_VALUE_DOUBLE, /**< Double object */
    AZY_VALUE_TIME, /**< Time (stringshared) object */
-   AZY_VALUE_BASE64 /**< Base64 encoded string (stringshared) object */
+   AZY_VALUE_BASE64, /**< Base64 encoded string (stringshared) object */
+   AZY_VALUE_LAST, /**< Base64 encoded string (stringshared) object */
 } Azy_Value_Type;
 
 /**
@@ -328,14 +324,14 @@ typedef Eina_Bool  (*Azy_Server_Module_Pre_Cb)(Azy_Server_Module *, Azy_Net *);
 typedef Eina_Bool  (*Azy_Server_Module_Content_Cb)(Azy_Server_Module *, Azy_Content *);
 /**
  * @typedef Azy_Content_Cb
- * Function to convert Azy_Value* to user type.
+ * Function to convert Eina_Value* to user type.
  */
-typedef void     * (*Azy_Content_Cb)(Azy_Value *, void **);
+typedef void     * (*Azy_Content_Cb)(Eina_Value *, void **);
 /**
  * @typedef Azy_Content_Retval_Cb
- * Function to convert user type to Azy_Value*.
+ * Function to convert user type to Eina_Value*.
  */
-typedef Azy_Value *(*Azy_Content_Retval_Cb)(void *);
+typedef Eina_Value *(*Azy_Content_Retval_Cb)(void *);
 /**
  * @typedef Azy_Client_Transfer_Complete_Cb
  * Function must return AZY_ERROR_NONE (0) on success, else
@@ -349,6 +345,7 @@ typedef Eina_Error (*Azy_Client_Transfer_Complete_Cb)(Azy_Client *cli, Azy_Conte
  */
 typedef Azy_Server_Module_Def *(*Azy_Server_Module_Def_Cb)(void);
 #define AZY_ERROR_NONE 0 /**< More explicit define for #Azy_Client_Transfer_Complete_Cb functions. */
+
 /** }@ */
 #ifdef __cplusplus
 extern "C" {
@@ -367,6 +364,8 @@ EAPI const char               *azy_util_uuid_new(void);
 EAPI Azy_Net_Transport         azy_util_transport_get(const char *content_type);
 EAPI Eina_Bool azy_util_ip_is_valid(const char *ip);
 EAPI Eina_Bool azy_util_domain_match(const char *domain, const char *match);
+EAPI char *azy_util_strdup(const char *str);
+EAPI Eina_Bool azy_util_streq(const char *a, const char *b);
 
 /* server */
 EAPI void                      azy_server_stop(Azy_Server *server);
@@ -465,32 +464,23 @@ EAPI void azy_net_cookie_set_list_generate(Eina_Strbuf *buf, const Eina_List *co
 EAPI void azy_net_cookie_send_list_generate(Eina_Strbuf *buf, const Eina_List *cookies);
 
 /* values */
-EAPI Azy_Value                *azy_value_ref(Azy_Value *val);
-EAPI void                      azy_value_unref(Azy_Value *val);
-EAPI Azy_Value                *azy_value_base64_new(const char *val);
-EAPI Azy_Value                *azy_value_string_new(const char *val);
-EAPI Azy_Value                *azy_value_int_new(int val);
-EAPI Azy_Value                *azy_value_bool_new(Eina_Bool val);
-EAPI Azy_Value                *azy_value_double_new(double val);
-EAPI Azy_Value                *azy_value_time_new(const char *val);
-EAPI Eina_Bool                 azy_value_int_get(Azy_Value *val, int *nval);
-EAPI Eina_Bool                 azy_value_string_get(Azy_Value *val, const char **nval);
-EAPI Eina_Bool                 azy_value_base64_get(Azy_Value *val, const char **nval);
-EAPI Eina_Bool                 azy_value_bool_get(Azy_Value *val, Eina_Bool *nval);
-EAPI Eina_Bool                 azy_value_double_get(Azy_Value *val, double *nval);
-EAPI Eina_Bool                 azy_value_value_get(Azy_Value *val, Azy_Value **nval);
-EAPI Azy_Value_Type            azy_value_type_get(Azy_Value *val);
-EAPI void                      azy_value_type_set(Azy_Value *val, Azy_Value_Type type);
-EAPI Azy_Value                *azy_value_array_new(void);
-EAPI void                      azy_value_array_push(Azy_Value *arr, Azy_Value *val);
-EAPI Eina_List                *azy_value_children_items_get(Azy_Value *arr);
-EAPI Azy_Value                *azy_value_struct_new(void);
-EAPI void                      azy_value_struct_member_set(Azy_Value *str, const char *name, Azy_Value *val);
-EAPI Azy_Value                *azy_value_struct_member_get(Azy_Value *str, const char *name);
-EAPI const char               *azy_value_struct_member_name_get(Azy_Value *mem);
-EAPI Azy_Value                *azy_value_struct_member_value_get(Azy_Value *mem);
-EAPI Eina_Bool                 azy_value_retval_is_error(Azy_Value *val, int *errcode, const char **errmsg);
-EAPI void                      azy_value_dump(Azy_Value *v, Eina_Strbuf *string, unsigned int indent);
+EAPI Azy_Value_Type            azy_value_util_type_get(const Eina_Value *val);
+EAPI Eina_Bool                 azy_value_util_retval_is_error(const Eina_Value *val, int *errcode, const char **errmsg);
+EAPI void                      azy_value_util_dump(const Eina_Value *v, Eina_Strbuf *string, unsigned int indent);
+
+EAPI Eina_Value_Struct_Desc *azy_value_util_struct_desc_new(void);
+EAPI Eina_Value *azy_value_util_int_new(int i);
+EAPI Eina_Value *azy_value_util_double_new(double d);
+EAPI Eina_Value *azy_value_util_bool_new(Eina_Bool b);
+EAPI Eina_Value *azy_value_util_base64_new(const char *b64);
+EAPI Eina_Value *azy_value_util_string_new(const char *str);
+EAPI Eina_Value *azy_value_util_time_new(time_t t);
+EAPI Eina_Value *azy_value_util_time_string_new(const char *timestr);
+EAPI Eina_Value *azy_value_util_copy(const Eina_Value *val);
+EAPI Eina_Bool azy_value_util_string_copy(const Eina_Value *val, Eina_Stringshare **str);
+EAPI Eina_Bool azy_value_util_base64_copy(const Eina_Value *val, char **str);
+EAPI unsigned int azy_value_util_type_offset(const Eina_Value_Type *type, unsigned base);
+EAPI size_t azy_value_util_type_size(const Eina_Value_Type *type);
 
 /* content */
 EAPI Azy_Content              *azy_content_new(const char *method);
@@ -500,13 +490,13 @@ EAPI const char               *azy_content_method_get(Azy_Content *content);
 EAPI const char               *azy_content_method_full_get(Azy_Content *content);
 EAPI const char               *azy_content_module_name_get(Azy_Content *content, const char *fallback);
 EAPI Azy_Net                  *azy_content_net_get(Azy_Content *content);
-EAPI void                      azy_content_param_add(Azy_Content *content, Azy_Value *val);
-EAPI Azy_Value                *azy_content_param_get(Azy_Content *content, unsigned int pos);
+EAPI void                      azy_content_param_add(Azy_Content *content, Eina_Value *val);
+EAPI Eina_Value                *azy_content_param_get(Azy_Content *content, unsigned int pos);
 EAPI Eina_List                *azy_content_params_get(Azy_Content *content);
-EAPI void                      azy_content_retval_set(Azy_Content *content, Azy_Value *val);
+EAPI void                      azy_content_retval_set(Azy_Content *content, Eina_Value *val);
 EAPI void                     *azy_content_return_get(Azy_Content *content);
 EAPI Azy_Client_Call_Id        azy_content_id_get(Azy_Content *content);
-EAPI Azy_Value                *azy_content_retval_get(Azy_Content *content);
+EAPI Eina_Value                *azy_content_retval_get(Azy_Content *content);
 EAPI void                      azy_content_error_code_set(Azy_Content *content, Eina_Error code);
 EAPI void                      azy_content_error_faultcode_set(Azy_Content *content, Eina_Error code, int faultcode);
 EAPI void                      azy_content_error_faultmsg_set(Azy_Content *content, int faultcode, const char *fmt, ...);

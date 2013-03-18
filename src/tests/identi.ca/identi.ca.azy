@@ -69,3 +69,7 @@ struct Ident
    User user;
 };
 
+struct arr
+{
+   array<Ident> idents;
+};
