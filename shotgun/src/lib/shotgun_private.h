@@ -167,6 +167,7 @@ void shotgun_presence_feed(Shotgun_Auth *auth, char *data, size_t size);
 
 void shotgun_strtohex(unsigned char *digest, size_t len, char *ret);
 void shotgun_md5_hmac_encode(unsigned char *digest, const char *string, size_t size, const void *key, size_t ksize);
+const char * shotgun_strtohtml(const char *s);
 
 Eina_Bool shotgun_login_con(Shotgun_Auth *auth, int type, Ecore_Con_Event_Server_Add *ev);
 void shotgun_login(Shotgun_Auth *auth, Ecore_Con_Event_Server_Data *ev);

@@ -121,3 +121,74 @@ shotgun_sha1_buffer(const unsigned char *data, size_t len)
 {
    return sha1_buffer(data, len);
 }
+
+const char *
+shotgun_strtohtml(const char *s)
+{
+   unsigned int block = 64,
+                i,
+                j,
+                k;
+   char *s1;
+   size_t s_len,
+          s1_len,
+          c_len;
+   Eina_Bool found;
+   struct _Html
+   {
+      const char s,
+                 *h;
+      unsigned int l;
+   };
+   struct _Html html[] = {
+      { '<', "&lt;", 4 },
+      { '>', "&gt;", 4 },
+      { '\'', "&apos;", 6 },
+      { '\"', "&quot;", 6 },
+      { '&', "&amp;", 5 },
+      { '/', "&frasl;", 7 },
+      { 0, NULL, 0 }
+   };
+
+   EINA_SAFETY_ON_NULL_RETURN_VAL(s, NULL);
+
+   s_len = strlen(s);
+   s1_len = s_len + block;
+   c_len = 0;
+
+   s1 = calloc(1, s1_len);
+
+   for (i=j=0; i < s_len; i++,j++)
+     {
+        found = EINA_FALSE;
+
+        for (k=0; html[k].s; k++)
+          {
+             if (s[i] != html[k].s)
+               continue;
+
+             if ((c_len + html[k].l) >= s1_len)
+               {
+                  s1 = realloc(s1, s1_len + block);
+                  s1_len += block;
+               }
+             strcpy(s1 + j, html[k].h);
+             found = EINA_TRUE;
+             j += html[k].l - 1;
+             c_len += html[k].l;
+             break;
+          }
+
+        if (found)
+          continue;
+
+        if ((c_len - s1_len) < 2)
+          {
+             s1 = realloc(s1, s1_len + block);
+             s1_len += block;
+          }
+        s1[j] = s[i];
+        c_len++;
+     }
+   return s1;
+}

@@ -1546,9 +1546,9 @@ C: <message from='juliet@im.example.com/balcony'
    if ((xhtml_im) && (auth->custom_emoticons) && (shotgun_hashtml(auth->custom_emoticons,msg)))
      {
         Eina_Strbuf *buf;
-        const char *message;
+        const char *message,
+                   *message_text;
         char *message_html;
-
 
         buf = eina_strbuf_new();
         switch (status)
@@ -1571,8 +1571,8 @@ C: <message from='juliet@im.example.com/balcony'
              break;
           }
 
-
-        message_html = shotgun_htmlize(auth->custom_emoticons, msg);
+        message_text = shotgun_strtohtml(msg);
+        message_html = shotgun_htmlize(auth->custom_emoticons, message_text);
         eina_strbuf_append_printf(buf,
                                   "<message type='chat' "
                                   "to='%s'><%s "
@@ -1583,9 +1583,10 @@ C: <message from='juliet@im.example.com/balcony'
                                   "%s</body></html></message>",
                                   to,
                                   message,
-                                  msg,
+                                  message_text,
                                   message_html);
         free(message_html);
+        free((char *)message_text);
         xml_text = eina_strbuf_string_steal(buf);
         *len = strlen(xml_text);
         eina_strbuf_free(buf);
