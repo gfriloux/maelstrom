@@ -934,7 +934,8 @@ _azy_server_client_handler_data(Azy_Server_Client *client,
      {
         client->net->buffer = client->overflow;
         client->net->progress = EBUFLEN(client->net->buffer);
-        INFO("%s: Set recv size to %" PRIi64 " from overflow", client->ip, client->net->progress);
+        if (client->overflow)
+          INFO("%s: Set recv size to %" PRIi64 " from overflow", client->ip, client->net->progress);
 
         /* returns offset where http header line ends */
         if (!(offset = azy_events_type_parse(client->net, type, data, len)) && ev && (!client->net->http.req.http_path))
@@ -942,15 +943,15 @@ _azy_server_client_handler_data(Azy_Server_Client *client,
              client->overflow = NULL;
              return azy_events_connection_kill(client->net->conn, EINA_TRUE, NULL);
           }
-        else if (!offset && client->overflow)
+        else if (client->overflow)
           {
-             client->net->buffer = NULL;
-             client->net->progress = 0;
-             INFO("%s: Overflow could not be parsed, set recv size to 0, storing overflow of %" PRIi64 "", client->ip, EBUFLEN(client->overflow));
-             return ECORE_CALLBACK_RENEW;
-          }
-        else
-          {
+             if (!offset)
+               {
+                  client->net->buffer = NULL;
+                  client->net->progress = 0;
+                  INFO("%s: Overflow could not be parsed, set recv size to 0, storing overflow of %" PRIi64 "", client->ip, EBUFLEN(client->overflow));
+                  return ECORE_CALLBACK_RENEW;
+               }
              client->overflow = NULL;
              INFO("%s: Overflow was parsed! Removing...", client->ip);
           }
@@ -985,9 +986,15 @@ _azy_server_client_handler_data(Azy_Server_Client *client,
    if (!client->net->headers_read)
      return ECORE_CALLBACK_RENEW;
 
-   if (azy_events_length_overflows(client->net->progress, client->net->http.content_length) ||
-       ((!EBUFLEN(client->net->buffer)) && (client->net->http.content_length < 1) && client->net->headers_read))
-     _azy_server_client_handler_request(client);
+   if (client->net->headers_read)
+     {
+        
+        if (
+            ((client->net->http.content_length > 0) && (client->net->progress >= (size_t)client->net->http.content_length)) ||
+            ((!EBUFLEN(client->net->buffer)) && (client->net->http.content_length < 1))
+           )
+        _azy_server_client_handler_request(client);
+     }
 
    if (client->overflow && (!client->net->buffer))
      {
