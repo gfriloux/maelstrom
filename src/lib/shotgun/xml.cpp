@@ -255,7 +255,7 @@ S: <stream:stream
 }
 
 Eina_Bool
-xml_starttls_read(char *xml, size_t size __UNUSED__)
+xml_starttls_read(char *xml, size_t size EINA_UNUSED)
 {
 /*
 S: <proceed xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>
@@ -1398,7 +1398,7 @@ xml_iq_vcard_read(Shotgun_Auth *auth, xml_node iq, xml_node node)
 }
 
 static Shotgun_Event_Iq *
-xml_iq_archive_read(Shotgun_Auth *auth __UNUSED__, xml_node list __UNUSED__)
+xml_iq_archive_read(Shotgun_Auth *auth EINA_UNUSED, xml_node list EINA_UNUSED)
 {
    /* TODO: this */
    return NULL;

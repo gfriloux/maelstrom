@@ -90,7 +90,7 @@ static Eina_Bool                 _azy_server_client_handler_data(Azy_Server_Clie
                                                                  int type,
                                                                  Ecore_Con_Event_Client_Data *ev);
 static Eina_Bool                 _azy_server_client_handler_upgrade(Azy_Server_Client *cl,
-                                                                    int type                    __UNUSED__,
+                                                                    int type                    EINA_UNUSED,
                                                                     Ecore_Con_Event_Client_Upgrade *ev);
 static void                      _azy_server_client_free(Azy_Server_Client *client);
 
@@ -1011,7 +1011,7 @@ _azy_server_client_handler_data(Azy_Server_Client *client,
 
 static Eina_Bool
 _azy_server_client_handler_del(Azy_Server_Client *client,
-                               int type                    __UNUSED__,
+                               int type                    EINA_UNUSED,
                                Ecore_Con_Event_Client_Del *ev)
 {
    DBG("(client=%p, server->client=%p)", client, (ev) ? ecore_con_client_data_get(ev->client) : NULL);
@@ -1043,7 +1043,7 @@ _azy_server_client_handler_del(Azy_Server_Client *client,
 }
 
 static Eina_Bool
-_azy_server_client_handler_upgrade(Azy_Server_Client *cl, int type __UNUSED__, Ecore_Con_Event_Client_Upgrade *ev)
+_azy_server_client_handler_upgrade(Azy_Server_Client *cl, int type EINA_UNUSED, Ecore_Con_Event_Client_Upgrade *ev)
 {
    DBG("(cl=%p, cl->client=%p)", cl, ecore_con_server_data_get(ecore_con_client_server_get(ev->client)));
    if (cl != ecore_con_server_data_get(ecore_con_client_server_get(ev->client)))
@@ -1060,7 +1060,7 @@ _azy_server_client_handler_upgrade(Azy_Server_Client *cl, int type __UNUSED__, E
 
 Eina_Bool
 azy_server_client_handler_add(Azy_Server *server,
-                              int type                    __UNUSED__,
+                              int type                    EINA_UNUSED,
                               Ecore_Con_Event_Client_Add *ev)
 {
    DBG("(server=%p, server->client=%p)", server, ecore_con_server_data_get(ecore_con_client_server_get(ev->client)));

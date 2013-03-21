@@ -1,7 +1,7 @@
 #include "ui.h"
 
 static void
-_ui_animate_done_cb(UI_WIN *ui, Evas_Object *obj __UNUSED__, void *event_info __UNUSED__)
+_ui_animate_done_cb(UI_WIN *ui, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
 {
    if ((!ui->settings_box) || (!elm_flip_front_visible_get(ui->flip))) return;
    evas_object_del(ui->settings_box);

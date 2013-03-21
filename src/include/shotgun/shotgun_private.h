@@ -1,8 +1,8 @@
 #ifndef SHOTGUN_PRIVATE_H
 #define SHOTGUN_PRIVATE_H
 
-#ifndef __UNUSED__
-# define __UNUSED__ __attribute__((unused))
+#ifndef EINA_UNUSED
+# define EINA_UNUSED __attribute__((unused))
 #endif
 
 #ifdef HAVE_CONFIG_H
@@ -154,7 +154,7 @@ shotgun_write(Ecore_Con_Server *svr, const void *data, size_t size)
 }
 
 static inline void
-shotgun_fake_free(void *d __UNUSED__, void *d2 __UNUSED__)
+shotgun_fake_free(void *d EINA_UNUSED, void *d2 EINA_UNUSED)
 {}
 
 void shotgun_message_feed(Shotgun_Auth *auth, char *data, size_t size);

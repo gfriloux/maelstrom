@@ -77,19 +77,19 @@ static char *BROWSERS[] = { NULL, "chrome", "firefox", "opera", NULL, "xdg-open"
 } while (0)
 
 static void
-_settings_image_size_change(UI_WIN *ui, Evas_Object *obj, void *event_info __UNUSED__)
+_settings_image_size_change(UI_WIN *ui, Evas_Object *obj, void *event_info EINA_UNUSED)
 {
    ui->settings->allowed_image_size = elm_slider_value_get(obj);
 }
 
 static void
-_settings_image_age_change(UI_WIN *ui, Evas_Object *obj, void *event_info __UNUSED__)
+_settings_image_age_change(UI_WIN *ui, Evas_Object *obj, void *event_info EINA_UNUSED)
 {
    ui->settings->allowed_image_age = elm_slider_value_get(obj);
 }
 
 static void
-_settings_logging_change(Contact_List *cl, Evas_Object *obj, void *event_info __UNUSED__)
+_settings_logging_change(Contact_List *cl, Evas_Object *obj, void *event_info EINA_UNUSED)
 {
    Eina_List *l, *ll;
    const char *dir;
@@ -115,7 +115,7 @@ _settings_logging_change(Contact_List *cl, Evas_Object *obj, void *event_info __
 }
 
 static void
-_settings_chat_resource_ignore_toggle(Contact_List *cl, Evas_Object *obj __UNUSED__, void *event_info __UNUSED__)
+_settings_chat_resource_ignore_toggle(Contact_List *cl, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
 {
    Eina_List *l;
    Contact *c;
@@ -125,7 +125,7 @@ _settings_chat_resource_ignore_toggle(Contact_List *cl, Evas_Object *obj __UNUSE
 }
 
 static void
-_settings_chat_typing_change(Contact_List *cl, Evas_Object *obj, void *event_info __UNUSED__)
+_settings_chat_typing_change(Contact_List *cl, Evas_Object *obj, void *event_info EINA_UNUSED)
 {
    Eina_List *l, *ll;
    Chat_Window *cw;
@@ -148,7 +148,7 @@ _settings_chat_typing_change(Contact_List *cl, Evas_Object *obj, void *event_inf
 }
 
 static void
-_settings_chat_status_entry_change(Contact_List *cl, Evas_Object *obj __UNUSED__, void *event_info __UNUSED__)
+_settings_chat_status_entry_change(Contact_List *cl, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
 {
    Eina_List *l, *ll;
    Chat_Window *cw;
@@ -162,13 +162,13 @@ _settings_chat_status_entry_change(Contact_List *cl, Evas_Object *obj __UNUSED__
 }
 
 static void
-_settings_browser_entry_cb(Evas_Object *hv, Evas_Object *obj __UNUSED__, void *ev __UNUSED__)
+_settings_browser_entry_cb(Evas_Object *hv, Evas_Object *obj EINA_UNUSED, void *ev EINA_UNUSED)
 {
    elm_hover_dismiss(hv);
 }
 
 static void
-_settings_browser_hover_close(UI_WIN *ui, Evas_Object *obj, void *ev __UNUSED__)
+_settings_browser_hover_close(UI_WIN *ui, Evas_Object *obj, void *ev EINA_UNUSED)
 {
    Evas_Object *box, *o;
    Eina_List *l;
@@ -190,13 +190,13 @@ _settings_browser_hover_close(UI_WIN *ui, Evas_Object *obj, void *ev __UNUSED__)
 }
 
 static void
-_settings_otr_change(UI_WIN *ui, Evas_Object *obj __UNUSED__, void *ev __UNUSED__)
+_settings_otr_change(UI_WIN *ui, Evas_Object *obj EINA_UNUSED, void *ev EINA_UNUSED)
 {
    shotgun_iq_otr_set(ui->account, ui->settings->enable_global_otr);
 }
 
 static void
-_settings_browser_change(UI_WIN *ui, Evas_Object *radio, void *ev __UNUSED__)
+_settings_browser_change(UI_WIN *ui, Evas_Object *radio, void *ev EINA_UNUSED)
 {
    Evas_Object *hv, *ent, *o, *box;
    unsigned int val;
@@ -247,7 +247,7 @@ _settings_browser_change(UI_WIN *ui, Evas_Object *radio, void *ev __UNUSED__)
 }
 
 static void
-_settings_mail_notify_change(UI_WIN *ui, Evas_Object *obj __UNUSED__, void *event_info __UNUSED__)
+_settings_mail_notify_change(UI_WIN *ui, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
 {
    shotgun_iq_gsettings_mailnotify_set(ui->account, ui->settings->enable_mail_notifications);
 }
@@ -378,7 +378,7 @@ settings_new(UI_WIN *ui)
 }
 
 void
-settings_toggle(UI_WIN *ui, Evas_Object *obj __UNUSED__, void *event_info)
+settings_toggle(UI_WIN *ui, Evas_Object *obj EINA_UNUSED, void *event_info)
 {
    Contact_List *cl;
    Login_Window *lw;

@@ -398,7 +398,7 @@ ui_dbus_signal_link(Contact_List *cl, const char *url, Eina_Bool del, Eina_Bool 
 }
 
 static void
-_dbus_request_name_cb(void *data __UNUSED__, DBusMessage *msg, DBusError *err __UNUSED__)
+_dbus_request_name_cb(void *data EINA_UNUSED, DBusMessage *msg, DBusError *err EINA_UNUSED)
 {
    DBusError error;
    unsigned int ret;

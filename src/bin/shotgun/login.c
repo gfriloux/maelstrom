@@ -20,7 +20,7 @@ static void _login(Login_Window *lw);
    evas_object_show(fr)
 
 static void
-_login_window_key(Login_Window *lw, Evas *e __UNUSED__, Evas_Object *obj __UNUSED__, Evas_Event_Key_Down *ev)
+_login_window_key(Login_Window *lw, Evas *e EINA_UNUSED, Evas_Object *obj EINA_UNUSED, Evas_Event_Key_Down *ev)
 {
    //DBG("%s", ev->keyname);
    if (!strcmp(ev->keyname, "Escape"))
@@ -37,7 +37,7 @@ _login_window_key(Login_Window *lw, Evas *e __UNUSED__, Evas_Object *obj __UNUSE
 
 
 static void
-_login_window_focus(Login_Window *lw, Evas_Object *obj __UNUSED__, void *event_info __UNUSED__)
+_login_window_focus(Login_Window *lw, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
 {
    const char *txt;
 
@@ -63,7 +63,7 @@ _login_window_focus(Login_Window *lw, Evas_Object *obj __UNUSED__, void *event_i
 }
 
 static void
-_login_window_free(Login_Window *lw, Evas *e __UNUSED__, Evas_Object *obj __UNUSED__, void *event_info __UNUSED__)
+_login_window_free(Login_Window *lw, Evas *e EINA_UNUSED, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
 {
    evas_object_key_ungrab(lw->win, "Return", 0, 0);
    evas_object_key_ungrab(lw->win, "KP_Enter", 0, 0);
@@ -89,28 +89,28 @@ _login_window_free(Login_Window *lw, Evas *e __UNUSED__, Evas_Object *obj __UNUS
 }
 
 static Eina_Bool
-_login_complete(Login_Window *lw, int type __UNUSED__, Shotgun_Auth *auth __UNUSED__)
+_login_complete(Login_Window *lw, int type EINA_UNUSED, Shotgun_Auth *auth EINA_UNUSED)
 {
    _login_window_free(lw, NULL, NULL, NULL);
    return ECORE_CALLBACK_RENEW;
 }
 
 static void
-_login_notify_close(Login_Window *lw, Evas_Object *obj __UNUSED__, void *event_info __UNUSED__)
+_login_notify_close(Login_Window *lw, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
 {
    evas_object_del(lw->notify);
    lw->notify = NULL;
 }
 
 static void
-_login_notify_close2(Login_Window *lw, Evas *e __UNUSED__, Evas_Object *obj __UNUSED__, void *event_info __UNUSED__)
+_login_notify_close2(Login_Window *lw, Evas *e EINA_UNUSED, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
 {
    evas_object_del(lw->notify);
    lw->notify = NULL;
 }
 
 static Eina_Bool
-_login_state(Login_Window *lw, int type __UNUSED__, Shotgun_Auth *auth)
+_login_state(Login_Window *lw, int type EINA_UNUSED, Shotgun_Auth *auth)
 {
    const char *text = "";
    switch (shotgun_connection_state_get(auth))
@@ -346,7 +346,7 @@ login_fill(Login_Window *lw)
 }
 
 Eina_Bool
-login_fail(Login_Window *lw, int type __UNUSED__, Shotgun_Auth *auth __UNUSED__)
+login_fail(Login_Window *lw, int type EINA_UNUSED, Shotgun_Auth *auth EINA_UNUSED)
 {
    Evas_Object *o;
    elm_object_tree_focus_allow_set(lw->box, EINA_TRUE);

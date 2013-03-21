@@ -65,7 +65,7 @@ _azy_client_handler_data_free(Azy_Client_Handler_Data *hd)
 
 Eina_Bool
 _azy_client_handler_upgrade(Azy_Client_Handler_Data *hd,
-                            int type __UNUSED__,
+                            int type EINA_UNUSED,
                             Ecore_Con_Event_Server_Upgrade *ev)
 {
    if (!AZY_MAGIC_CHECK(hd, AZY_MAGIC_CLIENT_DATA_HANDLER))
@@ -489,7 +489,7 @@ _azy_client_handler_data(Azy_Client_Handler_Data *hd,
 
 Eina_Bool
 _azy_client_handler_del(Azy_Client *client,
-                        int type                    __UNUSED__,
+                        int type                    EINA_UNUSED,
                         Ecore_Con_Event_Server_Del *ev)
 {
    Azy_Client_Handler_Data *hd;
@@ -541,8 +541,8 @@ _azy_client_handler_del(Azy_Client *client,
 
 Eina_Bool
 _azy_client_handler_add(Azy_Client *client,
-                        int type                       __UNUSED__,
-                        Ecore_Con_Event_Server_Add *ev __UNUSED__)
+                        int type                       EINA_UNUSED,
+                        Ecore_Con_Event_Server_Add *ev EINA_UNUSED)
 {
    Eina_List *l;
    Azy_Client_Handler_Data *hd;

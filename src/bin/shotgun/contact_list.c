@@ -12,14 +12,14 @@ static const char const *Contact_Status_String[] =
 };
 
 static void
-_contact_list_quit_cb(Contact_List *cl, Evas_Object *obj __UNUSED__, void *ev __UNUSED__)
+_contact_list_quit_cb(Contact_List *cl, Evas_Object *obj EINA_UNUSED, void *ev EINA_UNUSED)
 {
    evas_object_del(cl->win);
    cl->win = NULL;
 }
 
 static void
-_contact_list_free_cb(Contact_List *cl, Evas *e __UNUSED__, Evas_Object *obj, void *ev __UNUSED__)
+_contact_list_free_cb(Contact_List *cl, Evas *e EINA_UNUSED, Evas_Object *obj, void *ev EINA_UNUSED)
 {
    Contact *c;
    Chat_Window *cw;
@@ -53,7 +53,7 @@ _contact_list_free_cb(Contact_List *cl, Evas *e __UNUSED__, Evas_Object *obj, vo
 }
 
 static void
-_contact_list_resize_cb(Contact_List *cl, Evas *e __UNUSED__, Evas_Object *obj __UNUSED__, void *event_info __UNUSED__)
+_contact_list_resize_cb(Contact_List *cl, Evas *e EINA_UNUSED, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
 {
    const Eina_List *l;
    Evas_Object *box;
@@ -75,7 +75,7 @@ _contact_list_resize_cb(Contact_List *cl, Evas *e __UNUSED__, Evas_Object *obj _
 }
 
 static void
-_contact_list_user_del_cb(Contact *c, Evas_Object *obj __UNUSED__, void *ev  __UNUSED__)
+_contact_list_user_del_cb(Contact *c, Evas_Object *obj EINA_UNUSED, void *ev  EINA_UNUSED)
 {
    if (!c) return;
    shotgun_iq_contact_del(c->list->account, c->base->jid);
@@ -109,7 +109,7 @@ _contact_list_user_del(Contact *c)
 }
 
 static void
-_contact_list_reorder_cb(Contact_List *cl, Evas_Object *obj __UNUSED__, Elm_Object_Item *it)
+_contact_list_reorder_cb(Contact_List *cl, Evas_Object *obj EINA_UNUSED, Elm_Object_Item *it)
 {
    Contact *c, *before, *after;
    Eina_List *l;
@@ -142,7 +142,7 @@ _contact_list_reorder_cb(Contact_List *cl, Evas_Object *obj __UNUSED__, Elm_Obje
 }
 
 static void
-_contact_list_click_cb(Contact_List *cl, Evas_Object *obj __UNUSED__, void *ev)
+_contact_list_click_cb(Contact_List *cl, Evas_Object *obj EINA_UNUSED, void *ev)
 {
    Contact *c;
 
@@ -159,7 +159,7 @@ _contact_list_click_cb(Contact_List *cl, Evas_Object *obj __UNUSED__, void *ev)
 }
 
 static void
-_contact_list_remove_cb(Elm_Object_Item *it, Evas_Object *obj __UNUSED__, void *event_info __UNUSED__)
+_contact_list_remove_cb(Elm_Object_Item *it, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
 {
    Contact *c = elm_object_item_data_get(it);
 
@@ -168,7 +168,7 @@ _contact_list_remove_cb(Elm_Object_Item *it, Evas_Object *obj __UNUSED__, void *
 }
 
 static void
-_contact_list_subscribe_cb(Elm_Object_Item *it, Evas_Object *obj __UNUSED__, void *event_info __UNUSED__)
+_contact_list_subscribe_cb(Elm_Object_Item *it, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
 {
    Contact *c;
    Eina_Bool s;
@@ -180,7 +180,7 @@ _contact_list_subscribe_cb(Elm_Object_Item *it, Evas_Object *obj __UNUSED__, voi
 }
 
 static void
-_contact_list_add_pager_cb_next(Contact_List *cl, Evas_Object *obj __UNUSED__, void *ev __UNUSED__)
+_contact_list_add_pager_cb_next(Contact_List *cl, Evas_Object *obj EINA_UNUSED, void *ev EINA_UNUSED)
 {
    const char *text;
    Evas_Object *o;
@@ -210,7 +210,7 @@ _contact_list_add_pager_cb_next(Contact_List *cl, Evas_Object *obj __UNUSED__, v
 }
 
 static void
-_contact_list_add_pager_cb_prev(Contact_List *cl, Evas_Object *obj __UNUSED__, void *ev __UNUSED__)
+_contact_list_add_pager_cb_prev(Contact_List *cl, Evas_Object *obj EINA_UNUSED, void *ev EINA_UNUSED)
 {
    cl->pager_state--;
    if (cl->pager_state)
@@ -228,7 +228,7 @@ _contact_list_add_pager_cb_prev(Contact_List *cl, Evas_Object *obj __UNUSED__, v
 }
 
 static void
-_contact_list_add_cb(Contact_List *cl, Evas_Object *obj __UNUSED__, Elm_Object_Item *ev)
+_contact_list_add_cb(Contact_List *cl, Evas_Object *obj EINA_UNUSED, Elm_Object_Item *ev)
 {
    Evas_Object *p, *b, *b2, *o, *i;
 
@@ -334,7 +334,7 @@ _contact_list_add_cb(Contact_List *cl, Evas_Object *obj __UNUSED__, Elm_Object_I
 }
 
 static void
-_contact_list_del_cb(Contact_List *cl, Evas_Object *obj __UNUSED__, Elm_Object_Item *ev)
+_contact_list_del_cb(Contact_List *cl, Evas_Object *obj EINA_UNUSED, Elm_Object_Item *ev)
 {
    Contact *c;
    Elm_Object_Item *it;
@@ -348,7 +348,7 @@ _contact_list_del_cb(Contact_List *cl, Evas_Object *obj __UNUSED__, Elm_Object_I
 }
 
 static void
-_contact_list_rightclick_cb(Contact_List *cl, Evas *e __UNUSED__, Evas_Object *obj, Evas_Event_Mouse_Down *ev)
+_contact_list_rightclick_cb(Contact_List *cl, Evas *e EINA_UNUSED, Evas_Object *obj, Evas_Event_Mouse_Down *ev)
 {
    Evas_Object *menu;
    Elm_Object_Item *mi;
@@ -405,13 +405,13 @@ _contact_list_rightclick_cb(Contact_List *cl, Evas *e __UNUSED__, Evas_Object *o
 }
 
 static char *
-_it_text_get_grid(Contact *c, Evas_Object *obj __UNUSED__, const char *part __UNUSED__)
+_it_text_get_grid(Contact *c, Evas_Object *obj EINA_UNUSED, const char *part EINA_UNUSED)
 {
    return strdup(contact_name_get(c));
 }
 
 static char *
-_it_text_get_list(Contact *c, Evas_Object *obj __UNUSED__, const char *part)
+_it_text_get_list(Contact *c, Evas_Object *obj EINA_UNUSED, const char *part)
 {
    int ret;
    if (!strcmp(part, "elm.text"))
@@ -525,13 +525,13 @@ _it_content_get(Contact *c, Evas_Object *obj, const char *part)
 }
 
 static Eina_Bool
-_it_state_get(void *data __UNUSED__, Evas_Object *obj __UNUSED__, const char *part __UNUSED__)
+_it_state_get(void *data EINA_UNUSED, Evas_Object *obj EINA_UNUSED, const char *part EINA_UNUSED)
 {
    return EINA_FALSE;
 }
 
 static void
-_it_del(Contact *c, Evas_Object *obj __UNUSED__)
+_it_del(Contact *c, Evas_Object *obj EINA_UNUSED)
 {
    c->list_item = NULL;
 }
@@ -587,7 +587,7 @@ _contact_list_grid_add(Contact_List *cl)
 */
 
 static void
-_contact_list_status_close(Contact_List *cl, Evas_Object *obj, void *ev __UNUSED__)
+_contact_list_status_close(Contact_List *cl, Evas_Object *obj, void *ev EINA_UNUSED)
 {
    char *s;
 
@@ -603,7 +603,7 @@ _contact_list_status_close(Contact_List *cl, Evas_Object *obj, void *ev __UNUSED
 }
 
 static void
-_contact_list_status_change(Contact_List *cl, Evas_Object *radio,  void*ev __UNUSED__)
+_contact_list_status_change(Contact_List *cl, Evas_Object *radio,  void*ev EINA_UNUSED)
 {
    Shotgun_User_Status val;
 
@@ -616,19 +616,19 @@ _contact_list_status_change(Contact_List *cl, Evas_Object *radio,  void*ev __UNU
 }
 
 static void
-_contact_list_status_priority(Contact_List *cl, Evas_Object *obj, void *ev __UNUSED__)
+_contact_list_status_priority(Contact_List *cl, Evas_Object *obj, void *ev EINA_UNUSED)
 {
    shotgun_presence_priority_set(cl->account, elm_spinner_value_get(obj));
 }
 
 static void
-_contact_list_status_activate(Contact_List *cl, Evas_Object *obj __UNUSED__, void *ev __UNUSED__)
+_contact_list_status_activate(Contact_List *cl, Evas_Object *obj EINA_UNUSED, void *ev EINA_UNUSED)
 {
    elm_ctxpopup_dismiss(cl->status_popup);
 }
 
 static void
-_contact_list_status_click(Contact_List *cl, Evas_Object *o __UNUSED__, Elm_Object_Item *ev)
+_contact_list_status_click(Contact_List *cl, Evas_Object *o EINA_UNUSED, Elm_Object_Item *ev)
 {
    Evas_Object *cx, *b, *box, *scr, *obj, *radio;
    int w, h, x, y;
@@ -722,7 +722,7 @@ _contact_list_item_tooltip_update_cb(Contact *c)
 }
 
 static Evas_Object *
-_contact_list_item_tooltip_cb(Contact *c, Evas_Object *obj __UNUSED__, Evas_Object *tt, void *it __UNUSED__)
+_contact_list_item_tooltip_cb(Contact *c, Evas_Object *obj EINA_UNUSED, Evas_Object *tt, void *it EINA_UNUSED)
 {
    Evas_Object *label, *o;
    const char *text;
@@ -816,7 +816,7 @@ out:
 }
 
 static void
-_contact_list_window_key(Contact_List *cl, Evas *e __UNUSED__, Evas_Object *obj __UNUSED__, Evas_Event_Key_Down *ev)
+_contact_list_window_key(Contact_List *cl, Evas *e EINA_UNUSED, Evas_Object *obj EINA_UNUSED, Evas_Event_Key_Down *ev)
 {
    //DBG("%s", ev->keyname);
    if (!strcmp(ev->keyname, "Escape"))
@@ -845,7 +845,7 @@ _contact_list_sorted_insert(Elm_Object_Item *it1, Elm_Object_Item *it2)
 }
 
 void
-contact_list_show_toggle(Contact_List *cl, Evas_Object *obj __UNUSED__, Elm_Object_Item *ev __UNUSED__)
+contact_list_show_toggle(Contact_List *cl, Evas_Object *obj EINA_UNUSED, Elm_Object_Item *ev EINA_UNUSED)
 {
    Eina_List *l;
    Contact *c;
@@ -861,7 +861,7 @@ contact_list_show_toggle(Contact_List *cl, Evas_Object *obj __UNUSED__, Elm_Obje
 }
 
 void
-contact_list_mode_toggle(Contact_List *cl, Evas_Object *obj __UNUSED__, void *event_info __UNUSED__)
+contact_list_mode_toggle(Contact_List *cl, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
 {
    Eina_List *l;
    Contact *c;

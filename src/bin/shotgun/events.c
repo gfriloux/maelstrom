@@ -1,7 +1,7 @@
 #include "ui.h"
 
 Eina_Bool
-event_iq_cb(Contact_List *cl, int type __UNUSED__, Shotgun_Event_Iq *ev)
+event_iq_cb(Contact_List *cl, int type EINA_UNUSED, Shotgun_Event_Iq *ev)
 {
    Contact *c;
    Eina_List *l;
@@ -168,7 +168,7 @@ _event_presence_update(Shotgun_Event_Presence *to, Shotgun_Event_Presence *from)
 }
 
 Eina_Bool
-event_presence_cb(Contact_List *cl, int type __UNUSED__, Shotgun_Event_Presence *ev)
+event_presence_cb(Contact_List *cl, int type EINA_UNUSED, Shotgun_Event_Presence *ev)
 {
    Contact *c;
    Shotgun_Event_Presence *pres = NULL;
@@ -305,7 +305,7 @@ event_presence_cb(Contact_List *cl, int type __UNUSED__, Shotgun_Event_Presence 
 }
 
 Eina_Bool
-event_message_cb(Contact_List *cl, int type __UNUSED__, Shotgun_Event_Message *msg)
+event_message_cb(Contact_List *cl, int type EINA_UNUSED, Shotgun_Event_Message *msg)
 {
    Contact *c;
    char *jid, *p;

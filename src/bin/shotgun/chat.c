@@ -1,6 +1,6 @@
 #include "ui.h"
 
-static void _chat_conv_filter(Contact_List *cl, Evas_Object *obj __UNUSED__, char **str);
+static void _chat_conv_filter(Contact_List *cl, Evas_Object *obj EINA_UNUSED, char **str);
 
 void
 chat_link_open(Contact_List *cl, const char *url)
@@ -35,7 +35,7 @@ chat_link_copy(Contact_List *cl, const char *url)
 }
 
 static void
-_chat_conv_anchor_click(Contact *c, Evas_Object *obj __UNUSED__, Elm_Entry_Anchor_Info *ev)
+_chat_conv_anchor_click(Contact *c, Evas_Object *obj EINA_UNUSED, Elm_Entry_Anchor_Info *ev)
 {
    DBG("anchor click: '%s' (%i, %i)", ev->name, ev->x, ev->y);
    switch (ev->button)
@@ -171,7 +171,7 @@ chat_message_insert(Contact *c, const char *from, const char *msg, Eina_Bool me)
 }
 
 void
-chat_message_status(Contact *c __UNUSED__, Shotgun_Event_Message *msg)
+chat_message_status(Contact *c EINA_UNUSED, Shotgun_Event_Message *msg)
 {
    switch (msg->status)
      {
@@ -186,7 +186,7 @@ chat_message_status(Contact *c __UNUSED__, Shotgun_Event_Message *msg)
 }
 
 static void
-_chat_window_focus(Chat_Window *cw, Evas_Object *obj __UNUSED__, void *ev __UNUSED__)
+_chat_window_focus(Chat_Window *cw, Evas_Object *obj EINA_UNUSED, void *ev EINA_UNUSED)
 {
    Evas_Object *panes;
    Contact *c;
@@ -228,26 +228,26 @@ _chat_window_send_cb(Chat_Window *cw)
 }
 
 static void
-_chat_window_close_cb(Chat_Window *cw, Evas_Object *obj __UNUSED__, const char *ev __UNUSED__)
+_chat_window_close_cb(Chat_Window *cw, Evas_Object *obj EINA_UNUSED, const char *ev EINA_UNUSED)
 {
    contact_chat_window_close(evas_object_data_get(elm_object_content_get(cw->pager), "contact"));
 }
 
 static void
-_chat_window_scrollback_clear_cb(Contact *c, Evas_Object *obj __UNUSED__, void *event_info __UNUSED__)
+_chat_window_scrollback_clear_cb(Contact *c, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
 {
    eina_stringshare_del(c->last_conv);
    elm_entry_entry_set(c->chat_buffer, "");
 }
 
 static void
-_chat_window_archive_get_cb(Contact *c, Evas_Object *obj __UNUSED__, void *event_info __UNUSED__)
+_chat_window_archive_get_cb(Contact *c, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
 {
    shotgun_iq_archive_get(c->list->account, c->base->jid, 10);
 }
 
 static void
-_chat_window_otr_toggle_cb(Contact *c, Evas_Object *obj __UNUSED__, void *event_info __UNUSED__)
+_chat_window_otr_toggle_cb(Contact *c, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
 {
    if (shotgun_iq_contact_otr_set(c->list->account, c->base->jid, !c->otr_enabled))
      c->otr_enabled = !c->otr_enabled;
@@ -289,7 +289,7 @@ _chat_window_toolbar_menu(Contact *c)
 }
 
 static void
-_chat_window_longpress(Chat_Window *cw __UNUSED__, Evas_Object *obj __UNUSED__, Elm_Object_Item *it)
+_chat_window_longpress(Chat_Window *cw EINA_UNUSED, Evas_Object *obj EINA_UNUSED, Elm_Object_Item *it)
 {
    Contact *c;
 
@@ -338,7 +338,7 @@ _chat_conv_filter_helper(Contact_List *cl, int d, Eina_Strbuf **sbuf, const char
 }
 
 static void
-_chat_conv_filter(Contact_List *cl, Evas_Object *obj __UNUSED__, char **str)
+_chat_conv_filter(Contact_List *cl, Evas_Object *obj EINA_UNUSED, char **str)
 {
    char *http, *last;
    const char *start, *end;
@@ -387,7 +387,7 @@ _chat_conv_filter(Contact_List *cl, Evas_Object *obj __UNUSED__, char **str)
 }
 
 static void
-_chat_window_otherclick(Elm_Object_Item *it, Evas_Object *obj __UNUSED__, const char *emission, const char *source __UNUSED__)
+_chat_window_otherclick(Elm_Object_Item *it, Evas_Object *obj EINA_UNUSED, const char *emission, const char *source EINA_UNUSED)
 {
    Contact *c;
    int button;
@@ -401,7 +401,7 @@ _chat_window_otherclick(Elm_Object_Item *it, Evas_Object *obj __UNUSED__, const 
 }
 
 static void
-_chat_window_key(Chat_Window *cw, Evas *e __UNUSED__, Evas_Object *obj __UNUSED__, Evas_Event_Key_Down *ev)
+_chat_window_key(Chat_Window *cw, Evas *e EINA_UNUSED, Evas_Object *obj EINA_UNUSED, Evas_Event_Key_Down *ev)
 {
    Contact_List *cl;
    Eina_Bool next = EINA_FALSE;
@@ -470,7 +470,7 @@ _chat_window_key(Chat_Window *cw, Evas *e __UNUSED__, Evas_Object *obj __UNUSED_
 }
 
 static void
-_chat_window_switch(Contact *c, Evas_Object *obj __UNUSED__, Elm_Object_Item *it __UNUSED__)
+_chat_window_switch(Contact *c, Evas_Object *obj EINA_UNUSED, Elm_Object_Item *it EINA_UNUSED)
 {
    if (!c->chat_window) return;
    if (elm_object_content_get(c->chat_window->pager) == c->chat_panes) return;
@@ -524,7 +524,7 @@ chat_status_entry_toggle(Contact *c)
 }
 
 void
-chat_resource_ignore_toggle(Contact *c, Evas_Object *obj __UNUSED__, Elm_Object_Item *ev)
+chat_resource_ignore_toggle(Contact *c, Evas_Object *obj EINA_UNUSED, Elm_Object_Item *ev)
 {
    Elm_Object_Item *next;
 
@@ -744,7 +744,7 @@ chat_window_chat_new(Contact *c, Chat_Window *cw, Eina_Bool focus)
 }
 
 void
-chat_window_free(Chat_Window *cw, Evas_Object *obj __UNUSED__, const char *ev __UNUSED__)
+chat_window_free(Chat_Window *cw, Evas_Object *obj EINA_UNUSED, const char *ev EINA_UNUSED)
 {
    Contact *c;
    Contact_List *cl = cw->cl;

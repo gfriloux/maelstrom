@@ -29,8 +29,8 @@ void *alloca (size_t);
 # include <E_DBus.h>
 #endif
 #endif
-#ifndef __UNUSED__
-# define __UNUSED__ __attribute__((unused))
+#ifndef EINA_UNUSED
+# define EINA_UNUSED __attribute__((unused))
 #endif
 
 #ifndef strdupa
@@ -302,14 +302,14 @@ struct Image
 Contact_List *contact_list_init(UI_WIN *ui, Shotgun_Auth *auth);
 void contact_list_user_add(Contact_List *cl, Contact *c);
 void contact_list_user_del(Contact *c, Shotgun_Event_Presence *ev);
-void contact_list_mode_toggle(Contact_List *cl, Evas_Object *obj __UNUSED__, void *event_info __UNUSED__);
-void contact_list_show_toggle(Contact_List *cl, Evas_Object *obj __UNUSED__, Elm_Object_Item *ev __UNUSED__);
+void contact_list_mode_toggle(Contact_List *cl, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED);
+void contact_list_show_toggle(Contact_List *cl, Evas_Object *obj EINA_UNUSED, Elm_Object_Item *ev EINA_UNUSED);
 
 void chat_window_new(Contact_List *cl);
 void chat_window_chat_new(Contact *c, Chat_Window *cw, Eina_Bool focus);
-void chat_window_free(Chat_Window *cw, Evas_Object *obj __UNUSED__, const char *ev __UNUSED__);
+void chat_window_free(Chat_Window *cw, Evas_Object *obj EINA_UNUSED, const char *ev EINA_UNUSED);
 void chat_message_status(Contact *c, Shotgun_Event_Message *msg);
-void chat_resource_ignore_toggle(Contact *c, Evas_Object *obj __UNUSED__, Elm_Object_Item *ev);
+void chat_resource_ignore_toggle(Contact *c, Evas_Object *obj EINA_UNUSED, Elm_Object_Item *ev);
 void chat_status_entry_toggle(Contact *c);
 void chat_message_insert(Contact *c, const char *from, const char *msg, Eina_Bool me);
 
@@ -324,7 +324,7 @@ void chat_conv_image_hide(Contact *c, Evas_Object *obj, Elm_Entry_Anchor_Info *e
 Shotgun_Event_Presence *contact_presence_get(Contact *c);
 void contact_presence_set(Contact *c, Shotgun_Event_Presence *cur);
 void contact_presence_clear(Contact *c);
-void contact_resource_set(Contact *c, Evas_Object *obj __UNUSED__, Elm_Object_Item *ev);
+void contact_resource_set(Contact *c, Evas_Object *obj EINA_UNUSED, Elm_Object_Item *ev);
 void contact_resource_menu_setup(Contact *c, Evas_Object *menu);
 const char *contact_name_get(Contact *c);
 void contact_jids_menu_del(Contact *c, const char *jid);
@@ -376,9 +376,9 @@ Eina_Bool ui_azy_connect(Contact_List *cl);
 void ui_azy_shutdown(Contact_List *cl);
 #endif
 
-Eina_Bool event_iq_cb(Contact_List *cl, int type __UNUSED__, Shotgun_Event_Iq *ev);
-Eina_Bool event_presence_cb(Contact_List *cl, int type __UNUSED__, Shotgun_Event_Presence *ev);
-Eina_Bool event_message_cb(Contact_List *cl, int type __UNUSED__, Shotgun_Event_Message *msg);
+Eina_Bool event_iq_cb(Contact_List *cl, int type EINA_UNUSED, Shotgun_Event_Iq *ev);
+Eina_Bool event_presence_cb(Contact_List *cl, int type EINA_UNUSED, Shotgun_Event_Presence *ev);
+Eina_Bool event_message_cb(Contact_List *cl, int type EINA_UNUSED, Shotgun_Event_Message *msg);
 
 const char *logging_dir_get(void);
 Eina_Bool logging_dir_create(Contact_List *cl);
@@ -387,14 +387,14 @@ Eina_Bool logging_contact_file_refresh(Contact *c);
 void logging_contact_file_close(Contact *c);
 
 void settings_new(UI_WIN *ui);
-void settings_toggle(UI_WIN *ui, Evas_Object *obj __UNUSED__, void *event_info);
+void settings_toggle(UI_WIN *ui, Evas_Object *obj EINA_UNUSED, void *event_info);
 void settings_finagle(UI_WIN *ui);
 
 Eina_Bool util_userinfo_eq(Shotgun_User_Info *a, Shotgun_User_Info *b);
 const char *util_configdir_get(void);
 Eina_Bool util_configdir_create(void);
 
-Eina_Bool login_fail(Login_Window *lw, int type __UNUSED__, Shotgun_Auth *auth __UNUSED__);
+Eina_Bool login_fail(Login_Window *lw, int type EINA_UNUSED, Shotgun_Auth *auth EINA_UNUSED);
 Login_Window *login_new(Shotgun_Auth *auth);
 void login_fill(Login_Window *lw);
 

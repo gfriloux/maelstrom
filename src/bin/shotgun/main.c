@@ -6,7 +6,7 @@ static Ecore_Event_Handler *ch = NULL;
 Eina_Bool ssl_verify = EINA_TRUE;
 
 static Eina_Bool
-con_state(void *d __UNUSED__, int type __UNUSED__, Shotgun_Auth *auth __UNUSED__)
+con_state(void *d EINA_UNUSED, int type EINA_UNUSED, Shotgun_Auth *auth EINA_UNUSED)
 {
    INF("Connection state++");
    return ECORE_CALLBACK_RENEW;
@@ -14,7 +14,7 @@ con_state(void *d __UNUSED__, int type __UNUSED__, Shotgun_Auth *auth __UNUSED__
 
 
 static Eina_Bool
-disc(Contact_List *cl, int type __UNUSED__, Shotgun_Auth *auth __UNUSED__)
+disc(Contact_List *cl, int type EINA_UNUSED, Shotgun_Auth *auth EINA_UNUSED)
 {
    Eina_List *l;
    Contact *c;
@@ -47,7 +47,7 @@ disc(Contact_List *cl, int type __UNUSED__, Shotgun_Auth *auth __UNUSED__)
 }
 
 static Eina_Bool
-con(Contact_List *cl, int type __UNUSED__, Shotgun_Auth *auth)
+con(Contact_List *cl, int type EINA_UNUSED, Shotgun_Auth *auth)
 {
    Shotgun_Settings *ss;
    INF("Connected!");

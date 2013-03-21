@@ -38,7 +38,7 @@ ret_cb(Azy_Client *cli, Azy_Content *content, Eina_Binbuf *data)
 }
 
 static Eina_Bool
-ret_(Azy_Client *cli __UNUSED__, int type __UNUSED__, Azy_Event_Client_Transfer_Complete *cse)
+ret_(Azy_Client *cli EINA_UNUSED, int type EINA_UNUSED, Azy_Event_Client_Transfer_Complete *cse)
 {
    Eina_Strbuf *buf;
    Azy_Content *content = cse->content;
@@ -65,7 +65,7 @@ ret_(Azy_Client *cli __UNUSED__, int type __UNUSED__, Azy_Event_Client_Transfer_
 }
 
 static Eina_Bool
-download_status(void *data __UNUSED__, int type __UNUSED__, Azy_Event_Client_Transfer_Progress *ev)
+download_status(void *data EINA_UNUSED, int type EINA_UNUSED, Azy_Event_Client_Transfer_Progress *ev)
 {
    void *buffer;
    size_t len;
@@ -82,7 +82,7 @@ download_status(void *data __UNUSED__, int type __UNUSED__, Azy_Event_Client_Tra
 }
 
 static Eina_Bool
-disconnected(void *data __UNUSED__, int type __UNUSED__, Azy_Client *ev)
+disconnected(void *data EINA_UNUSED, int type EINA_UNUSED, Azy_Client *ev)
 {
    printf("%s:%s:%d\n", __FILE__, __PRETTY_FUNCTION__, __LINE__);
    if (!azy_client_redirect(ev))
@@ -91,7 +91,7 @@ disconnected(void *data __UNUSED__, int type __UNUSED__, Azy_Client *ev)
 }
 
 static Eina_Bool
-connected(void *data __UNUSED__, int type __UNUSED__, Azy_Client *cli)
+connected(void *data EINA_UNUSED, int type EINA_UNUSED, Azy_Client *cli)
 {
    Azy_Client_Call_Id id;
 

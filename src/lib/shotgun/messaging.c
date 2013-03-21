@@ -3,7 +3,7 @@
 #include "shotgun_xml.h"
 
 static void
-shotgun_message_free(void *data __UNUSED__, Shotgun_Event_Message *msg)
+shotgun_message_free(void *data EINA_UNUSED, Shotgun_Event_Message *msg)
 {
    free(msg->msg);
    eina_stringshare_del(msg->jid);

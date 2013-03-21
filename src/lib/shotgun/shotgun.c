@@ -12,7 +12,7 @@ int SHOTGUN_EVENT_PRESENCE = 0;
 int SHOTGUN_EVENT_IQ = 0;
 
 static Eina_Bool
-ev_write(Shotgun_Auth *auth, int type __UNUSED__, Ecore_Con_Event_Server_Write *ev)
+ev_write(Shotgun_Auth *auth, int type EINA_UNUSED, Ecore_Con_Event_Server_Write *ev)
 {
    if ((auth != ecore_con_server_data_get(ev->server)) || (!auth))
      return ECORE_CALLBACK_PASS_ON;
@@ -67,7 +67,7 @@ shotgun_ping_received(Shotgun_Auth *auth)
 }
 
 static Eina_Bool
-disc(Shotgun_Auth *auth, int type __UNUSED__, Ecore_Con_Event_Server_Del *ev)
+disc(Shotgun_Auth *auth, int type EINA_UNUSED, Ecore_Con_Event_Server_Del *ev)
 {
    if ((auth != ecore_con_server_data_get(ev->server)) || (!auth))
      return ECORE_CALLBACK_PASS_ON;
@@ -178,7 +178,7 @@ shotgun_data_detect(Shotgun_Auth *auth, Ecore_Con_Event_Server_Data *ev)
 }
 
 static Eina_Bool
-data(Shotgun_Auth *auth, int type __UNUSED__, Ecore_Con_Event_Server_Data *ev)
+data(Shotgun_Auth *auth, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
 {
    char *recv, *data, *p;
    size_t size;
@@ -243,7 +243,7 @@ data(Shotgun_Auth *auth, int type __UNUSED__, Ecore_Con_Event_Server_Data *ev)
 }
 
 static Eina_Bool
-error(Shotgun_Auth *auth, int type __UNUSED__, Ecore_Con_Event_Server_Error *ev)
+error(Shotgun_Auth *auth, int type EINA_UNUSED, Ecore_Con_Event_Server_Error *ev)
 {
    if ((auth != ecore_con_server_data_get(ev->server)) || (!auth))
      return ECORE_CALLBACK_PASS_ON;

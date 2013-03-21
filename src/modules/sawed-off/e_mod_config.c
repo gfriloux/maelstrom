@@ -22,7 +22,7 @@ _fill_data(E_Config_Dialog_Data *cfdata)
 }
 
 static void *
-_create_data(E_Config_Dialog *cfd __UNUSED__)
+_create_data(E_Config_Dialog *cfd EINA_UNUSED)
 {
    E_Config_Dialog_Data *cfdata;
 
@@ -33,7 +33,7 @@ _create_data(E_Config_Dialog *cfd __UNUSED__)
 }
 
 static void
-_free_data(E_Config_Dialog *cfd  __UNUSED__,
+_free_data(E_Config_Dialog *cfd  EINA_UNUSED,
            E_Config_Dialog_Data *cfdata)
 {
    mod->cfd = NULL;
@@ -41,7 +41,7 @@ _free_data(E_Config_Dialog *cfd  __UNUSED__,
 }
 
 static int
-_basic_check_changed(E_Config_Dialog *cfd __UNUSED__, E_Config_Dialog_Data *cfdata)
+_basic_check_changed(E_Config_Dialog *cfd EINA_UNUSED, E_Config_Dialog_Data *cfdata)
 {
 #define CHECK(X) \
    if (cfdata->X != (int)sos_config->X) return 1
@@ -141,7 +141,7 @@ _basic_create_widgets(E_Config_Dialog *cfd EINA_UNUSED, Evas *evas, E_Config_Dia
 
 
 static int
-_basic_apply_data(E_Config_Dialog *cfd  __UNUSED__,
+_basic_apply_data(E_Config_Dialog *cfd  EINA_UNUSED,
                   E_Config_Dialog_Data *cfdata)
 {
    if ((cfdata->fill_side != sos_config->fill_side) ||

@@ -409,7 +409,7 @@ azy_content_serialize_response_json(Azy_Content *content)
 Eina_Bool
 azy_content_deserialize_json(Azy_Content *content,
                              const char *buf,
-                             ssize_t len  __UNUSED__)
+                             ssize_t len  EINA_UNUSED)
 {
    cJSON *object;
 
@@ -430,7 +430,7 @@ azy_content_deserialize_json(Azy_Content *content,
 Eina_Bool
 azy_content_deserialize_request_json(Azy_Content *content,
                                      const char *buf,
-                                     ssize_t len  __UNUSED__)
+                                     ssize_t len  EINA_UNUSED)
 {
    cJSON *object, *grab;
    int i;
@@ -479,7 +479,7 @@ azy_content_deserialize_request_json(Azy_Content *content,
 Eina_Bool
 azy_content_deserialize_response_json(Azy_Content *content,
                                       const char *buf,
-                                      ssize_t len  __UNUSED__)
+                                      ssize_t len  EINA_UNUSED)
 {
    cJSON *object, *grab, *error;
    Eina_Value *ret;

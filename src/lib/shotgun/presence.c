@@ -2,7 +2,7 @@
 #include "shotgun_xml.h"
 
 static void
-shotgun_presence_free(void *d __UNUSED__, Shotgun_Event_Presence *pres)
+shotgun_presence_free(void *d EINA_UNUSED, Shotgun_Event_Presence *pres)
 {
    eina_stringshare_del(pres->jid);
    eina_stringshare_del(pres->photo);

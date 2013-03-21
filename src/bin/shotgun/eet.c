@@ -382,13 +382,13 @@ userinfo_thread_cancel(Contact *c, Ecore_Thread *et)
 }
 
 static void
-userinfo_thread_new(Contact *c, Ecore_Thread *et __UNUSED__)
+userinfo_thread_new(Contact *c, Ecore_Thread *et EINA_UNUSED)
 {
    userinfo_add(c->list->account, c->info_img, c->info);
 }
 
 static void
-userinfo_thread_get(Contact *c, Ecore_Thread *et __UNUSED__)
+userinfo_thread_get(Contact *c, Ecore_Thread *et EINA_UNUSED)
 {
    c->info = userinfo_get(c->list->account, c->base->jid);
 }

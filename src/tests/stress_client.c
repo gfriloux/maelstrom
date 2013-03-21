@@ -35,7 +35,7 @@ check_err(Azy_Content *err)
 
 #ifdef HAVE_MYSQL
 static Eina_Error
-ret_(Azy_Client *client __UNUSED__, int type __UNUSED__, Azy_Content *content)
+ret_(Azy_Client *client EINA_UNUSED, int type EINA_UNUSED, Azy_Content *content)
 {
 
    static int x;
@@ -55,7 +55,7 @@ ret_(Azy_Client *client __UNUSED__, int type __UNUSED__, Azy_Content *content)
 #else
 
 static Eina_Error
-ret_(Azy_Client *client __UNUSED__, int type __UNUSED__, Azy_Content *content)
+ret_(Azy_Client *client EINA_UNUSED, int type EINA_UNUSED, Azy_Content *content)
 {
    static int x;
    T_AllTypes *ret;
@@ -77,7 +77,7 @@ ret_(Azy_Client *client __UNUSED__, int type __UNUSED__, Azy_Content *content)
 #endif
 
 static Eina_Bool
-disconnected(void *data __UNUSED__, int type __UNUSED__, void *data2 __UNUSED__)
+disconnected(void *data EINA_UNUSED, int type EINA_UNUSED, void *data2 EINA_UNUSED)
 {
    printf("%s:%s:%d\n", __FILE__, __PRETTY_FUNCTION__, __LINE__);
    ecore_main_loop_quit();
@@ -86,7 +86,7 @@ disconnected(void *data __UNUSED__, int type __UNUSED__, void *data2 __UNUSED__)
 }
 
 static Eina_Bool
-connected(Azy_Client *cli __UNUSED__, int type __UNUSED__, Azy_Client *ev)
+connected(Azy_Client *cli EINA_UNUSED, int type EINA_UNUSED, Azy_Client *ev)
 {
    Azy_Content *err;
    int i;
@@ -118,7 +118,7 @@ error:
 }
 
 static void
-spawn(void *data __UNUSED__)
+spawn(void *data EINA_UNUSED)
 {
    int i;
 

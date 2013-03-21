@@ -86,7 +86,7 @@ shotgun_iq_disco_info_free(Shotgun_Iq_Disco *disco)
 }
 
 static void
-shotgun_iq_event_free(void *data __UNUSED__, Shotgun_Event_Iq *iq)
+shotgun_iq_event_free(void *data EINA_UNUSED, Shotgun_Event_Iq *iq)
 {
    Shotgun_User *user;
    Shotgun_User_Setting *sus;

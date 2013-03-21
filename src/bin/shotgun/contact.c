@@ -98,7 +98,7 @@ _contact_chat_window_typing_cb(Contact *c)
 }
 
 static void
-_contact_menu_vcard_cb(Contact *c, Evas_Object *obj __UNUSED__, void *event_info __UNUSED__)
+_contact_menu_vcard_cb(Contact *c, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
 {
    contact_vcard_request(c);
 }
@@ -364,7 +364,7 @@ contact_resource_menu_setup(Contact *c, Evas_Object *menu)
 }
 
 void
-contact_resource_set(Contact *c, Evas_Object *obj __UNUSED__, Elm_Object_Item *ev)
+contact_resource_set(Contact *c, Evas_Object *obj EINA_UNUSED, Elm_Object_Item *ev)
 {
    Eina_List *l;
    Shotgun_Event_Presence *pres;
@@ -501,7 +501,7 @@ contact_presence_clear(Contact *c)
  * eg. sending a message should not trigger it
  */
 void
-contact_chat_window_typing(Contact *c, Evas_Object *obj __UNUSED__, void *event_info __UNUSED__)
+contact_chat_window_typing(Contact *c, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
 {
    const char *txt;
    Shotgun_Message_Status sms = 0;

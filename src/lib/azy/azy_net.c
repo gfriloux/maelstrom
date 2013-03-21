@@ -46,7 +46,7 @@ _azy_net_proto_str(Azy_Net_Protocol proto)
  */
 /* append a header hash to a strbuf */
 static void
-_azy_net_header_hash(Eina_Hash *hash __UNUSED__,
+_azy_net_header_hash(Eina_Hash *hash EINA_UNUSED,
                      const char *key,
                      const char *data,
                      Eina_Strbuf *header)

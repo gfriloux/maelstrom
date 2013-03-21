@@ -9,7 +9,7 @@ static Ecore_Event_Handler *ad = NULL;
 static Ecore_Event_Handler *ads = NULL;
 
 static Eina_Bool
-ui_azy_return(Contact_List *cl, int type __UNUSED__, Azy_Content *content)
+ui_azy_return(Contact_List *cl, int type EINA_UNUSED, Azy_Content *content)
 {
    Azy_Rss *rss;
    const Eina_List *items, *l;
@@ -53,7 +53,7 @@ ui_azy_return(Contact_List *cl, int type __UNUSED__, Azy_Content *content)
 }
 
 static Eina_Bool
-ui_azy_download_status(void *data __UNUSED__, int type __UNUSED__, Azy_Event_Download_Status *ev)
+ui_azy_download_status(void *data EINA_UNUSED, int type EINA_UNUSED, Azy_Event_Download_Status *ev)
 {
    int total = -1;
 
@@ -67,7 +67,7 @@ ui_azy_download_status(void *data __UNUSED__, int type __UNUSED__, Azy_Event_Dow
 }
 
 static Eina_Bool
-ui_azy_disconnected(void *data __UNUSED__, int type __UNUSED__, Azy_Client *ev)
+ui_azy_disconnected(void *data EINA_UNUSED, int type EINA_UNUSED, Azy_Client *ev)
 {
    if (ev != cli) return ECORE_CALLBACK_RENEW;
    azy_client_redirect(ev);
@@ -75,7 +75,7 @@ ui_azy_disconnected(void *data __UNUSED__, int type __UNUSED__, Azy_Client *ev)
 }
 
 static Eina_Bool
-ui_azy_connected(void *data __UNUSED__, int type __UNUSED__, Azy_Client *ev)
+ui_azy_connected(void *data EINA_UNUSED, int type EINA_UNUSED, Azy_Client *ev)
 {
    Azy_Client_Call_Id id;
 
@@ -107,7 +107,7 @@ ui_azy_init(Contact_List *cl)
 }
 
 Eina_Bool
-ui_azy_connect(Contact_List *cl __UNUSED__)
+ui_azy_connect(Contact_List *cl EINA_UNUSED)
 {
    Azy_Net *net;
 
@@ -121,7 +121,7 @@ ui_azy_connect(Contact_List *cl __UNUSED__)
 }
 
 void
-ui_azy_shutdown(Contact_List *cl __UNUSED__)
+ui_azy_shutdown(Contact_List *cl EINA_UNUSED)
 {
    azy_client_free(cli);
    cli = NULL;

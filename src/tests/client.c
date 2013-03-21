@@ -24,7 +24,7 @@
      } while (0)
 
 static Eina_Bool
-_disconnected(void *data __UNUSED__, int type __UNUSED__, void *data2 __UNUSED__)
+_disconnected(void *data EINA_UNUSED, int type EINA_UNUSED, void *data2 EINA_UNUSED)
 {
    printf("%s:%s:%d\n", __FILE__, __PRETTY_FUNCTION__, __LINE__);
    ecore_main_loop_quit();
@@ -52,7 +52,7 @@ _T_Test1_getBigArray_ret(Azy_Client *client, Azy_Content *content, void *retval)
 }
 
 static Eina_Error
-_T_Test1_putBigArray_ret(Azy_Client *client __UNUSED__, Azy_Content *content, void *retval)
+_T_Test1_putBigArray_ret(Azy_Client *client EINA_UNUSED, Azy_Content *content, void *retval)
 {
    Eina_Bool ret;
    const char *data;
@@ -74,7 +74,7 @@ _T_Test1_putBigArray_ret(Azy_Client *client __UNUSED__, Azy_Content *content, vo
 }
 
 static Eina_Error
-_T_Test1_getAll_ret(Azy_Client *client __UNUSED__, Azy_Content *content, void *retval)
+_T_Test1_getAll_ret(Azy_Client *client EINA_UNUSED, Azy_Content *content, void *retval)
 {
    T_AllTypes *ret;
 
@@ -92,7 +92,7 @@ _T_Test1_getAll_ret(Azy_Client *client __UNUSED__, Azy_Content *content, void *r
 }
 
 static Eina_Error
-_T_Test1_getAllArrays_ret(Azy_Client *client __UNUSED__, Azy_Content *content, void *retval)
+_T_Test1_getAllArrays_ret(Azy_Client *client EINA_UNUSED, Azy_Content *content, void *retval)
 {
    T_AllArrays *ret;
 
@@ -110,7 +110,7 @@ _T_Test1_getAllArrays_ret(Azy_Client *client __UNUSED__, Azy_Content *content, v
 }
 
 static Eina_Error
-_T_Test2_suspend_ret(Azy_Client *client __UNUSED__, Azy_Content *content, void *retval)
+_T_Test2_suspend_ret(Azy_Client *client EINA_UNUSED, Azy_Content *content, void *retval)
 {
    const char *ret;
 
@@ -127,7 +127,7 @@ _T_Test2_suspend_ret(Azy_Client *client __UNUSED__, Azy_Content *content, void *
 }
 
 static Eina_Error
-_T_Test2_auth_ret(Azy_Client *client __UNUSED__, Azy_Content *content, void *retval)
+_T_Test2_auth_ret(Azy_Client *client EINA_UNUSED, Azy_Content *content, void *retval)
 {
    Eina_Bool ret;
 
@@ -145,7 +145,7 @@ _T_Test2_auth_ret(Azy_Client *client __UNUSED__, Azy_Content *content, void *ret
 }
 
 static Eina_Error
-_T_Test1_undefined_ret(Azy_Client *client __UNUSED__, Azy_Content *content, void *retval __UNUSED__)
+_T_Test1_undefined_ret(Azy_Client *client EINA_UNUSED, Azy_Content *content, void *retval EINA_UNUSED)
 {
    if (azy_content_error_is_set(content))
      printf("Error encountered: %s\n", azy_content_error_message_get(content));
@@ -155,7 +155,7 @@ _T_Test1_undefined_ret(Azy_Client *client __UNUSED__, Azy_Content *content, void
 }
 
 static Eina_Bool
-connected(void *data __UNUSED__, int type __UNUSED__, Azy_Client *cli)
+connected(void *data EINA_UNUSED, int type EINA_UNUSED, Azy_Client *cli)
 {
    unsigned int ret;
    const char *s;

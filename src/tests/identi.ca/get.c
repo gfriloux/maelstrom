@@ -11,7 +11,7 @@
 #include "identica_Common_Azy.h"
 
 static Eina_Error
-ret_(Azy_Client *cli __UNUSED__, int type __UNUSED__, Azy_Event_Client_Transfer_Complete *cse)
+ret_(Azy_Client *cli EINA_UNUSED, int type EINA_UNUSED, Azy_Event_Client_Transfer_Complete *cse)
 {
    Eina_List *l, *r;
    identica_Ident *ret;
@@ -32,7 +32,7 @@ ret_(Azy_Client *cli __UNUSED__, int type __UNUSED__, Azy_Event_Client_Transfer_
 }
 
 static Eina_Bool
-download_status(void *data __UNUSED__, int type __UNUSED__, Azy_Event_Client_Transfer_Progress *ev)
+download_status(void *data EINA_UNUSED, int type EINA_UNUSED, Azy_Event_Client_Transfer_Progress *ev)
 {
    int total = -1;
 
@@ -46,7 +46,7 @@ download_status(void *data __UNUSED__, int type __UNUSED__, Azy_Event_Client_Tra
 }
 
 static Eina_Bool
-disconnected(void *data __UNUSED__, int type __UNUSED__, void *data2 __UNUSED__)
+disconnected(void *data EINA_UNUSED, int type EINA_UNUSED, void *data2 EINA_UNUSED)
 {
    printf("%s:%s:%d\n", __FILE__, __PRETTY_FUNCTION__, __LINE__);
    ecore_main_loop_quit();
@@ -54,7 +54,7 @@ disconnected(void *data __UNUSED__, int type __UNUSED__, void *data2 __UNUSED__)
 }
 
 static Eina_Bool
-connected(void *data __UNUSED__, int type __UNUSED__, Azy_Client *ev)
+connected(void *data EINA_UNUSED, int type EINA_UNUSED, Azy_Client *ev)
 {
    Azy_Client_Call_Id id;
 
