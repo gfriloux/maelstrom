@@ -42,7 +42,6 @@ DISTCLEANFILES += \
 src/bin/azy_parser.c \
 src/bin/azy_parser.h \
 src/bin/azy_parser.y \
-src/bin/parser.cc \
 src/bin/re_parser.cpp \
 src/bin/re_parser.h \
 src/bin/y.tab.h \
