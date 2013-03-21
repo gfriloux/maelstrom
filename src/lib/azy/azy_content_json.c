@@ -201,7 +201,7 @@ static Eina_Value *
 azy_value_deserialize_struct_json(cJSON *object)
 {
    Eina_Array *st_members, *st_values;
-   unsigned int offset = 0, z;
+   unsigned int offset = 0, z = 0;
    Eina_Value *value_st = NULL;
    Eina_Value_Struct_Member *members;
    Eina_Value_Struct_Desc *st_desc;
