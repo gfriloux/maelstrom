@@ -78,6 +78,8 @@ ui_win_init(UI_WIN *ui)
           elm_object_text_set(fr, "Contacts");
         elm_box_pack_end(box, fr);
      }
+   else
+     fr = NULL;
 
    ui->flip = elm_flip_add(win);
    EXPAND(ui->flip);
