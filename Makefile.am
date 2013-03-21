@@ -53,6 +53,7 @@ PHONY = doc
 include src/lib/Makefile.mk
 include src/bin/Makefile.mk
 include src/modules/Makefile.mk
+include src/tests/Makefile.mk
 include data/Makefile.mk
 
 maintainer-clean-local:
