@@ -616,6 +616,8 @@ _azy_events_chunk_parse(Azy_Net *net, unsigned char *start, int64_t len)
      rlen = len;
    else if (!net->http.post_headers_buf)
      rlen = net->http.chunk_size - net->progress;
+   else
+     rlen = len;
    azy_events_recv_progress(net, p, rlen);
    if ((!net->http.chunk_size) || (net->progress < net->http.chunk_size)) return rlen;
    net->http.chunk_size = 0;
