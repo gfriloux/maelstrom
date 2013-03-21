@@ -84,4 +84,4 @@ src/bin/azy_parser.y: src/bin/azy/azy_parser.yre $(NEED_REC) src/bin/lemon
 	$(REC) $(RE2C_OPTS) $<
 
 src/bin/azy_parser.c: src/bin/azy_parser.y src/bin/lemon
-	cp $(top_srcdir)/src/bin/azy/lempar.c . && src/bin/lemon -q $<
+	cp -f $(top_srcdir)/src/bin/azy/lempar.c . && src/bin/lemon -q $<
