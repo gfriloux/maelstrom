@@ -7,7 +7,6 @@ src/include/extras/md5.h \
 src/include/extras/pugixml.hpp \
 src/include/extras/pugiconfig.hpp \
 src/include/extras/sha1.h \
-src/include/extras/sha1wrap.h \
 src/include/shotgun/shotgun_private.h \
 src/include/shotgun/shotgun_xml.h
 
