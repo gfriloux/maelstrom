@@ -229,17 +229,19 @@ AC_ARG_ENABLE([enotify],
    [want_enotify=$enableval], [])
 
 if test -n "$build_shotgun_gui" ; then
-   if test "x$want_enotify" != "xno"; then
-      PKG_CHECK_MODULES([enotify],
-         [enotify >= $min_efl_version],
-         [
-          AC_DEFINE(HAVE_NOTIFY, 1, [DBUS Notification support])
-          have_enotify="yes"
-         ],
-         [have_enotify="no"]
-      )
-   else
-       have_enotify="no"
+   if test "x$have_edbus" = "xyes" ; then
+     if test "x$want_enotify" != "xno"; then
+        PKG_CHECK_MODULES([enotify],
+           [enotify >= $min_efl_version],
+           [
+            AC_DEFINE(HAVE_NOTIFY, 1, [DBUS Notification support])
+            have_enotify="yes"
+           ],
+           [have_enotify="no"]
+        )
+     else
+         have_enotify="no"
+     fi
    fi
    if test "x$want_enotify" = "xyes" ; then
        if test -n "$have_enotify" ; then

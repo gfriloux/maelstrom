@@ -142,6 +142,7 @@ chat_message_insert(Contact *c, const char *from, const char *msg, Eina_Bool me)
         evas_object_del(e);
         e = NULL;
      }
+#ifdef HAVE_DBUS
    if (l)
      {
         for (l = l->prev, i = EINA_INLIST_CONTAINER_GET(l, Image); l; l = l->prev, i = EINA_INLIST_CONTAINER_GET(l, Image))
@@ -152,6 +153,7 @@ chat_message_insert(Contact *c, const char *from, const char *msg, Eina_Bool me)
         EINA_INLIST_FOREACH(c->list->image_list, i)
           ui_dbus_signal_link(c->list, i->addr, EINA_FALSE, me);
      }
+#endif
    if (c->log)
      {
         /* switch <ps> for \n to be more readable */

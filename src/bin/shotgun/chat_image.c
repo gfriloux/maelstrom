@@ -311,7 +311,9 @@ chat_image_free(Image *i)
      }
    if (i->client) azy_client_free(i->client);
    if (i->buf) eina_binbuf_free(i->buf);
+#ifdef HAVE_DBUS
    ui_dbus_signal_link(i->cl, i->addr, EINA_TRUE, EINA_FALSE);
+#endif
    eina_stringshare_del(i->addr);
    free(i);
 }

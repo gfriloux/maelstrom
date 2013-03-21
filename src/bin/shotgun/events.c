@@ -109,8 +109,10 @@ event_iq_cb(Contact_List *cl, int type EINA_UNUSED, Shotgun_Event_Iq *ev)
           }
         break;
       case SHOTGUN_IQ_EVENT_TYPE_MAILNOTIFY:
+#ifdef HAVE_DBUS
         if (cl->settings->enable_mail_notifications)
           ui_dbus_notify(cl, NULL, "Mail", "You have new mail!");
+#endif
         break;
       default:
         ERR("WTF!");
@@ -200,7 +202,9 @@ event_presence_cb(Contact_List *cl, int type EINA_UNUSED, Shotgun_Event_Presence
         return ECORE_CALLBACK_RENEW;
      }
 
+#ifdef HAVE_DBUS
    ui_dbus_signal_status(c, ev);
+#endif
    if (!ev->status)
      {
         contact_list_user_del(c, ev);
