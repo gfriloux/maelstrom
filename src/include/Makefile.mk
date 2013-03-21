@@ -3,6 +3,7 @@ src/include/azy/azy_private.h \
 src/include/extras/cdecode.h \
 src/include/extras/cencode.h \
 src/include/extras/cJSON.h \
+src/include/extras/match.h \
 src/include/extras/md5.h \
 src/include/extras/pugixml.hpp \
 src/include/extras/pugiconfig.hpp \

@@ -387,7 +387,6 @@ EFL_CHECK_DOXYGEN([build_doc="yes"], [build_doc="no"])
 AC_CONFIG_FILES([
   Makefile
   doc/azy.dox
-  doc/Makefile
   $azy_pc
   $shotgun_pc
   $sawedoff_desktop

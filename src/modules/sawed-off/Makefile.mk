@@ -1,4 +1,6 @@
-EXTRA_DIST += src/modules/sawed-off/e-module-sawed-off.edc
+EXTRA_DIST += \
+src/modules/sawed-off/module.desktop.in \
+src/modules/sawed-off/e-module-sawed-off.edc
 
 sawedoff_filesdir = $(MODULE_DIR)/sawed-off
 sawedoff_files_DATA = \

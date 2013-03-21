@@ -10,7 +10,9 @@ README-AZY \
 README-SHOTGUN \
 THANKS \
 TODO-AZY \
-TODO-SHOTGUN
+TODO-SHOTGUN \
+azy.pc.in \
+shotgun.pc.in
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA =

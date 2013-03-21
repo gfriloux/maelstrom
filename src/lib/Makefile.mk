@@ -6,6 +6,15 @@ LIB_CPPFLAGS = \
 
 noinst_LTLIBRARIES = src/lib/libstrmatch.la
 
+EXTRA_DIST += \
+src/lib/extras/strmatch/automaton.h \
+src/lib/extras/strmatch/reference \
+src/lib/extras/strmatch/report.h \
+src/lib/extras/strmatch/strstrsse.h \
+src/lib/extras/strmatch/util.h \
+src/lib/extras/strmatch/varshift.h
+
+
 src_lib_libstrmatch_la_CFLAGS = @SSE_CFLAGS@
 src_lib_libstrmatch_la_CPPFLAGS = $(LIB_CPPFLAGS)
 src_lib_libstrmatch_la_SOURCES = \
