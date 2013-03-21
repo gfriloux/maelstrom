@@ -3,7 +3,8 @@ AZY_TEST_CPPFLAGS= \
 @MYSQL_CFLAGS@ \
 -I$(top_srcdir) \
 -I$(top_srcdir)/src/include/azy \
--I$(top_srcdir)/src/tests/azy
+-I$(top_srcdir)/src/tests/azy \
+-I$(top_builddir)/src/tests/azy
 
 include src/tests/azy/http-simple/Makefile.mk
 include src/tests/azy/identi.ca/Makefile.mk

@@ -23,12 +23,14 @@ src/bin/re2c/token.h \
 src/bin/re2c/mbo_getopt.h \
 src/bin/re2c/code.h \
 src/bin/re2c/stream_lc.h \
-src/bin/re2c/code_names.h
+src/bin/re2c/code_names.h \
+src/bin/re2c/re_parser.h
 
 src_bin_re2cbin_CPPFLAGS = \
 $(BIN_CPPFLAGS) \
 -w \
--I$(top_srcdir)/src/bin/re2c
+-I$(top_srcdir)/src/bin/re2c \
+-I$(top_builddir)/src/bin/re2c
 
 INTERMEDIATE_S += \
 src/bin/azy_parser.c \
@@ -85,3 +87,5 @@ src/bin/azy_parser.y: src/bin/azy/azy_parser.yre $(NEED_REC) src/bin/lemon
 
 src/bin/azy_parser.c: src/bin/azy_parser.y src/bin/lemon
 	cp -f $(top_srcdir)/src/bin/azy/lempar.c . && src/bin/lemon -q $<
+
+src/bin/re2c/scanner.cpp: src/bin/re2c/re_parser.h
