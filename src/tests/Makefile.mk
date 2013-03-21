@@ -8,6 +8,7 @@ src/tests/azy/type2.azy \
 src/tests/azy/server.pem
 
 check_PROGRAMS =
+check_LTLIBRARIES =
 
 if BUILD_AZY
 include src/tests/azy.mk
