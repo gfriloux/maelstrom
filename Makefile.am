@@ -49,6 +49,7 @@ m4/l* \
 ylwrap
 
 PHONY = doc
+INTERMEDIATE_S =
 
 include src/lib/Makefile.mk
 include src/bin/Makefile.mk
@@ -70,3 +71,7 @@ doc: all
 clean-local:
 	rm -f src/modules/sawed-off/e-module-sawed-off.edj
 	rm -f data/theme/default.edj
+
+.INTERMEDIATE: $(INTERMEDIATE_S)
+.SECONDARY: $(INTERMEDIATE_S)
+

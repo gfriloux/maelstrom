@@ -1,4 +1,3 @@
-INTERMEDIATE_S =
 AZY_TEST_CPPFLAGS= \
 @AZY_CFLAGS@ \
 @MYSQL_CFLAGS@ \
@@ -117,9 +116,6 @@ src_tests_azy_server_LDADD = \
 @MYSQL_LIBS@ \
 @AZY_LIBS@ \
 src/lib/libmaelstrom.la
-
-.INTERMEDIATE: $(INTERMEDIATE_S)
-.SECONDARY: $(INTERMEDIATE_S)
 
 $(GENERATED_S): src/tests/azy/test.azy src/bin/azy_parser
 	src/bin/azy_parser -H -p -o src/tests/azy $(top_srcdir)/src/tests/azy/test.azy

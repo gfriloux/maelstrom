@@ -23,15 +23,20 @@ src/bin/re2c/token.h \
 src/bin/re2c/mbo_getopt.h \
 src/bin/re2c/code.h \
 src/bin/re2c/stream_lc.h \
-src/bin/re2c/code_names.h \
-src/bin/re2c/re_parser.h
+src/bin/re2c/code_names.h
 
 src_bin_re2cbin_CPPFLAGS = \
 $(BIN_CPPFLAGS) \
 -w \
 -I$(top_srcdir)/src/bin/re2c
 
-PHONY += re_parser.h
+INTERMEDIATE_S += \
+src/bin/azy_parser.c \
+src/bin/azy_parser.h \
+src/bin/azy_parser.y \
+src/bin/re2c/re_parser.cpp \
+src/bin/re2c/re_parser.h \
+src/bin/y.tab.h
 
 DISTCLEANFILES += \
 src/bin/azy_parser.c \
