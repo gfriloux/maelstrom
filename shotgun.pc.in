@@ -3,8 +3,8 @@ exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 
-Name: azy
-Description: A Lazy EFL Network Toolkit
+Name: shotgun
+Description: An EFL library for XMPP connections
 Version: @VERSION@
 Libs: -L${libdir} -lmaelstrom
 Requires.private: @MAELSTROM_REQUIRES@

@@ -170,11 +170,11 @@ findoutb:
 					if((*((char*) intPtr)) == charb){
 						//b000
 						int i=1;
-						char * bytePtr = ((char*) ( intPtr )) -1;
-						if(bytePtr[0] == chara){
-							while((pattern[i] )&&(bytePtr[i] == pattern[i])) i++;
-							if(pattern[i] == 0) REPORT(bytePtr);//return bytePtr;
-							if(bytePtr[i] == 0) return NULL;
+						char * bytePtr0 = ((char*) ( intPtr )) -1;
+						if(bytePtr0[0] == chara){
+							while((pattern[i] )&&(bytePtr0[i] == pattern[i])) i++;
+							if(pattern[i] == 0) REPORT(bytePtr0);//return bytePtr0;
+							if(bytePtr0[i] == 0) return NULL;
 						}
 
 					}

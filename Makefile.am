@@ -1,31 +1,71 @@
 ACLOCAL_AMFLAGS = -I m4
+AUTOMAKE_OPTIONS = subdir-objects
 
-SUBDIRS = src doc
 EXTRA_DIST = \
   AUTHORS \
-  COPYING \
+  COPYING-AZY \
+  COPYING-SHOTGUN \
+  COPYING-SHOTGUN-ICONS \
   README \
-  TODO \
-  azy.spec
+  TODO
 
 pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = azy.pc
+pkgconfig_DATA =
 
-MAINTAINERCLEANFILES = Makefile.in aclocal.m4 config.guess config.h* config.sub \
-	configure depcomp install-sh ltmain.sh missing compile m4/l* ylwrap
+bin_PROGRAMS =
+noinst_PROGRAMS =
 
-CLEANFILES = azy-*.tar.bz2 azy-*.tar.gz
+header_install_HEADERS =
+header_installdir = $(pkgincludedir)-$(VMAJ)
+include src/include/Makefile.mk
 
-clean-local:
-	rm -rf azy-1.0.0
+if BUILD_AZY
+pkgconfig_DATA += azy.pc
+endif
+
+if BUILD_SHOTGUN
+pkgconfig_DATA += shotgun.pc
+endif
+
+CLEANFILES = \
+maelstrom-*.tar.bz2 \
+maelstrom-*.tar.gz
+
+DISTCLEANFILES =
+
+MAINTAINERCLEANFILES = \
+Makefile.in \
+aclocal.m4 \
+config.guess \
+config.h* \
+config.sub \
+configure \
+depcomp \
+install-sh \
+ltmain.sh \
+missing \
+compile \
+m4/l* \
+ylwrap
+
+PHONY = doc
+
+include src/lib/Makefile.mk
+include src/bin/Makefile.mk
+include src/modules/Makefile.mk
+include data/Makefile.mk
 
 maintainer-clean-local:
 	rm -rf autom4te.cache
 
-.PHONY: doc
+.PHONY: $(PHONY)
 
 # Documentation
 
 doc: all
 	@echo "entering doc/"
 	$(MAKE) -C doc doc
+
+clean-local:
+	rm -f src/modules/sawed-off/e-module-sawed-off.edj
+	rm -f data/theme/default.edj
