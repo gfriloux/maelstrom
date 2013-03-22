@@ -29,12 +29,12 @@ next_pop(Email *e)
         email_write(e, EMAIL_POP3_RSET, sizeof(EMAIL_POP3_RSET) - 1);
         break;
       case EMAIL_OP_DELE:
-        snprintf(buf, sizeof(buf), EMAIL_POP3_DELE, (uintptr_t)e->op_ids->data);
+        snprintf(buf, sizeof(buf), EMAIL_POP3_DELE, (unsigned int)(uintptr_t)e->op_ids->data);
         e->op_ids = eina_list_remove_list(e->op_ids, e->op_ids);
         email_write(e, buf, strlen(buf));
         break;
       case EMAIL_OP_RETR:
-        snprintf(buf, sizeof(buf), EMAIL_POP3_RETR, (uintptr_t)e->op_ids->data);
+        snprintf(buf, sizeof(buf), EMAIL_POP3_RETR, (unsigned int)(uintptr_t)e->op_ids->data);
         e->op_ids = eina_list_remove_list(e->op_ids, e->op_ids);
         email_write(e, buf, strlen(buf));
         break;
@@ -59,7 +59,7 @@ upgrade_pop(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Upgrade *ev)
 Eina_Bool
 data_pop(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
 {
-   char *recv;
+   char *recvbuf;
 
    if (e != ecore_con_server_data_get(ev->server))
      {
@@ -69,10 +69,10 @@ data_pop(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
 
    if (eina_log_domain_level_check(email_log_dom, EINA_LOG_LEVEL_DBG))
      {
-        recv = alloca(ev->size + 1);
-        memcpy(recv, ev->data, ev->size);
-        recv[ev->size] = 0;
-        DBG("Receiving %i bytes:\n%s", ev->size, recv);
+        recvbuf = alloca(ev->size + 1);
+        memcpy(recvbuf, ev->data, ev->size);
+        recvbuf[ev->size] = 0;
+        DBG("Receiving %i bytes:\n%s", ev->size, recvbuf);
      }
 
    if (e->state < EMAIL_STATE_CONNECTED)

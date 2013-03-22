@@ -26,11 +26,11 @@ email_base64_encode(const char *string, double len, int *retlen)
    return ret;
 }
 
-char *
+unsigned char *
 email_base64_decode(const char *string, int len, int *retlen)
 {
    base64_decodestate s;
-   char *ret = NULL;
+   unsigned char *ret = NULL;
 
    if ((len < 1) || (!string)) return NULL;
 

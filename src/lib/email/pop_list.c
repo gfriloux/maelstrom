@@ -65,7 +65,7 @@ email_delete(Email *e, unsigned int id, Email_Cb cb)
      }
    else
      {
-        e->op_ids = eina_list_append(e->op_ids, (uintptr_t*)id);
+        e->op_ids = eina_list_append(e->op_ids, (uintptr_t*)(unsigned long)id);
         e->ops = eina_list_append(e->ops, (uintptr_t*)EMAIL_OP_DELE);
      }
    return EINA_TRUE;
@@ -87,22 +87,22 @@ email_retrieve(Email *e, unsigned int id, Email_Retr_Cb cb)
      }
    else
      {
-        e->op_ids = eina_list_append(e->op_ids, (uintptr_t*)id);
+        e->op_ids = eina_list_append(e->op_ids, (uintptr_t*)(unsigned long)id);
         e->ops = eina_list_append(e->ops, (uintptr_t*)EMAIL_OP_RETR);
      }
    return EINA_TRUE;
 }
 
 Eina_Bool
-email_pop3_stat_read(Email *e, const unsigned char *recv, size_t size)
+email_pop3_stat_read(Email *e, const unsigned char *recvbuf, size_t size)
 {
    Email_Stat_Cb cb;
    int num;
    size_t len;
 
    cb = eina_list_data_get(e->cbs);
-   if ((!email_op_ok((const unsigned char *)recv, size)) ||
-       (sscanf((char*)recv, "+OK %u %zu", &num, &len) != 2))
+   if ((!email_op_ok((const unsigned char *)recvbuf, size)) ||
+       (sscanf((char*)recvbuf, "+OK %u %zu", &num, &len) != 2))
      {
         ERR("Error with STAT");
         if (cb) cb(e, 0, 0);

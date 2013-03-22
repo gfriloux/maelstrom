@@ -49,14 +49,14 @@ send_smtp(Email *e)
    msg = e->op_ids->data;
    switch (e->smtp_state)
      {
-      case 0:
+      case EMAIL_SMTP_STATE_NONE:
         e->smtp_state++;
       case EMAIL_SMTP_STATE_FROM:
         if ((!msg->from) && (!msg->sender))
           {
-             char buf[1024];
-             snprintf(buf, sizeof(buf), "%s@%s", e->username, e->features.smtp_features.domain);
-             msg->sender = email_contact_new(buf);
+             char buf2[1024];
+             snprintf(buf2, sizeof(buf2), "%s@%s", e->username, e->features.smtp_features.domain);
+             msg->sender = email_contact_new(buf2);
           }
         ec = msg->sender;
         size = sizeof(char) * (sizeof(EMAIL_SMTP_FROM) + strlen(ec->address)) - 2;
@@ -118,7 +118,7 @@ upgrade_smtp(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Upgrade *ev)
 Eina_Bool
 data_smtp(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
 {
-   char *recv;
+   char *recvbuf;
    Email_Send_Cb cb;
    Email_Cb qcb;
 
@@ -130,10 +130,10 @@ data_smtp(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
 
    if (eina_log_domain_level_check(email_log_dom, EINA_LOG_LEVEL_DBG))
      {
-        recv = alloca(ev->size + 1);
-        memcpy(recv, ev->data, ev->size);
-        recv[ev->size] = 0;
-        DBG("Receiving %i bytes:\n%s", ev->size, recv);
+        recvbuf = alloca(ev->size + 1);
+        memcpy(recvbuf, ev->data, ev->size);
+        recvbuf[ev->size] = 0;
+        DBG("Receiving %i bytes:\n%s", ev->size, recvbuf);
      }
 
    if (e->state < EMAIL_STATE_CONNECTED)

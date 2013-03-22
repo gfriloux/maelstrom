@@ -170,18 +170,18 @@ email_login_smtp(Email *e, Ecore_Con_Event_Server_Data *ev)
              if (e->features.smtp_features.cram)
                {
                   char *b64, md5sum[33];
-                  unsigned char digest[16];
+                  unsigned char *bin, digest[16];
                   int bsize;
-                  Eina_Strbuf *buf;
+                  Eina_Strbuf *sbuf;
 
-                  b64 = email_base64_decode(ev->data + 4, ev->size - 6, &bsize);
-                  email_md5_hmac_encode(digest, b64, bsize, e->password, strlen(e->password));
-                  free(b64);
+                  bin = email_base64_decode(ev->data + 4, ev->size - 6, &bsize);
+                  email_md5_hmac_encode(digest, (char*)bin, bsize, e->password, strlen(e->password));
+                  free(bin);
                   email_md5_digest_to_str(digest, md5sum);
-                  buf = eina_strbuf_new();
-                  eina_strbuf_append_printf(buf, "%s %s", e->username, md5sum);
-                  b64 = email_base64_encode(eina_strbuf_string_get(buf), eina_strbuf_length_get(buf), &bsize);
-                  eina_strbuf_free(buf);
+                  sbuf = eina_strbuf_new();
+                  eina_strbuf_append_printf(sbuf, "%s %s", e->username, md5sum);
+                  b64 = email_base64_encode(eina_strbuf_string_get(sbuf), eina_strbuf_length_get(sbuf), &bsize);
+                  eina_strbuf_free(sbuf);
                   ecore_con_server_send(e->svr, b64, bsize);
                   ecore_con_server_send(e->svr, "\r\n", 2);
                   free(b64);

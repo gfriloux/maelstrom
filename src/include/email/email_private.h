@@ -59,7 +59,8 @@ typedef enum
 
 typedef enum
 {
-   EMAIL_SMTP_STATE_FROM = 1,
+   EMAIL_SMTP_STATE_NONE,
+   EMAIL_SMTP_STATE_FROM,
    EMAIL_SMTP_STATE_TO,
    EMAIL_SMTP_STATE_DATA,
    EMAIL_SMTP_STATE_BODY,
@@ -189,7 +190,7 @@ void email_login_smtp(Email *e, Ecore_Con_Event_Server_Data *ev);
 
 void email_fake_free(void *d, void *e);
 char *email_base64_encode(const char *string, double len, int *);
-char *email_base64_decode(const char *string, int len, int *);
+unsigned char *email_base64_decode(const char *string, int len, int *);
 void email_md5_digest_to_str(unsigned char *digest, char *ret);
 void email_md5_hmac_encode(unsigned char *digest, const char *string, size_t size, const char *key, size_t ksize);
 #endif
