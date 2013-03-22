@@ -134,8 +134,11 @@ _azy_client_handler_get(Azy_Client_Handler_Data *hd)
    content->data = hd->content_data;
    if (hd->recv->buffer_stolen) goto out;
 
-   if (hd->recv->transport == AZY_NET_TRANSPORT_JSON) /* assume block of json */
+   switch (hd->recv->transport)
      {
+      case AZY_NET_TRANSPORT_JSON: /* assume block of json */
+      case AZY_NET_TRANSPORT_XML:
+      case AZY_NET_TRANSPORT_ATOM:
         if (!azy_content_deserialize(content, hd->recv))
           azy_content_error_faultmsg_set(content, AZY_CLIENT_ERROR_MARSHALIZER, "Call return parsing failed.");
         else if (hd->callback && content->retval && (!hd->callback(content->retval, &ret)))
@@ -147,26 +150,8 @@ _azy_client_handler_get(Azy_Client_Handler_Data *hd)
              ERR(buf, EBUF(hd->recv->buffer));
           }
         content->ret = ret;
-     }
-   else if (((hd->recv->transport == AZY_NET_TRANSPORT_XML) || (hd->recv->transport == AZY_NET_TRANSPORT_ATOM)) && (!hd->callback)) /* assume rss */
-     {
-        Eina_Bool success;
-
-        success = azy_content_deserialize_xml(content, (char *)EBUF(hd->recv->buffer), EBUFLEN(hd->recv->buffer));
-        if (!success)
-          {
-             if (!azy_content_error_is_set(content))
-               azy_content_error_faultmsg_set(content, AZY_CLIENT_ERROR_MARSHALIZER, "Call return parsing failed.");
-          }
-        if (azy_content_error_is_set(content))
-          {
-             char buf[64];
-             snprintf(buf, sizeof(buf), "%" PRIi64 " bytes:\n<<<<<<<<<<<<<\n%%.%" PRIi64 "s\n<<<<<<<<<<<<<", EBUFLEN(hd->recv->buffer), EBUFLEN(hd->recv->buffer));
-             ERR(buf, EBUF(hd->recv->buffer));
-          }
-     }
-   else
-     {
+        break;
+      default:
         content->ret = hd->recv->buffer;
         hd->recv->buffer = NULL;
      }
