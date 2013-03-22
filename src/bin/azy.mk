@@ -33,27 +33,32 @@ $(BIN_CPPFLAGS) \
 -I$(top_builddir)/src/bin/re2c
 
 INTERMEDIATE_S += \
-src/bin/azy_parser.c \
-src/bin/azy_parser.h \
-src/bin/azy_parser.y \
 src/bin/re2c/re_parser.cpp \
-src/bin/re2c/re_parser.h \
-src/bin/y.tab.h
+src/bin/re2c/re_parser.h
+
+DISTCLEANFILES += \
+src/bin/re_parser.cpp \
+src/bin/re_parser.h
+
+REC = $(top_builddir)/src/bin/re2cbin
+src/bin/re2c/scanner.cpp: src/bin/re2c/re_parser.h
+else
+NEED_REC =
+REC = $(RE2C)
+endif
 
 DISTCLEANFILES += \
 src/bin/azy_parser.c \
 src/bin/azy_parser.h \
 src/bin/azy_parser.y \
-src/bin/re_parser.cpp \
-src/bin/re_parser.h \
 src/bin/y.tab.h \
 lempar.c
 
-REC = $(top_builddir)/src/bin/re2cbin
-else
-NEED_REC =
-REC = $(RE2C)
-endif
+INTERMEDIATE_S += \
+src/bin/azy_parser.c \
+src/bin/azy_parser.h \
+src/bin/azy_parser.y \
+src/bin/y.tab.h
 
 RE2C_OPTS = -bi -o src/bin/azy_parser.y
 
@@ -87,5 +92,3 @@ src/bin/azy_parser.y: src/bin/azy/azy_parser.yre $(NEED_REC) src/bin/lemon
 
 src/bin/azy_parser.c: src/bin/azy_parser.y src/bin/lemon
 	cp -f $(top_srcdir)/src/bin/azy/lempar.c . && src/bin/lemon -q $<
-
-src/bin/re2c/scanner.cpp: src/bin/re2c/re_parser.h
