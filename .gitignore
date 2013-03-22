@@ -55,4 +55,5 @@ src/tests/azy/azy_rss
 src/tests/azy/http_simple
 src/tests/azy/identi_ca
 src/tests/azy/unit/t001_content
-
+src/tests/email/test_pop3
+src/tests/email/test_smtp

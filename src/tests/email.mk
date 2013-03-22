@@ -5,7 +5,7 @@ EMAIL_TEST_CPPFLAGS = \
 -I$(top_srcdir)/src/tests/email
 
 EMAIL_TEST_LDADD = \
-$(top_builddir)/src/lib/libmailstrom.la \
+$(top_builddir)/src/lib/libmaelstrom.la \
 @EMAIL_LIBS@
 
 check_PROGRAMS += \
@@ -20,5 +20,7 @@ src_tests_email_test_smtp_SOURCES = \
 src/tests/email/test_smtp.c \
 src/tests/email/getpass_x.c
 
+src_tests_email_test_pop3_CPPFLAGS = $(EMAIL_TEST_CPPFLAGS)
 src_tests_email_test_pop3_LDADD = $(EMAIL_TEST_LDADD)
+src_tests_email_test_smtp_CPPFLAGS = $(EMAIL_TEST_CPPFLAGS)
 src_tests_email_test_smtp_LDADD = $(EMAIL_TEST_LDADD)
