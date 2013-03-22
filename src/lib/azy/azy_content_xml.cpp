@@ -36,8 +36,7 @@ struct xml_memory_writer : xml_writer
    {
    }
 
-   xml_memory_writer(char *buf EINA_UNUSED,
-                     size_t cap EINA_UNUSED) : buffer(buffer), capacity(capacity), result(0)
+   xml_memory_writer(char *buf, size_t cap) : buffer(buf), capacity(cap), result(0)
    {
    }
 
