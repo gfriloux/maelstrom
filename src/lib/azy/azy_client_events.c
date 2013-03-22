@@ -151,6 +151,8 @@ _azy_client_handler_get(Azy_Client_Handler_Data *hd)
           }
         content->ret = ret;
         break;
+      case AZY_NET_TRANSPORT_HTML: //some asshole sites don't correctly report rss content-type
+        if (azy_content_deserialize_xml(content, (char*)EBUF(hd->recv->buffer), EBUFLEN(hd->recv->buffer))) break;
       default:
         content->ret = hd->recv->buffer;
         hd->recv->buffer = NULL;
