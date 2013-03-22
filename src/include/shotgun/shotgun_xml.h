@@ -25,7 +25,7 @@ char *xml_iq_write_archive_get(const char *to, unsigned int max, size_t *len);
 char *xml_iq_write_get_si(const char *from, const char *to, const char *id, size_t *len);
 char *xml_iq_write_get_bytestream(const char *from, const char *to, const char *id, const char *sid, size_t *len);
 Shotgun_Event_Iq *xml_iq_read(Shotgun_Auth *auth, char *xml, size_t size);
-char * xml_iq_ibb_error(const char *from, const char *to, const char *id, size_t *len);
+char * xml_iq_write_ibb_error(const char *from, const char *to, const char *id, size_t *len);
 char * xml_iq_write_vcard(Shotgun_Auth *auth, size_t *len);
 void xml_vcard_write(Shotgun_User_Info *info, void *vcard, Eina_Bool lcasetags);
 Eina_Bool xml_iq_ping_write(Shotgun_Auth *auth);

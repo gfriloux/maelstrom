@@ -178,9 +178,9 @@ shotgun_data_detect(Shotgun_Auth *auth, Ecore_Con_Event_Server_Data *ev)
 }
 
 static Eina_Bool
-data(Shotgun_Auth *auth, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
+data_handler(Shotgun_Auth *auth, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
 {
-   char *recv, *data, *p;
+   char *recvbuf, *data, *p;
    size_t size;
 
    if ((auth != ecore_con_server_data_get(ev->server)) || (!auth))
@@ -201,12 +201,12 @@ data(Shotgun_Auth *auth, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
      }
    if (eina_log_domain_level_check(shotgun_log_dom, EINA_LOG_LEVEL_DBG))
      {
-        recv = alloca(ev->size + 1);
-        memcpy(recv, ev->data, ev->size);
-        for (p = recv + ev->size - 1; isspace(*p); p--)
+        recvbuf = alloca(ev->size + 1);
+        memcpy(recvbuf, ev->data, ev->size);
+        for (p = recvbuf + ev->size - 1; isspace(*p); p--)
           *p = 0;
-        recv[ev->size] = 0;
-        DBG("Receiving %i bytes:\n%s", ev->size, recv);
+        recvbuf[ev->size] = 0;
+        DBG("Receiving %i bytes:\n%s", ev->size, recvbuf);
      }
 
    if (!shotgun_data_detect(auth, ev))
@@ -286,7 +286,7 @@ shotgun_connect(Shotgun_Auth *auth)
    else if (!auth->base_jid) auth->base_jid = eina_stringshare_printf("%s@%s", auth->user, auth->from);
    auth->ev_add = ecore_event_handler_add(ECORE_CON_EVENT_SERVER_ADD, (Ecore_Event_Handler_Cb)shotgun_login_con, auth);
    auth->ev_del = ecore_event_handler_add(ECORE_CON_EVENT_SERVER_DEL, (Ecore_Event_Handler_Cb)disc, auth);
-   auth->ev_data = ecore_event_handler_add(ECORE_CON_EVENT_SERVER_DATA, (Ecore_Event_Handler_Cb)data, auth);
+   auth->ev_data = ecore_event_handler_add(ECORE_CON_EVENT_SERVER_DATA, (Ecore_Event_Handler_Cb)data_handler, auth);
    auth->ev_error = ecore_event_handler_add(ECORE_CON_EVENT_SERVER_ERROR, (Ecore_Event_Handler_Cb)error, auth);
    auth->ev_upgrade = ecore_event_handler_add(ECORE_CON_EVENT_SERVER_UPGRADE, (Ecore_Event_Handler_Cb)shotgun_login_con, auth);
    auth->ev_write = ecore_event_handler_add(ECORE_CON_EVENT_SERVER_WRITE, (Ecore_Event_Handler_Cb)ev_write, auth);

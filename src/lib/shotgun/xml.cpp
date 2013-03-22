@@ -43,8 +43,8 @@ struct xml_memory_writer : xml_writer
    {
    }
 
-   xml_memory_writer(char  *buffer,
-                     size_t capacity) : buffer(buffer), capacity(capacity), result(0)
+   xml_memory_writer(char  *buf,
+                     size_t cap) : buffer(buf), capacity(cap), result(0)
    {
    }
 
@@ -534,7 +534,7 @@ xml_iq_write_vcard(Shotgun_Auth *auth, size_t *len)
 }
 
 char *
-xml_iq_ibb_error(const char *from, const char *to, const char *id, size_t *len)
+xml_iq_write_ibb_error(const char *from, const char *to, const char *id, size_t *len)
 {
 /*
 <iq from='juliet@capulet.com/balcony'
@@ -550,6 +550,7 @@ xml_iq_ibb_error(const char *from, const char *to, const char *id, size_t *len)
    xml_node iq, node;
 
    iq = doc.append_child("iq");
+   iq.append_attribute("from").set_value(from);
    iq.append_attribute("type").set_value("error");
    iq.append_attribute("to").set_value(to);
    iq.append_attribute("id").set_value(id);
@@ -567,6 +568,7 @@ xml_iq_write_get_bytestream(const char *from, const char *to, const char *id, co
    xml_node iq, node;
 
    iq = doc.append_child("iq");
+   iq.append_attribute("from").set_value(from);
    iq.append_attribute("type").set_value("result");
    iq.append_attribute("to").set_value(to);
    iq.append_attribute("id").set_value(id);
@@ -1199,8 +1201,9 @@ xml_iq_activity_read(Shotgun_Auth *auth, xml_node &query)
    return ret;
 }
 
+#if 0
 static Shotgun_Event_Iq *
-xml_iq_ping_read(Shotgun_Auth *auth, xml_node &iq)
+xml_iq_ping_read(Shotgun_Auth *auth, xml_node &iq EINA_UNUSED)
 {
 /*
 <iq from='juliet@capulet.lit/balcony' to='capulet.lit' id='ping1' type='result'/>
@@ -1212,6 +1215,7 @@ xml_iq_ping_read(Shotgun_Auth *auth, xml_node &iq)
    ret->account = auth;
    return ret;
 }
+#endif
 
 static Shotgun_Event_Iq *
 xml_iq_bytestream_read(Shotgun_Auth *auth, xml_node &query)
@@ -1230,7 +1234,6 @@ xml_iq_bytestream_read(Shotgun_Auth *auth, xml_node &query)
    Shotgun_Event_Iq *ret;
    Shotgun_Incoming_File *file;
    char *xml;
-   const char *type;
    size_t len;
 
    file = static_cast<Shotgun_Incoming_File*>(calloc(1, sizeof(Shotgun_Incoming_File)));

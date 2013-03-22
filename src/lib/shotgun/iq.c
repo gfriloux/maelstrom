@@ -286,7 +286,7 @@ shotgun_iq_ibb_error(Shotgun_Event_Iq *ev)
    EINA_SAFETY_ON_NULL_RETURN_VAL(ev->account, EINA_FALSE);
 
    file = (Shotgun_Incoming_File *)ev->ev;
-   xml = xml_iq_ibb_error(shotgun_jid_get(ev->account), file->from, file->id, &len);
+   xml = xml_iq_write_ibb_error(shotgun_jid_get(ev->account), file->from, file->id, &len);
    shotgun_write(ev->account->svr, xml, len);
    free(xml);
    return EINA_TRUE;
