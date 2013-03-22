@@ -7,7 +7,7 @@ EAPI int EMAIL_EVENT_CONNECTED = 0;
 EAPI int EMAIL_EVENT_DISCONNECTED = 0;
 
 static Eina_Bool
-disc(Email *e, int type __UNUSED__, Ecore_Con_Event_Server_Del *ev)
+disc(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Del *ev)
 {
    if (e != ecore_con_server_data_get(ev->server)) return ECORE_CALLBACK_PASS_ON;
 
@@ -36,7 +36,7 @@ disc(Email *e, int type __UNUSED__, Ecore_Con_Event_Server_Del *ev)
 }
 
 void
-email_fake_free(void *d __UNUSED__, void *e __UNUSED__)
+email_fake_free(void *d EINA_UNUSED, void *e EINA_UNUSED)
 {}
 
 int

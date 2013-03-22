@@ -3,7 +3,7 @@
 #define MESSAGE_BOUNDARY "ASDF8AYWE0G8H31_//123R"
 
 static Eina_Bool
-_email_message_headers(const Eina_Hash *h __UNUSED__, const char *key, const char *data, Eina_Strbuf *buf)
+_email_message_headers(const Eina_Hash *h EINA_UNUSED, const char *key, const char *data, Eina_Strbuf *buf)
 {
    if (!strcasecmp(key, "content-type")) return EINA_TRUE;
    eina_strbuf_append_printf(buf, "%s: %s\r\n", key, data);

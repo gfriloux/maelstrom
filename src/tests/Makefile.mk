@@ -14,3 +14,7 @@ if BUILD_AZY
 include src/tests/azy.mk
 endif
 
+if BUILD_EMAIL
+include src/tests/email.mk
+endif
+

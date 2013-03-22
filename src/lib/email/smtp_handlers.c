@@ -99,7 +99,7 @@ send_smtp(Email *e)
 }
 
 Eina_Bool
-upgrade_smtp(Email *e, int type __UNUSED__, Ecore_Con_Event_Server_Upgrade *ev)
+upgrade_smtp(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Upgrade *ev)
 {
    char *buf;
    size_t size;
@@ -116,7 +116,7 @@ upgrade_smtp(Email *e, int type __UNUSED__, Ecore_Con_Event_Server_Upgrade *ev)
 }
 
 Eina_Bool
-data_smtp(Email *e, int type __UNUSED__, Ecore_Con_Event_Server_Data *ev)
+data_smtp(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
 {
    char *recv;
    Email_Send_Cb cb;
@@ -193,7 +193,7 @@ data_smtp(Email *e, int type __UNUSED__, Ecore_Con_Event_Server_Data *ev)
 }
 
 Eina_Bool
-error_smtp(Email *e __UNUSED__, int type __UNUSED__, Ecore_Con_Event_Server_Error *ev __UNUSED__)
+error_smtp(Email *e EINA_UNUSED, int type EINA_UNUSED, Ecore_Con_Event_Server_Error *ev EINA_UNUSED)
 {
    ERR("Error");
    return ECORE_CALLBACK_RENEW;

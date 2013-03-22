@@ -1,5 +1,6 @@
 EXTRA_DIST += \
 src/include/azy/azy_private.h \
+src/include/email/email_private.h \
 src/include/extras/cdecode.h \
 src/include/extras/cencode.h \
 src/include/extras/cJSON.h \
@@ -17,4 +18,8 @@ endif
 
 if BUILD_SHOTGUN
 header_install_HEADERS += src/include/shotgun/Shotgun.h
+endif
+
+if BUILD_EMAIL
+header_install_HEADERS += src/include/email/Email.h
 endif

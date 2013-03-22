@@ -47,7 +47,7 @@ next_pop(Email *e)
 }
 
 Eina_Bool
-upgrade_pop(Email *e, int type __UNUSED__, Ecore_Con_Event_Server_Upgrade *ev)
+upgrade_pop(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Upgrade *ev)
 {
    if (e != ecore_con_server_data_get(ev->server)) return ECORE_CALLBACK_PASS_ON;
 
@@ -57,7 +57,7 @@ upgrade_pop(Email *e, int type __UNUSED__, Ecore_Con_Event_Server_Upgrade *ev)
 }
 
 Eina_Bool
-data_pop(Email *e, int type __UNUSED__, Ecore_Con_Event_Server_Data *ev)
+data_pop(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
 {
    char *recv;
 
@@ -122,7 +122,7 @@ data_pop(Email *e, int type __UNUSED__, Ecore_Con_Event_Server_Data *ev)
 }
 
 Eina_Bool
-error_pop(Email *e __UNUSED__, int type __UNUSED__, Ecore_Con_Event_Server_Error *ev __UNUSED__)
+error_pop(Email *e EINA_UNUSED, int type EINA_UNUSED, Ecore_Con_Event_Server_Error *ev EINA_UNUSED)
 {
    ERR("Error");
    return ECORE_CALLBACK_RENEW;

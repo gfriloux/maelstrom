@@ -14,7 +14,6 @@ src/lib/shotgun/shotgun_utils.c \
 src/lib/shotgun/xml.cpp
 
 extra_source += \
-src/lib/extras/md5.c \
 src/lib/extras/sha1.c \
 src/lib/extras/sha1wrap.c
 

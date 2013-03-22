@@ -21,3 +21,6 @@ src/lib/azy/azy_net_cookie.c \
 src/lib/azy/azy_rss.c \
 src/lib/azy/azy_rss_item.c \
 src/lib/azy/azy_utils.c
+
+extra_source += src/lib/extras/cJSON.c
+
