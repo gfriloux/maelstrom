@@ -50,7 +50,6 @@ azy_content_buffer_set_(Azy_Content *content, unsigned char *buffer, size_t leng
  * @param content The content to store the resulting #Azy_Value object in
  * @param net The object containing the buffer to parse
  * @return true on success, false on failure
- * @note Currently only JSON parsing is supported here
  */
 Eina_Bool
 azy_content_deserialize(Azy_Content *content,
@@ -71,7 +70,7 @@ azy_content_deserialize(Azy_Content *content,
    if (net->transport == AZY_NET_TRANSPORT_JSON)
      return azy_content_deserialize_json(content, (char *)EBUF(net->buffer), EBUFLEN(net->buffer));
 
-   if (net->transport == AZY_NET_TRANSPORT_XML)
+   if ((net->transport == AZY_NET_TRANSPORT_XML) || (net->transport == AZY_NET_TRANSPORT_ATOM))
      {
         return azy_content_deserialize_xml(content, (char *)EBUF(net->buffer), EBUFLEN(net->buffer));
      }

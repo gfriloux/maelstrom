@@ -826,7 +826,10 @@ azy_events_recv_progress(Azy_Net *net, const void *data, size_t len)
    if (net->http.post_headers_buf)
      eina_binbuf_append_length(net->http.post_headers_buf, data, len);
    else
-     eina_binbuf_append_length(net->buffer, data, len);
+     {
+        if (!net->buffer) net->buffer = eina_binbuf_new();
+        eina_binbuf_append_length(net->buffer, data, len);
+     }
    net->progress += len;
    if (net->http.transfer_encoding)
      {
