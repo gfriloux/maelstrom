@@ -36,8 +36,8 @@ struct xml_memory_writer : xml_writer
    {
    }
 
-   xml_memory_writer(char *buffer,
-                     size_t capacity) : buffer(buffer), capacity(capacity), result(0)
+   xml_memory_writer(char *buf EINA_UNUSED,
+                     size_t cap EINA_UNUSED) : buffer(buffer), capacity(capacity), result(0)
    {
    }
 
@@ -534,13 +534,13 @@ azy_content_serialize_response_xml(Azy_Content *content)
    node = doc.append_child("methodResponse");
    if (content->error_set)
      {
-        char buf[16];
+        char codebuf[16];
 
         node = node.append_child("fault").append_child("value").append_child("struct");
         m = node.append_child("member");
         m.append_child("name").append_child(node_pcdata).set_value("faultCode");
-        snprintf(buf, sizeof(buf), "%i", content->faultcode);
-        m.append_child("value").append_child("int").append_child(node_pcdata).set_value(buf);
+        snprintf(codebuf, sizeof(codebuf), "%i", content->faultcode);
+        m.append_child("value").append_child("int").append_child(node_pcdata).set_value(codebuf);
         m = node.append_child("member");
         m.append_child("name").append_child(node_pcdata).set_value("faultString");
         m.append_child("value").append_child("string").append_child(node_pcdata).set_value(azy_content_error_message_get(content));
@@ -618,7 +618,7 @@ azy_content_deserialize_request_xml(Azy_Content *content,
         {
            xpath_node n;
            Eina_Value *val;
-           void *v;
+           void *data;
            xml_node node;
 
            n = *it;
@@ -629,8 +629,8 @@ azy_content_deserialize_request_xml(Azy_Content *content,
              {
                 azy_content_error_faultmsg_set(content, -1,
                                                "Can't parse XML-RPC XML request. Failed to deserialize parameter %i.", 1 + std::distance(params.begin(), it));
-                EINA_LIST_FREE(content->params, v)
-                  eina_value_free((Eina_Value*)v);
+                EINA_LIST_FREE(content->params, data)
+                  eina_value_free((Eina_Value*)data);
                 return EINA_FALSE;
              }
            azy_content_param_add(content, val);
