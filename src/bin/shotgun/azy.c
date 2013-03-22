@@ -47,7 +47,7 @@ ui_azy_return(Contact_List *cl, int type EINA_UNUSED, Azy_Content *content)
    else
      snprintf(buf, sizeof(buf), "Your version of Shotgun! is %u commit%s old!", x, (x > 1) ? "s" : "");
 
-#ifdef HAVE_NOTIFY
+#ifdef HAVE_DBUS
    ui_dbus_notify(cl, NULL, "Shotgun!", buf);
 #endif
    notified = EINA_TRUE;

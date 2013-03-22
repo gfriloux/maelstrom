@@ -1,57 +1,219 @@
 #include "ui.h"
 #ifdef HAVE_DBUS
 
-#ifdef HAVE_NOTIFY
-#include <E_Notify.h>
-#endif
+#include <Eldbus.h>
+#define NOTIFY_OBJECT    "/org/freedesktop/Notifications"
+#define NOTIFY_BUS       "org.freedesktop.Notifications"
+#define NOTIFY_INTERFACE "org.freedesktop.Notifications"
 
-static DBusMessage *
-_dbus_quit_cb(E_DBus_Object *obj, DBusMessage *msg)
+static Eldbus_Connection *ui_dbus_conn = NULL;
+static Eldbus_Service_Interface *ui_core_iface = NULL;
+
+typedef enum
 {
-   Contact_List *cl = e_dbus_object_data_get(obj);
-   shotgun_disconnect(cl->account);
-   return dbus_message_new_method_return(msg);
+   UI_DBUS_SIGNAL_MESSAGE_NEW,
+   UI_DBUS_SIGNAL_MESSAGE_SELF_NEW,
+   UI_DBUS_SIGNAL_STATUS_CHANGE,
+   UI_DBUS_SIGNAL_STATUS_CHANGE_SELF,
+   UI_DBUS_SIGNAL_LINK_NEW,
+   UI_DBUS_SIGNAL_LINK_SELF_NEW,
+   UI_DBUS_SIGNAL_LINK_DEL,
+   UI_DBUS_SIGNAL_CONNECTED
+} UI_Dbus_Signals;
+
+static const Eldbus_Signal core_signals[] =
+{
+   [UI_DBUS_SIGNAL_MESSAGE_NEW] = {"new_msg", ELDBUS_ARGS({"s", "jid"}, {"s", "message"}), 0},
+   [UI_DBUS_SIGNAL_MESSAGE_SELF_NEW] = {"new_msg_self", ELDBUS_ARGS({"s", "jid"}, {"s", "message"}), 0},
+   [UI_DBUS_SIGNAL_STATUS_CHANGE] = {"status",
+     ELDBUS_ARGS({"s", "jid"}, {"s", "resource"}, {"s", "description"}, {"u", "Shotgun_User_Status"},
+                {"u", "Shotgun_Presence_Type"}, {"i", "priority"}), 0},
+   [UI_DBUS_SIGNAL_STATUS_CHANGE_SELF] = {"status_self",
+     ELDBUS_ARGS({"s", "description"}, {"u", "Shotgun_User_Status"}, {"i", "priority"}), 0},
+   [UI_DBUS_SIGNAL_LINK_NEW] = {"link", ELDBUS_ARGS({"s", "url"}), 0},
+   [UI_DBUS_SIGNAL_LINK_SELF_NEW] = {"link_self", ELDBUS_ARGS({"s", "url"}), 0},
+   [UI_DBUS_SIGNAL_LINK_DEL] = {"link_del", ELDBUS_ARGS({"s", "url"}), 0},
+   [UI_DBUS_SIGNAL_CONNECTED] = {"connected", ELDBUS_ARGS({"b", "connection_state"}), 0},
+   {NULL, NULL, 0}
+};
+
+/////////////////// NOTIFY ///////////////////////////////////////
+
+static Eina_Bool ui_notify_markup = EINA_FALSE;
+static Eldbus_Object *ui_notify_object = NULL;
+
+static void
+_notify_capabilities_cb(void *data EINA_UNUSED, const Eldbus_Message *msg, Eldbus_Pending *pending EINA_UNUSED)
+{
+   char *val;
+   Eldbus_Message_Iter *arr;
+
+   if (eldbus_message_error_get(msg, NULL, NULL)) return;
+   if (!eldbus_message_arguments_get(msg, "as", &arr)) return;
+
+   while (eldbus_message_iter_get_and_next(arr, 's', &val))
+     if (!strcmp(val, "body-markup"))
+       {
+          ui_notify_markup = EINA_TRUE;
+          break;
+       }
 }
 
-static DBusMessage *
-_dbus_link_list_cb(E_DBus_Object *obj, DBusMessage *msg)
+static void
+_notify_clear(void)
 {
-   Contact_List *cl = e_dbus_object_data_get(obj);
-   Image *i;
-   DBusMessage *ret;
-   DBusMessageIter iter, arr;
+   if (!ui_notify_object) return;
+   eldbus_object_unref(ui_notify_object);
+   ui_notify_object = NULL;
+}
 
-   ret = dbus_message_new_method_return(msg);
-   dbus_message_iter_init_append(ret, &iter);
-   dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "s", &arr);
+static void
+_notify_refresh(void)
+{
+   Eldbus_Message *msg;
+
+   _notify_clear();
+   ui_notify_object = eldbus_object_get(ui_dbus_conn, NOTIFY_BUS, NOTIFY_OBJECT);
+   msg = eldbus_message_method_call_new(NOTIFY_BUS, NOTIFY_OBJECT, NOTIFY_INTERFACE, "GetCapabilities");
+   eldbus_object_send(ui_notify_object, msg, _notify_capabilities_cb, NULL, -1);
+}
+
+static void
+_notify_nameowner_change_cb(void *data EINA_UNUSED, const char *bus EINA_UNUSED, const char *old_id EINA_UNUSED, const char *new_id)
+{
+   if ((!new_id) || (!new_id[0]))
+     _notify_clear();
+   else
+     _notify_refresh();
+}
+
+static void
+_notify_nameowner_cb(void *data EINA_UNUSED, const Eldbus_Message *msg, Eldbus_Pending *pending EINA_UNUSED)
+{
+   const char *error_name, *error_text;
+
+   if (eldbus_message_error_get(msg, &error_name, &error_text))
+     ERR("%s: %s", error_name, error_text);
+   else
+     _notify_refresh();
+}
+
+#if 0
+static Eina_Bool
+_notify_image_serialize(Eldbus_Message_Iter *sub, Evas_Object *img)
+{
+   int x, y, w = 0, h = 0, channels = 4, bits_per_sample = 8;
+   unsigned char *d, *imgdata, *data;
+   int rowstride, img_rowstride;
+   int *s;
+   size_t data_len;
+   Eina_Bool has_alpha = EINA_TRUE;
+   Eldbus_Message_Iter *entry, *st;
+   
+   evas_object_image_size_get(img, &w, &h);
+   if ((w <= 0) || (h <= 0)) return EINA_FALSE;
+   imgdata = evas_object_image_data_get(img, EINA_FALSE);
+   if (!imgdata) return EINA_FALSE;
+   
+   data = malloc(4 * w * h);
+   img_rowstride = 4 * w;
+   
+   rowstride = evas_object_image_stride_get(img);
+   for (y = 0; y < h; y++)
+     {
+        s = (int *)(imgdata + (y * rowstride));
+        d = data + (y * img_rowstride);
+        
+        for (x = 0; x < w; x++, s++)
+          {
+             *d++ = (*s >> 16) & 0xff;
+             *d++ = (*s >> 8) & 0xff;
+             *d++ = (*s) & 0xff;
+             *d++ = (*s >> 24) & 0xff;
+          }
+     }
+   evas_object_image_data_set(img, imgdata);
+   data_len = ((h - 1) * img_rowstride) + (w * (((channels * bits_per_sample) + 7) / 8));
+
+   eldbus_message_iter_arguments_append(sub, "s", "image-data");
+   st = eldbus_message_iter_container_new(entry, 'v', NULL);
+   eldbus_message_iter_arguments_append(st, "iiibii", w, h, img_rowstride, has_alpha, bits_per_sample, channels, &entry);
+   eldbus_message_iter_fixed_array_get(st, "y", data, data_len
+
+   if (dbus_message_iter_open_container(iter, DBUS_TYPE_STRUCT, NULL, &sub))
+     {
+        dbus_message_iter_append_basic(&sub, DBUS_TYPE_INT32, &(img->width));
+        dbus_message_iter_append_basic(&sub, DBUS_TYPE_INT32, &(img->height));
+        dbus_message_iter_append_basic(&sub, DBUS_TYPE_INT32, &(img->rowstride));
+        dbus_message_iter_append_basic(&sub, DBUS_TYPE_BOOLEAN, &(img->has_alpha));
+        dbus_message_iter_append_basic(&sub, DBUS_TYPE_INT32, &(img->bits_per_sample));
+        dbus_message_iter_append_basic(&sub, DBUS_TYPE_INT32, &(img->channels));
+        if (dbus_message_iter_open_container(&sub, DBUS_TYPE_ARRAY, "y", &arr))
+          {
+             dbus_message_iter_append_fixed_array(&arr, DBUS_TYPE_BYTE, &(img->data), data_len);
+             dbus_message_iter_close_container(&sub, &arr);
+   if (dbus_message_iter_open_container(iter, DBUS_TYPE_DICT_ENTRY, NULL, &entry))
+     {
+        dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+        if (dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, type_str, &variant))
+          {
+             func(&variant, data);
+             dbus_message_iter_close_container(&entry, &variant);
+          }
+        else
+          {
+             ERR("dbus_message_iter_open_container() failed");
+          }
+        dbus_message_iter_close_container(iter, &entry);
+}
+#endif
+/////////////////// METHODS ///////////////////////////////////////
+
+
+static Eldbus_Message *
+_dbus_quit_cb(const Eldbus_Service_Interface *iface, const Eldbus_Message *msg)
+{
+   Contact_List *cl = eldbus_service_object_data_get(iface, "contact_list");
+   shotgun_disconnect(cl->account);
+   return eldbus_message_method_return_new(msg);
+}
+
+static Eldbus_Message *
+_dbus_link_list_cb(const Eldbus_Service_Interface *iface, const Eldbus_Message *msg)
+{
+   Contact_List *cl = eldbus_service_object_data_get(iface, "contact_list");
+   Image *i;
+   Eldbus_Message *reply;
+   Eldbus_Message_Iter *iter, *arr;
+
+   reply = eldbus_message_method_return_new(msg);
+   iter = eldbus_message_iter_get(reply);
+   arr = eldbus_message_iter_container_new(iter, 'a', "s");
 
    EINA_INLIST_FOREACH(cl->image_list, i)
-     dbus_message_iter_append_basic(&arr, DBUS_TYPE_STRING, &i->addr);
-   dbus_message_iter_close_container(&iter, &arr);
-   return ret;
+     eldbus_message_iter_basic_append(arr, 's', i->addr);
+   eldbus_message_iter_container_close(iter, arr);
+   return reply;
 }
 
-static DBusMessage *
-_dbus_link_open_cb(E_DBus_Object *obj, DBusMessage *msg)
+static Eldbus_Message *
+_dbus_link_open_cb(const Eldbus_Service_Interface *iface, const Eldbus_Message *msg)
 {
-   Contact_List *cl = e_dbus_object_data_get(obj);
+   Contact_List *cl = eldbus_service_object_data_get(iface, "contact_list");
    const char *url;
-   DBusError error;
 
-   memset(&error, 0, sizeof(DBusError));
-   dbus_message_get_args(msg, &error,
-     's', &url,
-     DBUS_TYPE_INVALID);
-   if (url && url[0]) chat_link_open(cl, url);
-   return dbus_message_new_method_return(msg);
+   if (eldbus_message_arguments_get(msg, "s", &url))
+     {
+        if (url && url[0]) chat_link_open(cl, url);
+     }
+   return eldbus_message_method_return_new(msg);
 }
 
-static DBusMessage *
-_dbus_link_show_cb(E_DBus_Object *obj, DBusMessage *msg)
+static Eldbus_Message *
+_dbus_link_show_cb(const Eldbus_Service_Interface *iface, const Eldbus_Message *msg)
 {
-   Contact_List *cl = e_dbus_object_data_get(obj);
+   Contact_List *cl = eldbus_service_object_data_get(iface, "contact_list");
    const char *url;
-   DBusError error;
    Image *i;
    Elm_Entry_Anchor_Info ev;
 
@@ -59,11 +221,8 @@ _dbus_link_show_cb(E_DBus_Object *obj, DBusMessage *msg)
    ev.name = "";
    chat_conv_image_hide(NULL, cl->win, &ev);
    cl->dbus_image = NULL;
-   memset(&error, 0, sizeof(DBusError));
-   dbus_message_get_args(msg, &error,
-     's', &url,
-     DBUS_TYPE_INVALID);
-   while (url)
+   
+   while (eldbus_message_arguments_get(msg, "s", &url))
      {
         if (!url[0]) break;
         i = eina_hash_find(cl->images, url);
@@ -79,100 +238,96 @@ _dbus_link_show_cb(E_DBus_Object *obj, DBusMessage *msg)
         cl->dbus_image = i;
         break;
      }
-   return dbus_message_new_method_return(msg);
+   return eldbus_message_method_return_new(msg);
 }
 
-static DBusMessage *
-_dbus_list_get_cb(E_DBus_Object *obj, DBusMessage *msg)
+static Eldbus_Message *
+_dbus_list_get_cb(const Eldbus_Service_Interface *iface, const Eldbus_Message *msg)
 {
-   Contact_List *cl = e_dbus_object_data_get(obj);
+   Contact_List *cl = eldbus_service_object_data_get(iface, "contact_list");
    Eina_List *l;
    Contact *c;
-   DBusMessage *ret;
-   DBusMessageIter iter, arr;
+   Eldbus_Message *reply;
+   Eldbus_Message_Iter *iter, *arr;
 
-   ret = dbus_message_new_method_return(msg);
-   dbus_message_iter_init_append(ret, &iter);
-   dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "s", &arr);
+   reply = eldbus_message_method_return_new(msg);
+   iter = eldbus_message_iter_get(reply);
+   arr = eldbus_message_iter_container_new(iter, 'a', "s");
 
    EINA_LIST_FOREACH(cl->users_list, l, c)
      {
         if (c->cur && c->cur->status && c->base->subscription)
-          dbus_message_iter_append_basic(&arr, DBUS_TYPE_STRING, &c->base->jid);
+          eldbus_message_iter_basic_append(arr, 's', c->base->jid);
      }
-   dbus_message_iter_close_container(&iter, &arr);
-   return ret;
+   eldbus_message_iter_container_close(iter, arr);
+   return reply;
 }
 
-static DBusMessage *
-_dbus_list_get_all_cb(E_DBus_Object *obj, DBusMessage *msg)
+static Eldbus_Message *
+_dbus_list_get_all_cb(const Eldbus_Service_Interface *iface, const Eldbus_Message *msg)
 {
-   Contact_List *cl = e_dbus_object_data_get(obj);
+   Contact_List *cl = eldbus_service_object_data_get(iface, "contact_list");
    Eina_List *l;
    Contact *c;
-   DBusMessage *ret;
-   DBusMessageIter iter, arr;
+   Eldbus_Message *reply;
+   Eldbus_Message_Iter *iter, *arr;
 
-   ret = dbus_message_new_method_return(msg);
-   dbus_message_iter_init_append(ret, &iter);
-   dbus_message_iter_open_container(&iter, 'a', "s", &arr);
+   reply = eldbus_message_method_return_new(msg);
+   iter = eldbus_message_iter_get(reply);
+   arr = eldbus_message_iter_container_new(iter, 'a', "s");
 
    EINA_LIST_FOREACH(cl->users_list, l, c)
-     dbus_message_iter_append_basic(&arr, 's', &c->base->jid);
-   dbus_message_iter_close_container(&iter, &arr);
-   return ret;
+     eldbus_message_iter_basic_append(arr, 's', c->base->jid);
+   eldbus_message_iter_container_close(iter, arr);
+   return reply;
 }
 
-static DBusMessage *
-_dbus_contact_status_cb(E_DBus_Object *obj, DBusMessage *msg)
+static Eldbus_Message *
+_dbus_contact_status_cb(const Eldbus_Service_Interface *iface, const Eldbus_Message *msg)
 {
-   Contact_List *cl = e_dbus_object_data_get(obj);
-   DBusMessage *reply;
+   Contact_List *cl = eldbus_service_object_data_get(iface, "contact_list");
+   Eldbus_Message *reply;
    Contact *c;
    char *name, *s;
-   DBusError error;
+   const char *error_name, *error_text;
 
-   memset(&error, 0, sizeof(DBusError));
-   dbus_message_get_args(msg, &error,
-     's', &name,
-     DBUS_TYPE_INVALID);
+   if (eldbus_message_error_get(msg, &error_name, &error_text))
+     {
+        ERR("%s: %s", error_name, error_text);
+        goto error;
+     }
+   if (!eldbus_message_arguments_get(msg, "s", &name)) goto error;
    if ((!name) || (!name[0])) goto error;
    s = strchr(name, '/');
    if (s) name = strndupa(name, s - name);
    c = eina_hash_find(cl->users, name);
    if (!c) goto error;
-   reply = dbus_message_new_method_return(msg);
-   dbus_message_append_args(reply,
-     's', &c->description,
-     'u', (uintptr_t*)&c->status,
-     'i', (intptr_t*)&c->priority,
-     DBUS_TYPE_INVALID);
+   reply = eldbus_message_method_return_new(msg);
+   eldbus_message_arguments_append(reply, "sui", c->description, c->status, c->priority);
    return reply;
 error:
-   reply = dbus_message_new_error(msg, "org.shotgun.contact.invalid", "Contact specified was invalid or not found!");
+   reply = eldbus_message_error_new(msg, "org.shotgun.contact.invalid", "Contact specified was invalid or not found!");
    return reply;
 }
 
-static DBusMessage *
-_dbus_contact_send_cb(E_DBus_Object *obj, DBusMessage *msg)
+static Eldbus_Message *
+_dbus_contact_send_cb(const Eldbus_Service_Interface *iface, const Eldbus_Message *msg)
 {
-   Contact_List *cl = e_dbus_object_data_get(obj);
-   DBusMessageIter iter;
-   DBusMessage *reply;
+   Contact_List *cl = eldbus_service_object_data_get(iface, "contact_list");
+   Eldbus_Message *reply;
    Contact *c;
    char *p, *name, *s;
    Shotgun_Message_Status st;
    Eina_Bool ret = EINA_FALSE;
-   DBusError error;
+   const char *error_name, *error_text;
 
-   memset(&error, 0, sizeof(DBusError));
-   dbus_message_get_args(msg, &error,
-			 's', &name,
-    's', &s,
-    'u', &st,
-			 DBUS_TYPE_INVALID);
-   reply = dbus_message_new_method_return(msg);
-   dbus_message_iter_init_append(reply, &iter);
+   if (eldbus_message_error_get(msg, &error_name, &error_text))
+     {
+        ERR("%s: %s", error_name, error_text);
+        goto error;
+     }
+   reply = eldbus_message_method_return_new(msg);
+   if (!eldbus_message_arguments_get(msg, "ssu", &name, &s, &st)) goto error;
    if ((!name) || (!name[0]) || (!s)) goto error;
    p = strchr(name, '/');
    if (p) name = strndupa(name, p - name);
@@ -180,30 +335,28 @@ _dbus_contact_send_cb(E_DBus_Object *obj, DBusMessage *msg)
    if (!c) goto error;
    ret = shotgun_message_send(c->base->account, contact_jid_send_get(c), s, st, c->xhtml_im);
 error:
-   dbus_message_iter_append_basic(&iter, DBUS_TYPE_BOOLEAN, &ret);
+   eldbus_message_arguments_append(reply, "b", ret);
    return reply;
 }
 
-static DBusMessage *
-_dbus_contact_send_echo_cb(E_DBus_Object *obj, DBusMessage *msg)
+static Eldbus_Message *
+_dbus_contact_send_echo_cb(const Eldbus_Service_Interface *iface, const Eldbus_Message *msg)
 {
-   Contact_List *cl = e_dbus_object_data_get(obj);
-   DBusMessageIter iter;
-   DBusMessage *reply;
+   Contact_List *cl = eldbus_service_object_data_get(iface, "contact_list");
+   Eldbus_Message *reply;
    Contact *c;
    char *p, *name, *s;
    Shotgun_Message_Status st;
    Eina_Bool ret = EINA_FALSE;
-   DBusError error;
+   const char *error_name, *error_text;
 
-   memset(&error, 0, sizeof(DBusError));
-   dbus_message_get_args(msg, &error,
-			 's', &name,
-    's', &s,
-    'u', &st,
-			 DBUS_TYPE_INVALID);
-   reply = dbus_message_new_method_return(msg);
-   dbus_message_iter_init_append(reply, &iter);
+   if (eldbus_message_error_get(msg, &error_name, &error_text))
+     {
+        ERR("%s: %s", error_name, error_text);
+        goto error;
+     }
+   reply = eldbus_message_method_return_new(msg);
+   if (!eldbus_message_arguments_get(msg, "ssu", &name, &s, &st)) goto error;
    if ((!name) || (!name[0]) || (!s)) goto error;
    p = strchr(name, '/');
    if (p) name = strndupa(name, p - name);
@@ -214,30 +367,32 @@ _dbus_contact_send_echo_cb(E_DBus_Object *obj, DBusMessage *msg)
    if (ret)
      chat_message_insert(c, "me", s, EINA_TRUE);
 error:
-   dbus_message_iter_append_basic(&iter, DBUS_TYPE_BOOLEAN, &ret);
+   eldbus_message_arguments_append(reply, "b", ret);
    return reply;
 }
 
-static DBusMessage *
-_dbus_contact_info_cb(E_DBus_Object *obj, DBusMessage *msg)
+static Eldbus_Message *
+_dbus_contact_info_cb(const Eldbus_Service_Interface *iface, const Eldbus_Message *msg)
 {
-   Contact_List *cl = e_dbus_object_data_get(obj);
+   Contact_List *cl = eldbus_service_object_data_get(iface, "contact_list");
    char *name, *s;
    const char *d;
    Contact *c;
-   DBusMessage *reply;
-   DBusError error;
+   Eldbus_Message *reply;
+   const char *error_name, *error_text;
 
-   memset(&error, 0, sizeof(DBusError));
-   dbus_message_get_args(msg, &error,
-     's', &name,
-     DBUS_TYPE_INVALID);
+   if (eldbus_message_error_get(msg, &error_name, &error_text))
+     {
+        ERR("%s: %s", error_name, error_text);
+        goto error;
+     }
+   if (!eldbus_message_arguments_get(msg, "s", &name)) goto error;
    if ((!name) || (!name[0])) goto error;
    s = strchr(name, '/');
    if (s) name = strndupa(name, s - name);
    c = eina_hash_find(cl->users, name);
    if (!c) goto error;
-   reply = dbus_message_new_method_return(msg);
+   reply = eldbus_message_method_return_new(msg);
    if (c->cur && c->cur->photo)
      {
         size_t size = sizeof(char) * (strlen(shotgun_jid_get(cl->account)) + strlen(c->base->jid) + 6);
@@ -246,37 +401,34 @@ _dbus_contact_info_cb(E_DBus_Object *obj, DBusMessage *msg)
      }
    else s = "";
    d = contact_name_get(c);
-   dbus_message_append_args(reply,
-     's', &d,
-     's', &s,
-     'u', (uintptr_t*)&c->status,
-     'i', (intptr_t*)&c->priority,
-     DBUS_TYPE_INVALID);
+   eldbus_message_arguments_append(reply, "ssui", d, s, c->status, c->priority);
    return reply; /* get icon name from eet file */
 error:
-   reply = dbus_message_new_error(msg, "org.shotgun.contact.invalid", "Contact specified was invalid or not found!");
+   reply = eldbus_message_error_new(msg, "org.shotgun.contact.invalid", "Contact specified was invalid or not found!");
    return reply;
 }
 
-static DBusMessage *
-_dbus_contact_icon_cb(E_DBus_Object *obj, DBusMessage *msg)
+static Eldbus_Message *
+_dbus_contact_icon_cb(const Eldbus_Service_Interface *iface, const Eldbus_Message *msg)
 {
-   Contact_List *cl = e_dbus_object_data_get(obj);
+   Contact_List *cl = eldbus_service_object_data_get(iface, "contact_list");
    char *name, *s;
    Contact *c;
-   DBusMessage *reply;
-   DBusError error;
+   Eldbus_Message *reply;
+   const char *error_name, *error_text;
 
-   memset(&error, 0, sizeof(DBusError));
-   dbus_message_get_args(msg, &error,
-     's', &name,
-     DBUS_TYPE_INVALID);
+   if (eldbus_message_error_get(msg, &error_name, &error_text))
+     {
+        ERR("%s: %s", error_name, error_text);
+        goto error;
+     }
+   if (!eldbus_message_arguments_get(msg, "s", &name)) goto error;
    if ((!name) || (!name[0])) goto error;
    s = strchr(name, '/');
    if (s) name = strndupa(name, s - name);
    c = eina_hash_find(cl->users, name);
    if (!c) goto error;
-   reply = dbus_message_new_method_return(msg);
+   reply = eldbus_message_method_return_new(msg);
    if (c->cur && c->cur->photo)
      {
         size_t size = sizeof(char) * (strlen(shotgun_jid_get(cl->account)) + strlen(c->base->jid) + 6);
@@ -284,68 +436,39 @@ _dbus_contact_icon_cb(E_DBus_Object *obj, DBusMessage *msg)
         snprintf(s, size, "%s/%s/img", shotgun_jid_get(cl->account), c->base->jid);
      }
    else s = "";
-   dbus_message_append_args(reply,
-     's', &s,
-     DBUS_TYPE_INVALID);
+   eldbus_message_arguments_append(reply, "s", s);
    return reply; /* get icon name from eet file */
 error:
-   reply = dbus_message_new_error(msg, "org.shotgun.contact.invalid", "Contact specified was invalid or not found!");
+   reply = eldbus_message_error_new(msg, "org.shotgun.contact.invalid", "Contact specified was invalid or not found!");
    return reply;
 }
 
 void
-ui_dbus_signal_message_self(Contact_List *cl, const char *jid, const char *s)
+ui_dbus_signal_message_self(Contact_List *cl EINA_UNUSED, const char *jid, const char *s)
 {
-   DBusMessage *sig;
-
-   sig = dbus_message_new_signal(SHOTGUN_DBUS_PATH, SHOTGUN_DBUS_METHOD_BASE ".core", "new_msg_self");
-   dbus_message_append_args(sig,
-     's', &jid,
-     's', &s,
-     DBUS_TYPE_INVALID);
-   e_dbus_message_send(cl->dbus, sig, NULL, -1, NULL);
-   dbus_message_unref(sig);
+   eldbus_service_signal_emit(ui_core_iface, UI_DBUS_SIGNAL_MESSAGE_SELF_NEW, jid, s);
 }
 
 void
-ui_dbus_signal_message(Contact_List *cl, Contact *c, Shotgun_Event_Message *msg)
+ui_dbus_signal_message(Contact_List *cl EINA_UNUSED, Contact *c, Shotgun_Event_Message *msg)
 {
-   DBusMessage *sig;
-
-   sig = dbus_message_new_signal(SHOTGUN_DBUS_PATH, SHOTGUN_DBUS_METHOD_BASE ".core", "new_msg");
-   dbus_message_append_args(sig,
-     's', &c->base->jid,
-     's', &msg->msg,
-     DBUS_TYPE_INVALID);
-   e_dbus_message_send(cl->dbus, sig, NULL, -1, NULL);
-   dbus_message_unref(sig);
+   eldbus_service_signal_emit(ui_core_iface, UI_DBUS_SIGNAL_MESSAGE_NEW, c->base->jid, msg->msg);
 }
 
 void
 ui_dbus_signal_status(Contact *c, Shotgun_Event_Presence *pres)
 {
-   DBusMessage *sig;
    const char *res, *desc;
 
    res = strrchr(pres->jid, '/') + 1;
    desc = pres->description ?: "";
-   sig = dbus_message_new_signal(SHOTGUN_DBUS_PATH, SHOTGUN_DBUS_METHOD_BASE ".core", "status");
-   dbus_message_append_args(sig,
-     's', &c->base->jid,
-     's', &res,
-     's', &desc,
-     'u', &pres->status,
-     'u', &pres->type,
-     'i', &pres->priority,
-     DBUS_TYPE_INVALID);
-   e_dbus_message_send(c->list->dbus, sig, NULL, -1, NULL);
-   dbus_message_unref(sig);
+   eldbus_service_signal_emit(ui_core_iface, UI_DBUS_SIGNAL_STATUS_CHANGE, 
+     c->base->jid, res, desc, pres->status, pres->type, pres->priority);
 }
 
 void
 ui_dbus_signal_status_self(Contact_List *cl)
 {
-   DBusMessage *sig;
    const char *desc;
    Shotgun_User_Status st;
    int priority;
@@ -353,150 +476,146 @@ ui_dbus_signal_status_self(Contact_List *cl)
    desc = shotgun_presence_get(cl->account, &st, &priority);
    desc = desc ?: "";
 
-   sig = dbus_message_new_signal(SHOTGUN_DBUS_PATH, SHOTGUN_DBUS_METHOD_BASE ".core", "status_self");
-   dbus_message_append_args(sig,
-     's', &desc,
-     'u', &st,
-     'i', &priority,
-     DBUS_TYPE_INVALID);
-   e_dbus_message_send(cl->dbus, sig, NULL, -1, NULL);
-   dbus_message_unref(sig);
+   eldbus_service_signal_emit(ui_core_iface, UI_DBUS_SIGNAL_STATUS_CHANGE_SELF, desc, st, priority);
 }
 
 void
 ui_dbus_signal_connect_state(Contact_List *cl)
 {
-   DBusMessage *sig;
    Eina_Bool state;
 
    state = (shotgun_connection_state_get(cl->account) == SHOTGUN_CONNECTION_STATE_CONNECTED);
 
-   sig = dbus_message_new_signal(SHOTGUN_DBUS_PATH, SHOTGUN_DBUS_METHOD_BASE ".core", "connected");
-   dbus_message_append_args(sig,
-     'b', &state,
-     DBUS_TYPE_INVALID);
-   e_dbus_message_send(cl->dbus, sig, NULL, -1, NULL);
-   dbus_message_unref(sig);
+   eldbus_service_signal_emit(ui_core_iface, UI_DBUS_SIGNAL_CONNECTED, state);
 }
 
 void
-ui_dbus_signal_link(Contact_List *cl, const char *url, Eina_Bool del, Eina_Bool self)
+ui_dbus_signal_link(Contact_List *cl EINA_UNUSED, const char *url, Eina_Bool del, Eina_Bool self)
 {
-   DBusMessage *sig;
+   UI_Dbus_Signals sig;
 
    if (del)
-     sig = dbus_message_new_signal(SHOTGUN_DBUS_PATH, SHOTGUN_DBUS_METHOD_BASE ".core", "link_del");
+     sig = UI_DBUS_SIGNAL_LINK_DEL;
    else if (self)
-     sig = dbus_message_new_signal(SHOTGUN_DBUS_PATH, SHOTGUN_DBUS_METHOD_BASE ".core", "link_self");
+     sig = UI_DBUS_SIGNAL_LINK_SELF_NEW;
    else
-     sig = dbus_message_new_signal(SHOTGUN_DBUS_PATH, SHOTGUN_DBUS_METHOD_BASE ".core", "link");
-   dbus_message_append_args(sig,
-     's', &url,
-     DBUS_TYPE_INVALID);
-   e_dbus_message_send(cl->dbus, sig, NULL, -1, NULL);
-   dbus_message_unref(sig);
+     sig = UI_DBUS_SIGNAL_LINK_NEW;
+   eldbus_service_signal_emit(ui_core_iface, sig, url);
 }
 
-static void
-_dbus_request_name_cb(void *data EINA_UNUSED, DBusMessage *msg, DBusError *err EINA_UNUSED)
+static const Eldbus_Method core_methods[] =
 {
-   DBusError error;
-   unsigned int ret;
+      { "quit", NULL, NULL, _dbus_quit_cb, 0},
+      {NULL, NULL, NULL, NULL, 0}
+};
 
-   memset(&error, 0, sizeof(DBusError));
+static const Eldbus_Method link_methods[] =
+{
+      { "list", NULL, ELDBUS_ARGS({"as", "urls"}), _dbus_link_list_cb, 0},
+      { "show", ELDBUS_ARGS({"s", "url_to_show"}), NULL, _dbus_link_show_cb, 0},
+      { "open", ELDBUS_ARGS({"s", "url_to_open"}), NULL, _dbus_link_open_cb, 0},
+      {NULL, NULL, NULL, NULL, 0}
+};
 
-   dbus_message_get_args(msg, &error,
-			 'u', &ret,
-			 DBUS_TYPE_INVALID);
-   INF("RequestName: %u", ret);
-}
+static const Eldbus_Method list_methods[] =
+{
+      { "get", NULL, ELDBUS_ARGS({"as", "jid_array"}), _dbus_list_get_cb, 0},
+      { "get_all", NULL, ELDBUS_ARGS({"as", "jid_array"}), _dbus_list_get_all_cb, 0},
+      {NULL, NULL, NULL, NULL, 0}
+};
+
+static const Eldbus_Method contact_methods[] =
+{
+      { "status", ELDBUS_ARGS({"s", "jid"}),
+        ELDBUS_ARGS({"s", "description"}, {"u", "Shotgun_User_Status"}, {"i", "priority"}), _dbus_contact_status_cb, 0},
+      { "icon", ELDBUS_ARGS({"s", "jid"}), ELDBUS_ARGS({"s", "eet_icon_key"}), _dbus_contact_icon_cb, 0},
+      { "info", ELDBUS_ARGS({"s", "jid"}),
+        ELDBUS_ARGS({"s", "display_name"}, {"s", "eet_icon_key"}, {"u", "Shotgun_User_Status"}, {"i", "priority"}), _dbus_contact_info_cb, 0 },
+      { "send",
+        ELDBUS_ARGS({"s", "jid"}, {"s", "message"}, {"u", "Shotgun_Message_Status"}), ELDBUS_ARGS({"b", "success"}), _dbus_contact_send_cb, 0},
+      { "send_echo",
+        ELDBUS_ARGS({"s", "jid"}, {"s", "message"}, {"u", "Shotgun_Message_Status"}), ELDBUS_ARGS({"b", "success"}), _dbus_contact_send_echo_cb, 0},
+      {NULL, NULL, NULL, NULL, 0}
+};
+
+static const Eldbus_Service_Interface_Desc core_desc =
+{
+   SHOTGUN_DBUS_METHOD_BASE ".core", core_methods, core_signals, NULL, NULL, NULL
+};
+
+static const Eldbus_Service_Interface_Desc link_desc =
+{
+   SHOTGUN_DBUS_METHOD_BASE ".link", link_methods, NULL, NULL, NULL, NULL
+};
+
+static const Eldbus_Service_Interface_Desc list_desc =
+{
+   SHOTGUN_DBUS_METHOD_BASE ".list", list_methods, NULL, NULL, NULL, NULL
+};
+
+static const Eldbus_Service_Interface_Desc contact_desc =
+{
+   SHOTGUN_DBUS_METHOD_BASE ".contact", contact_methods, NULL, NULL, NULL, NULL
+};
 
 void
 ui_dbus_init(Contact_List *cl)
 {
-   E_DBus_Interface *iface;
+   Eldbus_Service_Interface *iface;
 
-   if (cl->dbus) return;
+   if (ui_dbus_conn) return;
 
-   e_dbus_init();
-#ifdef HAVE_NOTIFY
-   e_notification_init();
-#endif
-   cl->dbus = e_dbus_bus_get(DBUS_BUS_SESSION);
-   e_dbus_request_name(cl->dbus, "org.shotgun", 0, _dbus_request_name_cb, NULL);
-   cl->dbus_object = e_dbus_object_add(cl->dbus, "/org/shotgun/remote", cl);
-   iface = e_dbus_interface_new("org.shotgun.core");
-   e_dbus_object_interface_attach(cl->dbus_object, iface);
-   e_dbus_interface_signal_add(iface, "new_msg", "ss");
-   e_dbus_interface_signal_add(iface, "new_msg_self", "ss");
-   e_dbus_interface_signal_add(iface, "status", "sssuui");
-   e_dbus_interface_signal_add(iface, "status_self", "sui");
-   e_dbus_interface_signal_add(iface, "link", "s");
-   e_dbus_interface_signal_add(iface, "link_del", "s");
-   e_dbus_interface_signal_add(iface, "link_self", "s");
-   e_dbus_interface_signal_add(iface, "connected", "b");
-   e_dbus_interface_unref(iface);
+   eldbus_init();
 
-   e_dbus_interface_method_add(iface, "quit", "", "", _dbus_quit_cb);
+   ui_dbus_conn = eldbus_connection_get(ELDBUS_CONNECTION_TYPE_SESSION);
 
-   iface = e_dbus_interface_new("org.shotgun.link");
-   e_dbus_object_interface_attach(cl->dbus_object, iface);
-   e_dbus_interface_unref(iface);
+   ui_core_iface = iface = eldbus_service_interface_register(ui_dbus_conn, SHOTGUN_DBUS_PATH, &core_desc);
+   eldbus_service_object_data_set(iface, "contact_list", cl);
+   eldbus_name_request(ui_dbus_conn, SHOTGUN_DBUS_INTERFACE, ELDBUS_NAME_REQUEST_FLAG_DO_NOT_QUEUE,
+                      NULL, iface);
 
-   e_dbus_interface_method_add(iface, "list", "", "as", _dbus_link_list_cb);
-   e_dbus_interface_method_add(iface, "show", "s", "", _dbus_link_show_cb);
-   e_dbus_interface_method_add(iface, "open", "s", "", _dbus_link_open_cb);
-
-   iface = e_dbus_interface_new("org.shotgun.list");
-   e_dbus_object_interface_attach(cl->dbus_object, iface);
-   e_dbus_interface_unref(iface);
-
-   e_dbus_interface_method_add(iface, "get", "", "as", _dbus_list_get_cb);
-   e_dbus_interface_method_add(iface, "get_all", "", "as", _dbus_list_get_all_cb);
-
-   iface = e_dbus_interface_new("org.shotgun.contact");
-   e_dbus_object_interface_attach(cl->dbus_object, iface);
-   e_dbus_interface_unref(iface);
-
-   e_dbus_interface_method_add(iface, "status", "s", "sui", _dbus_contact_status_cb);
-   e_dbus_interface_method_add(iface, "icon", "s", "s", _dbus_contact_icon_cb);
-   e_dbus_interface_method_add(iface, "info", "s", "ssui", _dbus_contact_info_cb);
-   e_dbus_interface_method_add(iface, "send", "ssu", "b", _dbus_contact_send_cb);
-   e_dbus_interface_method_add(iface, "send_echo", "ssu", "b", _dbus_contact_send_echo_cb);
+   iface = eldbus_service_interface_register(ui_dbus_conn, SHOTGUN_DBUS_PATH, &link_desc);
+   eldbus_service_object_data_set(iface, "contact_list", cl);
+   iface = eldbus_service_interface_register(ui_dbus_conn, SHOTGUN_DBUS_PATH, &list_desc);
+   eldbus_service_object_data_set(iface, "contact_list", cl);
+   iface = eldbus_service_interface_register(ui_dbus_conn, SHOTGUN_DBUS_PATH, &contact_desc);
+   eldbus_service_object_data_set(iface, "contact_list", cl);
+   eldbus_name_owner_changed_callback_add(ui_dbus_conn, NOTIFY_BUS, _notify_nameowner_change_cb, NULL, EINA_FALSE);
+   eldbus_name_owner_get(ui_dbus_conn, NOTIFY_BUS, _notify_nameowner_cb, NULL);
 }
 
-#ifdef HAVE_NOTIFY
 void
-ui_dbus_notify(Contact_List *cl, Evas_Object *img, const char *from, const char *msg)
+ui_dbus_notify(Contact_List *cl, Evas_Object *img, const char *from, const char *message)
 {
-   E_Notification *n;
-   E_Notification_Image *i;
+   Eldbus_Message *msg;
+   Eldbus_Message_Iter *iter, *sub;
 
    if (cl->settings->disable_notify) return;
+   if (!ui_notify_object) return;
 
-   n = e_notification_full_new("SHOTGUN!", 0, NULL, from, msg, 5000);
-   if (img)
-     {
-        i = e_notification_image_new();
-        if (e_notification_image_init(i, img))
-          e_notification_hint_image_data_set(n, i);
-     }
-   e_notification_send(n, NULL, NULL);
-   e_notification_unref(n);
-}
+   msg = eldbus_message_method_call_new(NOTIFY_BUS, NOTIFY_OBJECT, NOTIFY_INTERFACE, "Notify");
+
+   iter = eldbus_message_iter_get(msg);
+   eldbus_message_iter_arguments_append(iter, "susssas", "SHOTGUN!", 0, "shotgun", from, message, &sub);
+   eldbus_message_iter_container_close(iter, sub);
+
+   eldbus_message_iter_arguments_append(iter, "a{sv}", &sub);
+#if 0
+   _notify_image_serialize(sub, img);
 #endif
+   eldbus_message_iter_container_close(iter, sub);
+   
+   eldbus_message_iter_arguments_append(iter, "i", 5000); //timeout
+   eldbus_object_send(ui_notify_object, msg, NULL, NULL, -1);
+}
 
 void
 ui_dbus_shutdown(Contact_List *cl)
 {
    if (!cl) return;
-   if (cl->dbus_object) e_dbus_object_free(cl->dbus_object);
-   if (cl->dbus) e_dbus_connection_close(cl->dbus);
-   cl->dbus = NULL;
-   cl->dbus_object = NULL;
-#ifdef HAVE_NOTIFY
-   e_notification_shutdown();
-#endif
-   e_dbus_shutdown();
+   if (ui_dbus_conn) eldbus_connection_unref(ui_dbus_conn);
+   ui_dbus_conn = NULL;
+   ui_core_iface = NULL;
+   eldbus_shutdown();
 }
 #endif

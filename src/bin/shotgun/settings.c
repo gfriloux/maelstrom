@@ -330,7 +330,7 @@ settings_new(UI_WIN *ui)
    evas_object_data_set(ui->win, "browser-radio", sradio);
    elm_radio_value_pointer_set(radio, &ui->settings->browser_SETTING);
 
-#ifdef HAVE_NOTIFY
+#ifdef HAVE_DBUS
    SETTINGS_FRAME("DBus");
    elm_frame_collapse_set(fr, EINA_TRUE);
    SETTINGS_CHECK("Disable notifications", disable_notify, "Disables use of notification popups");

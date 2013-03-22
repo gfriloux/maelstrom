@@ -25,9 +25,6 @@ void *alloca (size_t);
 #include <Elementary.h>
 #include <Efx.h>
 #include <Azy.h>
-#ifdef HAVE_DBUS
-# include <E_DBus.h>
-#endif
 #endif
 #ifndef EINA_UNUSED
 # define EINA_UNUSED __attribute__((unused))
@@ -191,10 +188,7 @@ struct Contact_List
 
    Eina_Bool mode : 1; /* 0 for list, 1 for grid */
    Eina_Bool view : 1; /* 0 for regular, 1 for offlines */
-#ifdef HAVE_DBUS
-   E_DBus_Connection *dbus;
-   E_DBus_Object *dbus_object;
-#endif
+
    Image *dbus_image;
 
    Ecore_Idler *image_cleaner;
@@ -367,9 +361,7 @@ void ui_dbus_signal_status(Contact *c, Shotgun_Event_Presence *pres);
 void ui_dbus_signal_status_self(Contact_List *cl);
 void ui_dbus_signal_link(Contact_List *cl, const char *link, Eina_Bool del, Eina_Bool self);
 void ui_dbus_init(Contact_List *cl);
-# ifdef HAVE_NOTIFY
 void ui_dbus_notify(Contact_List *cl, Evas_Object *img, const char *from, const char *msg);
-# endif
 #endif
 
 #ifdef HAVE_AZY

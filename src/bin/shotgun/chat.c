@@ -87,7 +87,7 @@ chat_message_insert(Contact *c, const char *from, const char *msg, Eina_Bool me)
    buf = alloca(len);
    snprintf(buf, len, "<color=#%s>%s <b>%s:</b></color> %s<ps>", color, timebuf, from, s);
 
-#ifdef HAVE_NOTIFY
+#ifdef HAVE_DBUS
    if (!me)
      {
         Eina_Bool notify = EINA_FALSE;

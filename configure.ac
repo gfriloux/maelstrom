@@ -257,8 +257,8 @@ AC_ARG_ENABLE([edbus],
 
 if test -n "$build_shotgun_gui" ; then
    if test "x$want_edbus" != "xno"; then
-      PKG_CHECK_MODULES([edbus],
-         [edbus >= $min_efl_version],
+      PKG_CHECK_MODULES([EDBUS],
+         [edbus2],
          [
           AC_DEFINE(HAVE_DBUS, 1, [DBUS support])
           have_edbus="yes"
@@ -271,34 +271,6 @@ if test -n "$build_shotgun_gui" ; then
    if test "x$want_edbus" = "xyes" ; then
        if test -n "$have_edbus" ; then
           AC_MSG_ERROR([edbus support requested, but not found by pkg-config.])
-       fi
-   fi
-fi
-
-have_enotify=
-want_enotify=
-AC_ARG_ENABLE([enotify],
-   [AC_HELP_STRING([--disable-enotify], [disable enotify support. @<:@default=detect@:>@])],
-   [want_enotify=$enableval], [])
-
-if test -n "$build_shotgun_gui" ; then
-   if test "x$have_edbus" = "xyes" ; then
-     if test "x$want_enotify" != "xno"; then
-        PKG_CHECK_MODULES([enotify],
-           [enotify >= $min_efl_version],
-           [
-            AC_DEFINE(HAVE_NOTIFY, 1, [DBUS Notification support])
-            have_enotify="yes"
-           ],
-           [have_enotify="no"]
-        )
-     else
-         have_enotify="no"
-     fi
-   fi
-   if test "x$want_enotify" = "xyes" ; then
-       if test -n "$have_enotify" ; then
-          AC_MSG_ERROR([enotify support requested, but not found by pkg-config.])
        fi
    fi
 fi
