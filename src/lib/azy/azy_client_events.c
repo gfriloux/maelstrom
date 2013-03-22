@@ -106,11 +106,12 @@ _azy_client_transfer_complete(Azy_Client_Handler_Data *hd, Azy_Content *content)
      {
         Eina_Error r;
 
+        client->refcount++;
         r = cb(client, content, content->ret);
-#warning USELESS!
-        ecore_event_add(AZY_EVENT_CLIENT_RESULT, &r, (Ecore_End_Cb)_azy_event_handler_fake_free, NULL);
+        /* FIXME: do something here? */
         eina_hash_del_by_key(client->callbacks, &content->id);
         azy_events_client_transfer_complete_cleanup(client, content);
+        azy_client_free(client);
      }
    else
      azy_events_client_transfer_complete_event(hd, content);

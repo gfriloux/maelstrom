@@ -157,7 +157,6 @@ azy_init(void)
    AZY_EVENT_CLIENT_UPGRADE = ecore_event_type_new();
    AZY_EVENT_CLIENT_CONNECTED = ecore_event_type_new();
    AZY_EVENT_CLIENT_TRANSFER_COMPLETE = ecore_event_type_new();
-   AZY_EVENT_CLIENT_RESULT = ecore_event_type_new();
 
    AZY_EVENT_SERVER_CLIENT_ADD = ecore_event_type_new();
    AZY_EVENT_SERVER_CLIENT_UPGRADE = ecore_event_type_new();
