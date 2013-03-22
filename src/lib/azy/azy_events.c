@@ -894,10 +894,13 @@ azy_events_client_transfer_complete_cleanup(Azy_Client *client, Azy_Content *con
           }
      }
    /* http 1.0 requires that we disconnect after every response */
-   if ((!content->recv_net->proto) || (client && client->net && (!client->net->proto)))
+   if (client->net)
      {
-        ecore_con_server_del(client->net->conn);
-        client->net->conn = content->recv_net->conn = NULL;
+        if ((!content->recv_net->proto) || (client && client->net && (!client->net->proto)))
+          {
+             if (client->net->conn) ecore_con_server_del(client->net->conn);
+             client->net->conn = content->recv_net->conn = NULL;
+          }
      }
    azy_content_free(content);
 }
