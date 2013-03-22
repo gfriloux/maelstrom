@@ -111,11 +111,11 @@ _azy_client_transfer_complete(Azy_Client_Handler_Data *hd, Azy_Content *content)
         /* FIXME: do something here? */
         eina_hash_del_by_key(client->callbacks, &content->id);
         azy_events_client_transfer_complete_cleanup(client, content);
-        azy_client_free(client);
      }
    else
      azy_events_client_transfer_complete_event(hd, content);
    _azy_client_handler_data_free(hd);
+   if (cb) azy_client_free(client);
 }
 
 static Eina_Bool
