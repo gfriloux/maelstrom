@@ -159,8 +159,6 @@ _azy_date_field_tokenize(char *start, char **end, Azy_Date_Field exclude)
            case 2:
              if (!(exclude & AZY_DATE_FIELD_DAY))
                return AZY_DATE_FIELD_DAY;
-             return AZY_DATE_FIELD_IGNORE;
-
            case 4:
              if (!(exclude & AZY_DATE_FIELD_YEAR))
                return AZY_DATE_FIELD_YEAR;
