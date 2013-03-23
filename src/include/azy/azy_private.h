@@ -156,12 +156,14 @@ struct Azy_Rss
    Eina_Stringshare *title;
    Eina_Stringshare *img_url;
    Eina_Stringshare *generator;
+   Eina_List  *categories;
+   Eina_List  *items;
 
-   /* rss format only */
    union
    {
       struct
       {
+         /* rss format only */
          Eina_Stringshare *link;
          Eina_Stringshare *desc;
          time_t lastbuilddate;
@@ -191,9 +193,6 @@ struct Azy_Rss
          Eina_List  *atom_links;
       } atom;
    } data;
-
-   Eina_List  *categories;
-   Eina_List  *items;
 };
 
 struct Azy_Rss_Item
