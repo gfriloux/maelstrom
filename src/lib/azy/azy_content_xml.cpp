@@ -790,6 +790,37 @@ azy_content_deserialize_rss_xml(Azy_Content *content,
           }
         else if ((!rss->desc) && (!strcmp(name, "description")))
           rss->desc = eina_stringshare_add(n.child_value());
+        else if ((!rss->desc) && (!strcmp(name, "lastBuildDate")))
+          rss->lastbuilddate = azy_util_date_parse(strdupa(n.child_value()), NULL);
+        else if (!strcmp(name, "image"))
+          {
+             for (xml_node::iterator x = n.begin(); x != n.end(); ++x)
+               {
+                  xml_node nn;
+                  const char_t *s;
+
+                  nn = *x;
+                  name = nn.name();
+                  if (!strcmp(name, "url"))
+                    rss->image.url = eina_stringshare_add(nn.child_value());
+                  else if (!strcmp(name, "title"))
+                    rss->image.title = eina_stringshare_add(nn.child_value());
+                  else if (!strcmp(name, "link"))
+                    rss->image.link = eina_stringshare_add(nn.child_value());
+                  else if (!strcmp(name, "description"))
+                    rss->image.desc = eina_stringshare_add(nn.child_value());
+                  else if (!strcmp(name, "width"))
+                    {
+                       s = nn.child_value();
+                       if (s && s[0]) rss->image.w = strtol(s, NULL, 10);
+                    }
+                  else if (!strcmp(name, "height"))
+                    {
+                       s = nn.child_value();
+                       if (s && s[0]) rss->image.h = strtol(s, NULL, 10);
+                    }
+               }
+          }
         else if (!strcmp(name, "item") && (!n.empty()))
           {
              Azy_Rss_Item *i;

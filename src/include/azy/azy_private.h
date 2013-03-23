@@ -159,6 +159,15 @@ struct Azy_Rss
    /* rss format only */
    Eina_Stringshare *link;
    Eina_Stringshare *desc;
+   time_t lastbuilddate;
+   struct
+   {
+      Eina_Stringshare *url;
+      Eina_Stringshare *title;
+      Eina_Stringshare *link;
+      Eina_Stringshare *desc;
+      int w, h;
+   } image;
 
    /* atom format only */
    Eina_Stringshare *id;
@@ -193,6 +202,12 @@ struct Azy_Rss_Item
    Eina_Stringshare *author;
    Eina_Stringshare *content;
    Eina_Stringshare *content_encoded;
+   struct
+   {
+      Eina_Stringshare *url;
+      size_t length;
+      Eina_Stringshare *type;
+   } enclosure;
 
    /* atom format only */
    Eina_Stringshare *rights;
@@ -201,12 +216,6 @@ struct Azy_Rss_Item
    Eina_Stringshare *icon;
    time_t   updated;
    time_t   published;
-   struct
-   {
-      Eina_Stringshare *url;
-      size_t length;
-      Eina_Stringshare *type;
-   } enclosure;
    Eina_List  *categories;
    Eina_List  *contributors;
    Eina_List  *authors;

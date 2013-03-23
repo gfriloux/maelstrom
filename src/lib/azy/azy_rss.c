@@ -164,6 +164,10 @@ azy_rss_free(Azy_Rss *rss)
      {
         eina_stringshare_del(rss->link);
         eina_stringshare_del(rss->desc);
+        eina_stringshare_del(rss->image.url);
+        eina_stringshare_del(rss->image.title);
+        eina_stringshare_del(rss->image.link);
+        eina_stringshare_del(rss->image.desc);
      }
    EINA_LIST_FREE(rss->items, item)
      azy_rss_item_free(item);
@@ -464,7 +468,7 @@ azy_rss_link_print(const char *pre,
 /**
  * @brief Print an rss object
  *
- * This function will print an #Azy_Rss object along with all sub-objects,
+ * This function will print to stdout an #Azy_Rss object along with all sub-objects,
  * optionally indenting @p indent times using @p pre string.
  * @param pre String to indent with
  * @param indent Number of times to indent
@@ -545,8 +549,20 @@ azy_rss_print(const char *pre,
      }
    else
      {
+        struct tm *t;
+        char buf[1024];
+
+        t = localtime(&rss->lastbuilddate);
+        strftime(buf, sizeof(buf), "%FT%TZ", t);
         PRINT(link);
         PRINT(desc);
+        for (i = 0; i < indent; i++)
+          printf("%s", pre);
+        printf("updated: %s\n", buf);
+        PRINT(image.url);
+        PRINT(image.title);
+        PRINT(image.link);
+        PRINT(image.desc);
      }
 
    INDENT(item);

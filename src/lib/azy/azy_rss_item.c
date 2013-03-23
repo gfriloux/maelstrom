@@ -105,6 +105,8 @@ azy_rss_item_free(Azy_Rss_Item *item)
         eina_stringshare_del(item->author);
         eina_stringshare_del(item->content);
         eina_stringshare_del(item->content_encoded);
+        eina_stringshare_del(item->enclosure.url);
+        eina_stringshare_del(item->enclosure.type);
      }
    AZY_MAGIC_SET(item, AZY_MAGIC_NONE);
 
@@ -365,6 +367,8 @@ azy_rss_item_print(const char *pre,
         PRINT(guid);
         PRINT(comment_url);
         PRINT(author);
+        PRINT(enclosure.url);
+        PRINT(enclosure.type);
      }
 }
 
