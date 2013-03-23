@@ -193,11 +193,11 @@ struct Azy_Rss_Item
    Eina_Bool   atom : 1; /* true if item is Azy_Rss_Atom */
    Eina_Stringshare *title;
    Eina_List  *categories;
+   time_t published;
 
    /* rss format only */
    Eina_Stringshare *link;
    Eina_Stringshare *desc;
-   time_t date;
    Eina_Stringshare *guid;
    Eina_Stringshare *comment_url;
    Eina_Stringshare *author;
@@ -217,7 +217,6 @@ struct Azy_Rss_Item
    Eina_Stringshare *id;
    Eina_Stringshare *icon;
    time_t   updated;
-   time_t   published;
    Eina_List  *contributors;
    Eina_List  *authors;
    Eina_List  *atom_links;

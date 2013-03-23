@@ -176,14 +176,14 @@ azy_rss_item_links_get(const Azy_Rss_Item *item)
  * @return The publish date in unixtime
  */
 time_t
-azy_rss_item_date_get(const Azy_Rss_Item *item)
+azy_rss_item_pubdate_get(const Azy_Rss_Item *item)
 {
    if (!AZY_MAGIC_CHECK(item, AZY_MAGIC_RSS_ITEM))
      {
         AZY_MAGIC_FAIL(item, AZY_MAGIC_RSS_ITEM);
         return 0;
      }
-   return item->date;
+   return item->published;
 }
 
 void
@@ -279,6 +279,8 @@ azy_rss_item_print(const char *pre,
    int i;
    Eina_List *l;
    void *it;
+   char buf[256];
+   struct tm *t;
 
    if (!AZY_MAGIC_CHECK(item, AZY_MAGIC_RSS_ITEM))
      {
@@ -298,11 +300,14 @@ azy_rss_item_print(const char *pre,
   } while (0)
 
    PRINT(title);
+   t = localtime(&item->published);
+   strftime(buf, sizeof(buf), "%FT%TZ", t);
+   for (i = 0; i < indent; i++)
+     printf("%s", pre);
+   printf("published: %s\n", buf);
    if (item->atom)
      {
-        char buf[256];
         const char *str;
-        struct tm *t;
         PRINT(rights);
         PRINT(id);
         PRINT(summary);
@@ -313,12 +318,6 @@ azy_rss_item_print(const char *pre,
         for (i = 0; i < indent; i++)
           printf("%s", pre);
         printf("updated: %s\n", buf);
-
-        t = localtime(&item->published);
-        strftime(buf, sizeof(buf), "%FT%TZ", t);
-        for (i = 0; i < indent; i++)
-          printf("%s", pre);
-        printf("published: %s\n", buf);
 
         EINA_LIST_FOREACH(item->categories, l, str)
           {
@@ -360,12 +359,6 @@ azy_rss_item_print(const char *pre,
      {
         PRINT(link);
         PRINT(desc);
-        if (item->date)
-          {
-             for (i = 0; i < indent; i++)
-               printf("%s", pre);
-             printf("%s: %ld\n", "date", item->date);
-          }
         PRINT(guid);
         PRINT(comment_url);
         PRINT(author);

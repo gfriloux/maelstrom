@@ -851,8 +851,8 @@ azy_content_deserialize_rss_xml(Azy_Content *content,
                     }
                   else if ((!i->author) && (!strcmp(name, "dc:creator")))
                     eina_stringshare_replace(&i->author, nn.child_value());
-                  else if ((!i->date) && (!strcmp(name, "pubDate")))
-                    i->date = azy_util_date_parse(strdupa(nn.child_value()), NULL);
+                  else if ((!i->published) && (!strcmp(name, "pubDate")))
+                    i->published = azy_util_date_parse(strdupa(nn.child_value()), NULL);
                   else if (!strcmp(name, "category"))
                     {
                        Azy_Rss_Category *cat;
