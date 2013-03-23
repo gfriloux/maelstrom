@@ -54,10 +54,9 @@ azy_rss_item_new(void)
 {
    Azy_Rss_Item *item;
 
-   item = eina_mempool_malloc(rss_item_mempool, sizeof(Azy_Rss_Item));
+   item = eina_mempool_calloc(rss_item_mempool, sizeof(Azy_Rss_Item));
    EINA_SAFETY_ON_NULL_RETURN_VAL(item, NULL);
 
-   memset(item, 0, sizeof(Azy_Rss_Item));
    AZY_MAGIC_SET(item, AZY_MAGIC_RSS_ITEM);
    return item;
 }
@@ -81,34 +80,32 @@ azy_rss_item_free(Azy_Rss_Item *item)
      }
 
    eina_stringshare_del(item->title);
+   EINA_LIST_FREE(item->categories, d)
+     azy_rss_category_free(d);
    if (item->atom)
      {
-        eina_stringshare_del(item->rights);
-        eina_stringshare_del(item->summary);
-        eina_stringshare_del(item->id);
-        eina_stringshare_del(item->icon);
-        EINA_LIST_FREE(item->categories, d)
-          azy_rss_category_free(d);
-        EINA_LIST_FREE(item->contributors, d)
+        eina_stringshare_del(item->data.atom.rights);
+        eina_stringshare_del(item->data.atom.summary);
+        eina_stringshare_del(item->data.atom.id);
+        eina_stringshare_del(item->data.atom.icon);
+        EINA_LIST_FREE(item->data.atom.contributors, d)
           azy_rss_contact_free(d);
-        EINA_LIST_FREE(item->authors, d)
+        EINA_LIST_FREE(item->data.atom.authors, d)
           azy_rss_contact_free(d);
-        EINA_LIST_FREE(item->atom_links, d)
+        EINA_LIST_FREE(item->data.atom.atom_links, d)
           azy_rss_link_free(d);
      }
    else
      {
-        EINA_LIST_FREE(item->categories, d)
-          azy_rss_category_free(d);
-        eina_stringshare_del(item->link);
-        eina_stringshare_del(item->desc);
-        eina_stringshare_del(item->guid);
-        eina_stringshare_del(item->comment_url);
-        eina_stringshare_del(item->author);
-        eina_stringshare_del(item->content);
-        eina_stringshare_del(item->content_encoded);
-        eina_stringshare_del(item->enclosure.url);
-        eina_stringshare_del(item->enclosure.type);
+        eina_stringshare_del(item->data.rss.link);
+        eina_stringshare_del(item->data.rss.desc);
+        eina_stringshare_del(item->data.rss.guid);
+        eina_stringshare_del(item->data.rss.comment_url);
+        eina_stringshare_del(item->data.rss.author);
+        eina_stringshare_del(item->data.rss.content);
+        eina_stringshare_del(item->data.rss.content_encoded);
+        eina_stringshare_del(item->data.rss.enclosure.url);
+        eina_stringshare_del(item->data.rss.enclosure.type);
      }
    AZY_MAGIC_SET(item, AZY_MAGIC_NONE);
 
@@ -130,7 +127,7 @@ azy_rss_item_authors_get(const Azy_Rss_Item *item)
         AZY_MAGIC_FAIL(item, AZY_MAGIC_RSS_ITEM);
         return NULL;
      }
-   return item->authors;
+   return item->data.atom.authors;
 }
 
 /**
@@ -148,7 +145,7 @@ azy_rss_item_contributors_get(const Azy_Rss_Item *item)
         AZY_MAGIC_FAIL(item, AZY_MAGIC_RSS_ITEM);
         return NULL;
      }
-   return item->contributors;
+   return item->data.atom.contributors;
 }
 
 /**
@@ -166,7 +163,7 @@ azy_rss_item_links_get(const Azy_Rss_Item *item)
         AZY_MAGIC_FAIL(item, AZY_MAGIC_RSS_ITEM);
         return NULL;
      }
-   return item->atom_links;
+   return item->data.atom.atom_links;
 }
 
 /**
@@ -194,9 +191,9 @@ azy_rss_item_enclosure_get(const Azy_Rss_Item *item, Eina_Stringshare **url, Ein
         AZY_MAGIC_FAIL(item, AZY_MAGIC_RSS_ITEM);
         return;
      }
-   if (url) *url = item->enclosure.url;
-   if (content_type) *content_type = item->enclosure.type;
-   if (length) *length = item->enclosure.length;
+   if (url) *url = item->data.rss.enclosure.url;
+   if (content_type) *content_type = item->data.rss.enclosure.type;
+   if (length) *length = item->data.rss.enclosure.length;
 }
 
 /**
@@ -225,10 +222,10 @@ azy_rss_item_guid_is_permalink(const Azy_Rss_Item *item)
         AZY_MAGIC_FAIL(item, AZY_MAGIC_RSS_ITEM);
         return EINA_FALSE;
      }
-   return item->permalink;
+   return item->data.rss.permalink;
 }
 
-#define DEF(NAME) \
+#define DEF(NAME, MEMBER) \
 /**
    @brief Retrieve the NAME of an rss item object
    This function will return the NAME of @p item.  The NAME will be stringshared,
@@ -244,21 +241,21 @@ azy_rss_item_guid_is_permalink(const Azy_Rss_Item *item)
           AZY_MAGIC_FAIL(item, AZY_MAGIC_RSS_ITEM);  \
           return NULL;                               \
        }                                             \
-     return item->NAME;                              \
+     return item->MEMBER;                              \
   }
 
-DEF(title)
-DEF(link)
-DEF(desc)
-DEF(guid)
-DEF(comment_url)
-DEF(author)
-DEF(rights)
-DEF(summary)
-DEF(id)
-DEF(icon)
-DEF(content)
-DEF(content_encoded)
+DEF(title, title)
+DEF(link, data.rss.link)
+DEF(desc, data.rss.desc)
+DEF(guid, data.rss.guid)
+DEF(comment_url, data.rss.comment_url)
+DEF(author, data.rss.author)
+DEF(content, data.rss.content)
+DEF(content_encoded, data.rss.content_encoded)
+DEF(rights, data.atom.rights)
+DEF(summary, data.atom.summary)
+DEF(id, data.atom.id)
+DEF(icon, data.atom.icon)
 
 #undef DEF
 
@@ -305,26 +302,6 @@ azy_rss_item_print(const char *pre,
    for (i = 0; i < indent; i++)
      printf("%s", pre);
    printf("published: %s\n", buf);
-   if (item->atom)
-     {
-        const char *str;
-        PRINT(rights);
-        PRINT(id);
-        PRINT(summary);
-        PRINT(icon);
-
-        t = localtime(&item->updated);
-        strftime(buf, sizeof(buf), "%FT%TZ", t);
-        for (i = 0; i < indent; i++)
-          printf("%s", pre);
-        printf("updated: %s\n", buf);
-
-        EINA_LIST_FOREACH(item->categories, l, str)
-          {
-             for (i = 0; i < indent; i++)
-               printf("%s", pre);
-             printf("category: %s\n", str);
-          }
 
 #define INDENT(X) do {                   \
        if (item->X##s)                   \
@@ -335,21 +312,39 @@ azy_rss_item_print(const char *pre,
          }                               \
   }                                      \
   while (0)
+   INDENT(categorie);
+   EINA_LIST_FOREACH(item->categories, l, it)
+     {
+        azy_rss_category_print(pre, indent + 1, it);
+        if (l->next) printf("\n");
+     }
+   if (item->atom)
+     {
+        PRINT(data.atom.rights);
+        PRINT(data.atom.id);
+        PRINT(data.atom.summary);
+        PRINT(data.atom.icon);
 
-        INDENT(contributor);
-        EINA_LIST_FOREACH(item->contributors, l, it)
+        t = localtime(&item->data.atom.updated);
+        strftime(buf, sizeof(buf), "%FT%TZ", t);
+        for (i = 0; i < indent; i++)
+          printf("%s", pre);
+        printf("updated: %s\n", buf);
+
+        INDENT(data.atom.contributor);
+        EINA_LIST_FOREACH(item->data.atom.contributors, l, it)
           {
              azy_rss_contact_print(pre, indent + 1, it);
              if (l->next) printf("\n");
           }
-        INDENT(author);
-        EINA_LIST_FOREACH(item->authors, l, it)
+        INDENT(data.atom.author);
+        EINA_LIST_FOREACH(item->data.atom.authors, l, it)
           {
              azy_rss_contact_print(pre, indent + 1, it);
              if (l->next) printf("\n");
           }
-        INDENT(atom_link);
-        EINA_LIST_FOREACH(item->atom_links, l, it)
+        INDENT(data.atom.atom_link);
+        EINA_LIST_FOREACH(item->data.atom.atom_links, l, it)
           {
              azy_rss_link_print(pre, indent + 1, it);
              if (l->next) printf("\n");
@@ -357,13 +352,13 @@ azy_rss_item_print(const char *pre,
      }
    else
      {
-        PRINT(link);
-        PRINT(desc);
-        PRINT(guid);
-        PRINT(comment_url);
-        PRINT(author);
-        PRINT(enclosure.url);
-        PRINT(enclosure.type);
+        PRINT(data.rss.link);
+        PRINT(data.rss.desc);
+        PRINT(data.rss.guid);
+        PRINT(data.rss.comment_url);
+        PRINT(data.rss.author);
+        PRINT(data.rss.enclosure.url);
+        PRINT(data.rss.enclosure.type);
      }
 }
 

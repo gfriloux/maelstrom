@@ -155,35 +155,44 @@ struct Azy_Rss
    Eina_Bool   atom : 1; /* true if item is Azy_Rss_Atom */
    Eina_Stringshare *title;
    Eina_Stringshare *img_url;
+   Eina_Stringshare *generator;
 
    /* rss format only */
-   Eina_Stringshare *link;
-   Eina_Stringshare *desc;
-   time_t lastbuilddate;
-   unsigned int skipdays; // bitshift per day
-   unsigned long long skiphours; // bitshift per hour
-   unsigned int ttl; // in minutes
-   struct
+   union
    {
-      Eina_Stringshare *url;
-      Eina_Stringshare *title;
-      Eina_Stringshare *link;
-      Eina_Stringshare *desc;
-      int w, h;
-   } image;
+      struct
+      {
+         Eina_Stringshare *link;
+         Eina_Stringshare *desc;
+         time_t lastbuilddate;
+         unsigned int skipdays; // bitshift per day
+         unsigned long long skiphours; // bitshift per hour
+         unsigned int ttl; // in minutes
+         struct
+         {
+            Eina_Stringshare *url;
+            Eina_Stringshare *title;
+            Eina_Stringshare *link;
+            Eina_Stringshare *desc;
+            int w, h;
+         } image;
+      } rss;
 
-   /* atom format only */
-   Eina_Stringshare *id;
-   Eina_Stringshare *subtitle;
-   Eina_Stringshare *rights;
-   Eina_Stringshare *logo;
-   Eina_Stringshare *generator;
-   time_t      updated;
+      struct
+      {
+         /* atom format only */
+         Eina_Stringshare *id;
+         Eina_Stringshare *subtitle;
+         Eina_Stringshare *rights;
+         Eina_Stringshare *logo;
+         time_t      updated;
+         Eina_List  *contributors;
+         Eina_List  *authors;
+         Eina_List  *atom_links;
+      } atom;
+   } data;
+
    Eina_List  *categories;
-   Eina_List  *contributors;
-   Eina_List  *authors;
-   Eina_List  *atom_links;
-
    Eina_List  *items;
 };
 
@@ -195,33 +204,39 @@ struct Azy_Rss_Item
    Eina_List  *categories;
    time_t published;
 
-   /* rss format only */
-   Eina_Stringshare *link;
-   Eina_Stringshare *desc;
-   Eina_Stringshare *guid;
-   Eina_Stringshare *comment_url;
-   Eina_Stringshare *author;
-   Eina_Stringshare *content;
-   Eina_Stringshare *content_encoded;
-
-   struct
+   union
    {
-      Eina_Stringshare *url;
-      size_t length;
-      Eina_Stringshare *type;
-   } enclosure;
-
-   /* atom format only */
-   Eina_Stringshare *rights;
-   Eina_Stringshare *summary;
-   Eina_Stringshare *id;
-   Eina_Stringshare *icon;
-   time_t   updated;
-   Eina_List  *contributors;
-   Eina_List  *authors;
-   Eina_List  *atom_links;
-
-   Eina_Bool permalink : 1; //guid is permalink (guid is a link)
+      struct
+      {
+         /* rss format only */
+         Eina_Stringshare *link;
+         Eina_Stringshare *desc;
+         Eina_Stringshare *guid;
+         Eina_Stringshare *comment_url;
+         Eina_Stringshare *author;
+         Eina_Stringshare *content;
+         Eina_Stringshare *content_encoded;
+         struct
+         {
+            Eina_Stringshare *url;
+            size_t length;
+            Eina_Stringshare *type;
+         } enclosure;
+         Eina_Bool permalink : 1; //guid is permalink (guid is a link)
+      } rss;
+      struct
+      {
+         /* atom format only */
+         Eina_Stringshare *rights;
+         Eina_Stringshare *summary;
+         Eina_Stringshare *id;
+         Eina_Stringshare *icon;
+         time_t   updated;
+         Eina_List  *contributors;
+         Eina_List  *authors;
+         Eina_List  *atom_links;
+      } atom;
+   } data;
 };
 
 struct Azy_Net

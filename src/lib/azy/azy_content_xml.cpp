@@ -778,8 +778,8 @@ azy_content_deserialize_rss_xml(Azy_Content *content,
 
         if ((!rss->title) && (!strcmp(name, "title")))
           rss->title = eina_stringshare_add(n.child_value());
-        else if ((!rss->link) && (!strcmp(name, "link")))
-          rss->link = eina_stringshare_add(n.child_value());
+        else if ((!rss->data.rss.link) && (!strcmp(name, "link")))
+          rss->data.rss.link = eina_stringshare_add(n.child_value());
         else if (!strcmp(name, "category"))
           {
              Azy_Rss_Category *cat;
@@ -788,10 +788,12 @@ azy_content_deserialize_rss_xml(Azy_Content *content,
              if (cat)
                rss->categories = eina_list_append(rss->categories, cat);
           }
-        else if ((!rss->desc) && (!strcmp(name, "description")))
-          rss->desc = eina_stringshare_add(n.child_value());
-        else if ((!rss->desc) && (!strcmp(name, "lastBuildDate")))
-          rss->lastbuilddate = azy_util_date_parse(strdupa(n.child_value()), NULL);
+        else if ((!rss->data.rss.desc) && (!strcmp(name, "description")))
+          rss->data.rss.desc = eina_stringshare_add(n.child_value());
+        else if ((!rss->generator) && (!strcmp(name, "generator")))
+          rss->generator = eina_stringshare_add(n.child_value());
+        else if ((!rss->data.rss.lastbuilddate) && (!strcmp(name, "lastBuildDate")))
+          rss->data.rss.lastbuilddate = azy_util_date_parse(strdupa(n.child_value()), NULL);
         else if (!strcmp(name, "image"))
           {
              for (xml_node::iterator x = n.begin(); x != n.end(); ++x)
@@ -802,22 +804,22 @@ azy_content_deserialize_rss_xml(Azy_Content *content,
                   nn = *x;
                   name = nn.name();
                   if (!strcmp(name, "url"))
-                    rss->image.url = eina_stringshare_add(nn.child_value());
+                    rss->data.rss.image.url = eina_stringshare_add(nn.child_value());
                   else if (!strcmp(name, "title"))
-                    rss->image.title = eina_stringshare_add(nn.child_value());
+                    rss->data.rss.image.title = eina_stringshare_add(nn.child_value());
                   else if (!strcmp(name, "link"))
-                    rss->image.link = eina_stringshare_add(nn.child_value());
+                    rss->data.rss.image.link = eina_stringshare_add(nn.child_value());
                   else if (!strcmp(name, "description"))
-                    rss->image.desc = eina_stringshare_add(nn.child_value());
+                    rss->data.rss.image.desc = eina_stringshare_add(nn.child_value());
                   else if (!strcmp(name, "width"))
                     {
                        s = nn.child_value();
-                       if (s && s[0]) rss->image.w = strtol(s, NULL, 10);
+                       if (s && s[0]) rss->data.rss.image.w = strtol(s, NULL, 10);
                     }
                   else if (!strcmp(name, "height"))
                     {
                        s = nn.child_value();
-                       if (s && s[0]) rss->image.h = strtol(s, NULL, 10);
+                       if (s && s[0]) rss->data.rss.image.h = strtol(s, NULL, 10);
                     }
                }
           }
@@ -837,20 +839,20 @@ azy_content_deserialize_rss_xml(Azy_Content *content,
 
                   if ((!i->title) && (!strcmp(name, "title")))
                     i->title = eina_stringshare_add(nn.child_value());
-                  else if ((!i->link) && (!strcmp(name, "link")))
-                    i->link = eina_stringshare_add(nn.child_value());
-                  else if ((!i->desc) && (!strcmp(name, "description")))
-                    i->desc = eina_stringshare_add(nn.child_value());
-                  else if ((!i->author) && (!strcmp(name, "author")))
-                    eina_stringshare_replace(&i->author, nn.child_value());
+                  else if ((!i->data.rss.link) && (!strcmp(name, "link")))
+                    i->data.rss.link = eina_stringshare_add(nn.child_value());
+                  else if ((!i->data.rss.desc) && (!strcmp(name, "description")))
+                    i->data.rss.desc = eina_stringshare_add(nn.child_value());
+                  else if ((!i->data.rss.author) && (!strcmp(name, "author")))
+                    eina_stringshare_replace(&i->data.rss.author, nn.child_value());
                   else if (!strcmp(name, "enclosure"))
                     {
-                       i->enclosure.length = nn.attribute("length").as_uint();
-                       i->enclosure.url = eina_stringshare_add(nn.attribute("url").value());
-                       i->enclosure.type = eina_stringshare_add(nn.attribute("type").value());
+                       i->data.rss.enclosure.length = nn.attribute("length").as_uint();
+                       i->data.rss.enclosure.url = eina_stringshare_add(nn.attribute("url").value());
+                       i->data.rss.enclosure.type = eina_stringshare_add(nn.attribute("type").value());
                     }
-                  else if ((!i->author) && (!strcmp(name, "dc:creator")))
-                    eina_stringshare_replace(&i->author, nn.child_value());
+                  else if ((!i->data.rss.author) && (!strcmp(name, "dc:creator")))
+                    eina_stringshare_replace(&i->data.rss.author, nn.child_value());
                   else if ((!i->published) && (!strcmp(name, "pubDate")))
                     i->published = azy_util_date_parse(strdupa(nn.child_value()), NULL);
                   else if (!strcmp(name, "category"))
@@ -861,20 +863,20 @@ azy_content_deserialize_rss_xml(Azy_Content *content,
                        if (cat)
                          i->categories = eina_list_append(i->categories, cat);
                     }
-                  else if ((!i->guid) && (!strcmp(name, "guid")))
+                  else if ((!i->data.rss.guid) && (!strcmp(name, "guid")))
                     {
                        const char *permalink;
 
-                       i->guid = eina_stringshare_add(nn.child_value());
+                       i->data.rss.guid = eina_stringshare_add(nn.child_value());
                        permalink = nn.attribute("isPermaLink").value();
-                       if (permalink && permalink[0]) i->permalink = !strcmp(permalink, "true");
+                       if (permalink && permalink[0]) i->data.rss.permalink = !strcmp(permalink, "true");
                     }
-                  else if ((!i->comment_url) && (!strcmp(name, "comments")))
-                    i->comment_url = eina_stringshare_add(nn.child_value());
-                  else if ((!i->content) && (!strcmp(name, "content")))
-                    i->content = eina_stringshare_add(nn.child_value());
-                  else if ((!i->content_encoded) && (!strcmp(name, "content:encoded")))
-                    i->content_encoded = eina_stringshare_add(nn.child_value());
+                  else if ((!i->data.rss.comment_url) && (!strcmp(name, "comments")))
+                    i->data.rss.comment_url = eina_stringshare_add(nn.child_value());
+                  else if ((!i->data.rss.content) && (!strcmp(name, "content")))
+                    i->data.rss.content = eina_stringshare_add(nn.child_value());
+                  else if ((!i->data.rss.content_encoded) && (!strcmp(name, "content:encoded")))
+                    i->data.rss.content_encoded = eina_stringshare_add(nn.child_value());
                }
              rss->items = eina_list_append(rss->items, i);
           }
@@ -883,7 +885,7 @@ azy_content_deserialize_rss_xml(Azy_Content *content,
              const char *str;
 
              str = n.child_value();
-             rss->ttl = strtoul(str, NULL, 10);
+             rss->data.rss.ttl = strtoul(str, NULL, 10);
           }
         else if ((!strcmp(name, "skipDays")) || (!strcmp(name, "skipHours")))
           {
@@ -895,9 +897,9 @@ azy_content_deserialize_rss_xml(Azy_Content *content,
                   str = no.first_child().child_value();
                   if (!str) continue;
                   if (name[4] == 'D')
-                    rss->skipdays |= (1 << strtol(str, NULL, 10));
+                    rss->data.rss.skipdays |= (1 << strtol(str, NULL, 10));
                   else
-                    rss->skiphours |= (1 << strtol(str, NULL, 10));
+                    rss->data.rss.skiphours |= (1 << strtol(str, NULL, 10));
                }
           }
      }
@@ -1028,10 +1030,10 @@ azy_content_deserialize_atom_xml_entry(xml_node &node)
     it->X = eina_stringshare_add(n.child_value())
 
         SET(title);
-        else SET(rights);
-        else SET(summary);
-        else SET(id);
-        else SET(icon);
+        else SET(data.atom.rights);
+        else SET(data.atom.summary);
+        else SET(data.atom.id);
+        else SET(data.atom.icon);
 #undef SET
         else if (!strcmp(name, "category"))
           it->categories = eina_list_append(it->categories, eina_stringshare_add(n.attribute("term").value()));
@@ -1039,25 +1041,25 @@ azy_content_deserialize_atom_xml_entry(xml_node &node)
           {
              c = azy_content_deserialize_atom_xml_contact(n);
              if (c)
-               it->contributors = eina_list_append(it->contributors, c);
+               it->data.atom.contributors = eina_list_append(it->data.atom.contributors, c);
           }
         else if (!strcmp(name, "author"))
           {
              c = azy_content_deserialize_atom_xml_contact(n);
              if (c)
-               it->authors = eina_list_append(it->authors, c);
+               it->data.atom.authors = eina_list_append(it->data.atom.authors, c);
           }
         else if (!strcmp(name, "link"))
           {
              Azy_Rss_Link *rl;
 
              rl = azy_content_deserialize_atom_xml_link(n);
-             if (rl) it->atom_links = eina_list_append(it->atom_links, rl);
+             if (rl) it->data.atom.atom_links = eina_list_append(it->data.atom.atom_links, rl);
           }
         else if (!strcmp(name, "updated"))
           {
              strptime(n.child_value(), "%FT%TZ", &t);
-             it->updated = mktime(&t);
+             it->data.atom.updated = mktime(&t);
           }
         else if (!strcmp(name, "published"))
           {
@@ -1116,11 +1118,11 @@ azy_content_deserialize_atom_xml(Azy_Content *content,
     rss->X = eina_stringshare_add(n.child_value())
 
         SET(title);
-        else SET(rights);
-        else SET(subtitle);
+        else SET(data.atom.rights);
+        else SET(data.atom.subtitle);
         else SET(generator);
-        else SET(logo);
-        else SET(id);
+        else SET(data.atom.logo);
+        else SET(data.atom.id);
 #undef SET
         else if (!strcmp(name, "category"))
           {
@@ -1136,20 +1138,20 @@ azy_content_deserialize_atom_xml(Azy_Content *content,
           {
              c = azy_content_deserialize_atom_xml_contact(n);
              if (c)
-               rss->contributors = eina_list_append(rss->contributors, c);
+               rss->data.atom.contributors = eina_list_append(rss->data.atom.contributors, c);
           }
         else if (!strcmp(name, "author"))
           {
              c = azy_content_deserialize_atom_xml_contact(n);
              if (c)
-               rss->authors = eina_list_append(rss->authors, c);
+               rss->data.atom.authors = eina_list_append(rss->data.atom.authors, c);
           }
         else if (!strcmp(name, "link"))
           {
              Azy_Rss_Link *rl;
 
              rl = azy_content_deserialize_atom_xml_link(n);
-             if (rl) rss->atom_links = eina_list_append(rss->atom_links, rl);
+             if (rl) rss->data.atom.atom_links = eina_list_append(rss->data.atom.atom_links, rl);
           }
         else if (!strcmp(name, "icon"))
           rss->img_url = eina_stringshare_add(n.child_value());
@@ -1157,7 +1159,7 @@ azy_content_deserialize_atom_xml(Azy_Content *content,
           {
              struct tm t;
              strptime(n.child_value(), "%FT%TZ", &t);
-             rss->updated = mktime(&t);
+             rss->data.atom.updated = mktime(&t);
           }
         else if (!strcmp(name, "entry") && (!n.empty()))
           {

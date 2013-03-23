@@ -64,10 +64,9 @@ azy_rss_new(void)
 {
    Azy_Rss *rss;
 
-   rss = eina_mempool_malloc(rss_mempool, sizeof(Azy_Rss));
+   rss = eina_mempool_calloc(rss_mempool, sizeof(Azy_Rss));
    EINA_SAFETY_ON_NULL_RETURN_VAL(rss, NULL);
 
-   memset(rss, 0, sizeof(Azy_Rss));
    AZY_MAGIC_SET(rss, AZY_MAGIC_RSS);
    rss->refcount = 1;
    return rss;
@@ -144,30 +143,30 @@ azy_rss_free(Azy_Rss *rss)
    if (rss->refcount) return;
    eina_stringshare_del(rss->title);
    eina_stringshare_del(rss->img_url);
+   EINA_LIST_FREE(rss->categories, item)
+     azy_rss_category_free(item);
+   eina_stringshare_del(rss->generator);
    if (rss->atom)
      {
-        eina_stringshare_del(rss->rights);
-        eina_stringshare_del(rss->id);
-        eina_stringshare_del(rss->logo);
-        eina_stringshare_del(rss->generator);
-        eina_stringshare_del(rss->subtitle);
-        EINA_LIST_FREE(rss->categories, item)
-          azy_rss_category_free(item);
-        EINA_LIST_FREE(rss->contributors, item)
+        eina_stringshare_del(rss->data.atom.rights);
+        eina_stringshare_del(rss->data.atom.id);
+        eina_stringshare_del(rss->data.atom.logo);
+        eina_stringshare_del(rss->data.atom.subtitle);
+        EINA_LIST_FREE(rss->data.atom.contributors, item)
           azy_rss_contact_free(item);
-        EINA_LIST_FREE(rss->authors, item)
+        EINA_LIST_FREE(rss->data.atom.authors, item)
           azy_rss_contact_free(item);
-        EINA_LIST_FREE(rss->atom_links, item)
+        EINA_LIST_FREE(rss->data.atom.atom_links, item)
           azy_rss_link_free(item);
      }
    else
      {
-        eina_stringshare_del(rss->link);
-        eina_stringshare_del(rss->desc);
-        eina_stringshare_del(rss->image.url);
-        eina_stringshare_del(rss->image.title);
-        eina_stringshare_del(rss->image.link);
-        eina_stringshare_del(rss->image.desc);
+        eina_stringshare_del(rss->data.rss.link);
+        eina_stringshare_del(rss->data.rss.desc);
+        eina_stringshare_del(rss->data.rss.image.url);
+        eina_stringshare_del(rss->data.rss.image.title);
+        eina_stringshare_del(rss->data.rss.image.link);
+        eina_stringshare_del(rss->data.rss.image.desc);
      }
    EINA_LIST_FREE(rss->items, item)
      azy_rss_item_free(item);
@@ -243,7 +242,7 @@ azy_rss_authors_get(const Azy_Rss *rss)
         AZY_MAGIC_FAIL(rss, AZY_MAGIC_RSS);
         return NULL;
      }
-   return rss->authors;
+   return rss->data.atom.authors;
 }
 
 /**
@@ -261,7 +260,7 @@ azy_rss_contributors_get(const Azy_Rss *rss)
         AZY_MAGIC_FAIL(rss, AZY_MAGIC_RSS);
         return NULL;
      }
-   return rss->contributors;
+   return rss->data.atom.contributors;
 }
 
 /**
@@ -279,7 +278,7 @@ azy_rss_links_get(const Azy_Rss *rss)
         AZY_MAGIC_FAIL(rss, AZY_MAGIC_RSS);
         return NULL;
      }
-   return rss->atom_links;
+   return rss->data.atom.atom_links;
 }
 
 /**
@@ -316,7 +315,7 @@ azy_rss_skipdays_get(const Azy_Rss *rss)
         AZY_MAGIC_FAIL(rss, AZY_MAGIC_RSS);
         return 0;
      }
-   return rss->skipdays;
+   return rss->data.rss.skipdays;
 }
 
 /**
@@ -336,7 +335,7 @@ azy_rss_ttl_get(const Azy_Rss *rss)
         AZY_MAGIC_FAIL(rss, AZY_MAGIC_RSS);
         return 0;
      }
-   return rss->ttl;
+   return rss->data.rss.ttl;
 }
 
 /**
@@ -355,10 +354,10 @@ azy_rss_skiphours_get(const Azy_Rss *rss)
         AZY_MAGIC_FAIL(rss, AZY_MAGIC_RSS);
         return 0;
      }
-   return rss->skiphours;
+   return rss->data.rss.skiphours;
 }
 
-#define DEF(NAME) \
+#define DEF(NAME, MEMBER) \
 /**
    @brief Retrieve the NAME of an rss object
    This function will return the NAME of @p rss.  The NAME will be stringshared,
@@ -374,18 +373,18 @@ azy_rss_skiphours_get(const Azy_Rss *rss)
           AZY_MAGIC_FAIL(rss, AZY_MAGIC_RSS);  \
           return NULL;                         \
        }                                       \
-     return rss->NAME;                         \
+     return rss->MEMBER;                         \
   }
 
-DEF(title)
-DEF(link)
-DEF(img_url)
-DEF(desc)
-DEF(rights)
-DEF(id)
-DEF(logo)
-DEF(generator)
-DEF(subtitle)
+DEF(title, title)
+DEF(link, data.rss.link)
+DEF(img_url, img_url)
+DEF(desc, data.rss.desc)
+DEF(rights, data.atom.rights)
+DEF(id, data.atom.id)
+DEF(logo, data.atom.logo)
+DEF(generator, generator)
+DEF(subtitle, data.atom.subtitle)
 
 #undef DEF
 
@@ -420,6 +419,39 @@ azy_rss_contact_print(const char *pre,
    PRINT(name);
    PRINT(uri);
    PRINT(email);
+#undef PRINT
+}
+
+/**
+ * @brief Print an rss category object
+ *
+ * This function will print an #Azy_Rss_Category object,
+ * optionally indenting @p indent times using @p pre string.
+ * @param pre String to indent with
+ * @param indent Number of times to indent
+ * @param li The rss category object (NOT NULL)
+ */
+void
+azy_rss_category_print(const char *pre,
+                   int indent,
+                   const Azy_Rss_Category *cat)
+{
+   int i;
+   if (!cat) return;
+
+   if (!pre) pre = "\t";
+
+#define PRINT(X) do {                      \
+       if (cat->X)                          \
+         {                                 \
+            for (i = 0; i < indent; i++)   \
+              printf("%s", pre);           \
+            printf("%s: %s\n", #X, cat->X); \
+         }                                 \
+  } while (0)
+
+   PRINT(domain);
+   PRINT(category);
 #undef PRINT
 }
 
@@ -480,7 +512,6 @@ azy_rss_print(const char *pre,
               const Azy_Rss *rss)
 {
    int i;
-   const char *str;
    Eina_List *l;
    void *item;
 
@@ -503,20 +534,20 @@ azy_rss_print(const char *pre,
 
    PRINT(title);
    PRINT(img_url);
+   PRINT(generator);
+   EINA_LIST_FOREACH(rss->categories, l, item)
+     {
+        
+        azy_rss_category_print(pre, indent + 1, item);
+        if (l->next) printf("\n");
+     }
 
    if (rss->atom)
      {
-        PRINT(rights);
-        PRINT(id);
-        PRINT(logo);
-        PRINT(generator);
-        PRINT(subtitle);
-        EINA_LIST_FOREACH(rss->categories, l, str)
-          {
-             for (i = 0; i < indent; i++)
-               printf("%s", pre);
-             printf("category: %s\n", str);
-          }
+        PRINT(data.atom.rights);
+        PRINT(data.atom.id);
+        PRINT(data.atom.logo);
+        PRINT(data.atom.subtitle);
 
 #define INDENT(X) do {                   \
        if (rss->X##s)                    \
@@ -528,20 +559,20 @@ azy_rss_print(const char *pre,
   }                                      \
   while (0)
 
-        INDENT(contributor);
-        EINA_LIST_FOREACH(rss->contributors, l, item)
+        INDENT(data.atom.contributor);
+        EINA_LIST_FOREACH(rss->data.atom.contributors, l, item)
           {
              azy_rss_contact_print(pre, indent + 1, item);
              if (l->next) printf("\n");
           }
-        INDENT(author);
-        EINA_LIST_FOREACH(rss->authors, l, item)
+        INDENT(data.atom.author);
+        EINA_LIST_FOREACH(rss->data.atom.authors, l, item)
           {
              azy_rss_contact_print(pre, indent + 1, item);
              if (l->next) printf("\n");
           }
-        INDENT(atom_link);
-        EINA_LIST_FOREACH(rss->atom_links, l, item)
+        INDENT(data.atom.atom_link);
+        EINA_LIST_FOREACH(rss->data.atom.atom_links, l, item)
           {
              azy_rss_link_print(pre, indent + 1, item);
              if (l->next) printf("\n");
@@ -552,17 +583,17 @@ azy_rss_print(const char *pre,
         struct tm *t;
         char buf[1024];
 
-        t = localtime(&rss->lastbuilddate);
+        t = localtime(&rss->data.rss.lastbuilddate);
         strftime(buf, sizeof(buf), "%FT%TZ", t);
-        PRINT(link);
-        PRINT(desc);
+        PRINT(data.rss.link);
+        PRINT(data.rss.desc);
         for (i = 0; i < indent; i++)
           printf("%s", pre);
         printf("updated: %s\n", buf);
-        PRINT(image.url);
-        PRINT(image.title);
-        PRINT(image.link);
-        PRINT(image.desc);
+        PRINT(data.rss.image.url);
+        PRINT(data.rss.image.title);
+        PRINT(data.rss.image.link);
+        PRINT(data.rss.image.desc);
      }
 
    INDENT(item);
