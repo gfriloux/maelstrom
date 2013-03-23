@@ -23,7 +23,7 @@ ret_(Azy_Client *cli EINA_UNUSED, int type EINA_UNUSED, Azy_Event_Client_Transfe
         return azy_content_error_code_get(content);
      }
 
-   r = azy_content_return_get(content);
+   r = azy_content_return_get(content, NULL);
  //  printf("Success? %s!\n", ret ? "YES" : "NO");
 
    EINA_LIST_FOREACH(r, l, ret)

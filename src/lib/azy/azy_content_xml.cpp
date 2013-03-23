@@ -862,6 +862,7 @@ azy_content_deserialize_rss_xml(Azy_Content *content,
                }
           }
      }
+   content->ret_is_rss = 1;
    content->ret = rss;
    return EINA_TRUE;
 
@@ -1116,6 +1117,7 @@ azy_content_deserialize_atom_xml(Azy_Content *content,
              if (i) rss->items = eina_list_append(rss->items, i);
           }
      }
+   content->ret_is_rss = 1;
    content->ret = rss;
    return EINA_TRUE;
 }

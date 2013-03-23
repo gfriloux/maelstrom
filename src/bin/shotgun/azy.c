@@ -12,6 +12,7 @@ static Eina_Bool
 ui_azy_return(Contact_List *cl, int type EINA_UNUSED, Azy_Content *content)
 {
    Azy_Rss *rss;
+   Eina_Bool is_rss;
    const Eina_List *items, *l;
    Azy_Rss_Item *item;
    const char *id;
@@ -24,7 +25,8 @@ ui_azy_return(Contact_List *cl, int type EINA_UNUSED, Azy_Content *content)
         return ECORE_CALLBACK_RENEW;
      }
 
-   rss = azy_content_return_get(content);
+   rss = azy_content_return_get(content, &is_rss);
+   if (!is_rss) return ECORE_CALLBACK_RENEW;
    //azy_rss_print("> ", 0, rss);
    items = azy_rss_items_get(rss);
    if (!items) return ECORE_CALLBACK_RENEW;

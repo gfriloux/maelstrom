@@ -499,7 +499,7 @@ EAPI void                      azy_content_param_add(Azy_Content *content, Eina_
 EAPI Eina_Value                *azy_content_param_get(Azy_Content *content, unsigned int pos);
 EAPI Eina_List                *azy_content_params_get(Azy_Content *content);
 EAPI void                      azy_content_retval_set(Azy_Content *content, Eina_Value *val);
-EAPI void                     *azy_content_return_get(Azy_Content *content);
+EAPI void                     *azy_content_return_get(Azy_Content *content, Eina_Bool *rss);
 EAPI Azy_Client_Call_Id        azy_content_id_get(Azy_Content *content);
 EAPI Eina_Value                *azy_content_retval_get(Azy_Content *content);
 EAPI void                      azy_content_error_code_set(Azy_Content *content, Eina_Error code);
@@ -552,6 +552,7 @@ EAPI double                    azy_client_timeout_get(Azy_Client *client);
 EAPI void                      azy_rss_free(Azy_Rss *rss);
 EAPI void                      azy_rss_link_free(Azy_Rss_Link *li);
 EAPI void                      azy_rss_contact_free(Azy_Rss_Contact *c);
+EAPI void                      azy_rss_ref(Azy_Rss *rss);
 EAPI void                      azy_rss_item_free(Azy_Rss_Item *item);
 EAPI const Eina_List          *azy_rss_items_get(const Azy_Rss *rss);
 EAPI Eina_List                *azy_rss_items_steal(Azy_Rss *rss);

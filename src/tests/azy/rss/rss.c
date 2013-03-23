@@ -13,6 +13,7 @@ static Eina_Bool
 ret_(Azy_Client *cli EINA_UNUSED, int type EINA_UNUSED, Azy_Event_Client_Transfer_Complete *cse)
 {
    Azy_Rss *ret;
+   Eina_Bool rss;
    Azy_Content *content = cse->content;
 
    if (azy_content_error_is_set(content))
@@ -21,10 +22,10 @@ ret_(Azy_Client *cli EINA_UNUSED, int type EINA_UNUSED, Azy_Event_Client_Transfe
         return ECORE_CALLBACK_RENEW;
      }
 
-   ret = azy_content_return_get(content);
+   ret = azy_content_return_get(content, &rss);
  //  printf("Success? %s!\n", ret ? "YES" : "NO");
 
-   azy_rss_print("> ", 0, ret);
+   if (rss) azy_rss_print("> ", 0, ret);
    return ECORE_CALLBACK_RENEW;
 }
 

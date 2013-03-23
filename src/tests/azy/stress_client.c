@@ -46,7 +46,7 @@ ret_(Azy_Client *client EINA_UNUSED, int type EINA_UNUSED, Azy_Content *content)
         printf("%u: Error encountered: %s\n", azy_content_id_get(content), azy_content_error_message_get(content));
         return azy_content_error_code_get(content);
      }
-   //printf("#%i: Success? %s!\n", x, azy_content_return_get(content) ? "YES" : "NO");
+   //printf("#%i: Success? %s!\n", x, azy_content_return_get(content, NULL) ? "YES" : "NO");
 
    if (x == (NUM_CLIENTS * NUM_CLIENTS))
      ecore_main_loop_quit();
@@ -67,7 +67,7 @@ ret_(Azy_Client *client EINA_UNUSED, int type EINA_UNUSED, Azy_Content *content)
         return azy_content_error_code_get(content);
      }
 
-   ret = azy_content_return_get(content);
+   ret = azy_content_return_get(content, NULL);
  //  printf("#%i: Success? %s!\n", x, ret ? "YES" : "NO");
 
    if (x == (NUM_CLIENTS * NUM_CLIENTS))

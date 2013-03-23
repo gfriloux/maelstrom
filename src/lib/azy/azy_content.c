@@ -890,16 +890,18 @@ azy_content_dump_string(const Azy_Content *content,
  * @note the returned content is owned by @p content and should not
  * be manually freed.
  * @param content The content object (NOT NULL)
+ * @param rss Pointer to store whether the return is #Azy_Rss
  * @return The method response return value, or NULL on failure
  */
 void *
-azy_content_return_get(Azy_Content *content)
+azy_content_return_get(Azy_Content *content, Eina_Bool *rss)
 {
    if (!AZY_MAGIC_CHECK(content, AZY_MAGIC_CONTENT))
      {
         AZY_MAGIC_FAIL(content, AZY_MAGIC_CONTENT);
         return NULL;
      }
+   if (rss) *rss = content->ret_is_rss;
    return content->ret;
 }
 

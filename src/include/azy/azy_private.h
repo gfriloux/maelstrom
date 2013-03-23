@@ -142,6 +142,7 @@ struct Azy_Content
    Eina_Binbuf          *buffer;
 
    Eina_Bool             error_set : 1;
+   Eina_Bool             ret_is_rss : 1;
    Eina_Error            errcode; //internal code
    int                   faultcode; //code to actually report
    const char           *faultmsg; //if non-null, message to reply with instead of message associated with errcode
@@ -150,6 +151,7 @@ struct Azy_Content
 struct Azy_Rss
 {
    AZY_MAGIC;
+   unsigned int refcount;
    Eina_Bool   atom : 1; /* true if item is Azy_Rss_Atom */
    Eina_Stringshare *title;
    Eina_Stringshare *img_url;

@@ -69,6 +69,7 @@ azy_rss_new(void)
 
    memset(rss, 0, sizeof(Azy_Rss));
    AZY_MAGIC_SET(rss, AZY_MAGIC_RSS);
+   rss->refcount = 1;
    return rss;
 }
 
@@ -139,7 +140,8 @@ azy_rss_free(Azy_Rss *rss)
         AZY_MAGIC_FAIL(rss, AZY_MAGIC_RSS);
         return;
      }
-
+   if (rss->refcount) rss->refcount--;
+   if (rss->refcount) return;
    eina_stringshare_del(rss->title);
    eina_stringshare_del(rss->img_url);
    if (rss->atom)
@@ -169,6 +171,17 @@ azy_rss_free(Azy_Rss *rss)
    AZY_MAGIC_SET(rss, AZY_MAGIC_NONE);
 
    eina_mempool_free(rss_mempool, rss);
+}
+
+void
+azy_rss_ref(Azy_Rss *rss)
+{
+   if (!AZY_MAGIC_CHECK(rss, AZY_MAGIC_RSS))
+     {
+        AZY_MAGIC_FAIL(rss, AZY_MAGIC_RSS);
+        return;
+     }
+   rss->refcount++;
 }
 
 /**
