@@ -98,6 +98,8 @@ azy_rss_item_free(Azy_Rss_Item *item)
      }
    else
      {
+        EINA_LIST_FREE(item->categories, d)
+          azy_rss_category_free(d);
         eina_stringshare_del(item->link);
         eina_stringshare_del(item->desc);
         eina_stringshare_del(item->guid);

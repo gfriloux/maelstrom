@@ -192,6 +192,7 @@ struct Azy_Rss_Item
    AZY_MAGIC;
    Eina_Bool   atom : 1; /* true if item is Azy_Rss_Atom */
    Eina_Stringshare *title;
+   Eina_List  *categories;
 
    /* rss format only */
    Eina_Stringshare *link;
@@ -202,6 +203,7 @@ struct Azy_Rss_Item
    Eina_Stringshare *author;
    Eina_Stringshare *content;
    Eina_Stringshare *content_encoded;
+
    struct
    {
       Eina_Stringshare *url;
@@ -216,7 +218,6 @@ struct Azy_Rss_Item
    Eina_Stringshare *icon;
    time_t   updated;
    time_t   published;
-   Eina_List  *categories;
    Eina_List  *contributors;
    Eina_List  *authors;
    Eina_List  *atom_links;

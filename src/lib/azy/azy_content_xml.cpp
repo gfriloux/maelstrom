@@ -780,7 +780,7 @@ azy_content_deserialize_rss_xml(Azy_Content *content,
           rss->title = eina_stringshare_add(n.child_value());
         else if ((!rss->link) && (!strcmp(name, "link")))
           rss->link = eina_stringshare_add(n.child_value());
-        else if ((!rss->desc) && (!strcmp(name, "category")))
+        else if (!strcmp(name, "category"))
           {
              Azy_Rss_Category *cat;
 
@@ -853,6 +853,14 @@ azy_content_deserialize_rss_xml(Azy_Content *content,
                     eina_stringshare_replace(&i->author, nn.child_value());
                   else if ((!i->date) && (!strcmp(name, "pubDate")))
                     i->date = azy_util_date_parse(strdupa(nn.child_value()), NULL);
+                  else if (!strcmp(name, "category"))
+                    {
+                       Azy_Rss_Category *cat;
+
+                       cat = azy_content_deserialize_rss_category(n);
+                       if (cat)
+                         i->categories = eina_list_append(i->categories, cat);
+                    }
                   else if ((!i->guid) && (!strcmp(name, "guid")))
                     {
                        const char *permalink;
