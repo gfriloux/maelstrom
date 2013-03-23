@@ -40,3 +40,32 @@ src/bin/shotgun/settings.c \
 src/bin/shotgun/ui.c \
 src/bin/shotgun/ui.h \
 src/bin/shotgun/util.c
+
+EDJE_FLAGS = -id $(top_srcdir)/src/bin/shotgun/theme
+
+shotgun_gui_filesdir = $(datadir)/shotgun
+shotgun_gui_files_DATA = src/bin/shotgun/default.edj
+
+images = \
+src/bin/shotgun/theme/arrows_both.png \
+src/bin/shotgun/theme/arrows_pending_left.png \
+src/bin/shotgun/theme/arrows_pending_right.png \
+src/bin/shotgun/theme/arrows_rejected.png \
+src/bin/shotgun/theme/dialog_ok.png \
+src/bin/shotgun/theme/logout.png \
+src/bin/shotgun/theme/settings.png \
+src/bin/shotgun/theme/status.png \
+src/bin/shotgun/theme/useradd.png \
+src/bin/shotgun/theme/userdel.png \
+src/bin/shotgun/theme/useroffline.png \
+src/bin/shotgun/theme/userunknown.png \
+src/bin/shotgun/theme/x.png
+
+EXTRA_DIST += \
+src/bin/shotgun/theme/default.edc \
+$(images)
+
+src/bin/shotgun/default.edj: $(images) src/bin/shotgun/theme/default.edc
+	@edje_cc $(EDJE_FLAGS) \
+	$(top_srcdir)/src/bin/shotgun/theme/default.edc \
+	$(top_builddir)/src/bin/shotgun/default.edj

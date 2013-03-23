@@ -28,32 +28,3 @@ remove-icons:
 
 install-data-hook: rename-icons
 uninstall-hook: remove-icons
-
-EDJE_FLAGS = -v -id $(top_srcdir)/data/theme
-
-shotgun_gui_filesdir = $(datadir)/shotgun
-shotgun_gui_files_DATA = data/theme/default.edj
-
-images = \
-data/theme/arrows_both.png \
-data/theme/arrows_pending_left.png \
-data/theme/arrows_pending_right.png \
-data/theme/arrows_rejected.png \
-data/theme/dialog_ok.png \
-data/theme/logout.png \
-data/theme/settings.png \
-data/theme/status.png \
-data/theme/useradd.png \
-data/theme/userdel.png \
-data/theme/useroffline.png \
-data/theme/userunknown.png \
-data/theme/x.png
-
-EXTRA_DIST += \
-data/theme/default.edc \
-$(images)
-
-data/theme/default.edj: $(images) data/theme/default.edc
-	@edje_cc $(EDJE_FLAGS) \
-	$(top_srcdir)/data/theme/default.edc \
-	$(top_builddir)/data/theme/default.edj
