@@ -86,7 +86,6 @@ chat_message_insert(Contact *c, const char *from, const char *msg, Eina_Bool me)
    len += strlen(from) + strlen(s) + sizeof("<color=#123456>%s <b>%s:</b></color> %s<ps>") + 5;
    buf = alloca(len);
    snprintf(buf, len, "<color=#%s>%s <b>%s:</b></color> %s<ps>", color, timebuf, from, s);
-   free(s);
 
 #ifdef HAVE_NOTIFY
    if (!me)
@@ -122,11 +121,12 @@ chat_message_insert(Contact *c, const char *from, const char *msg, Eina_Bool me)
                        img = NULL;
                     }
                }
-             ui_dbus_notify(c->list, img, from, msg);
+             ui_dbus_notify(c->list, img, from, s);
              if (img) evas_object_del(img);
           }
      }
 #endif
+   free(s);
    l = c->list->image_list;
    if (e)
      elm_entry_entry_append(e, buf);
