@@ -199,8 +199,8 @@ struct Azy_Rss_Item
    Eina_Stringshare *summary;
    Eina_Stringshare *id;
    Eina_Stringshare *icon;
-   struct tm   updated;
-   struct tm   published;
+   time_t   updated;
+   time_t   published;
    struct
    {
       Eina_Stringshare *url;

@@ -298,17 +298,20 @@ azy_rss_item_print(const char *pre,
      {
         char buf[256];
         const char *str;
+        struct tm *t;
         PRINT(rights);
         PRINT(id);
         PRINT(summary);
         PRINT(icon);
 
-        strftime(buf, sizeof(buf), "%FT%TZ", &item->updated);
+        t = localtime(&item->updated);
+        strftime(buf, sizeof(buf), "%FT%TZ", t);
         for (i = 0; i < indent; i++)
           printf("%s", pre);
         printf("updated: %s\n", buf);
 
-        strftime(buf, sizeof(buf), "%FT%TZ", &item->published);
+        t = localtime(&item->published);
+        strftime(buf, sizeof(buf), "%FT%TZ", t);
         for (i = 0; i < indent; i++)
           printf("%s", pre);
         printf("published: %s\n", buf);

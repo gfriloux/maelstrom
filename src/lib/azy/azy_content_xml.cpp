@@ -979,6 +979,7 @@ azy_content_deserialize_atom_xml_entry(xml_node &node)
         xml_node n;
         const char *name;
         Azy_Rss_Contact *c;
+        struct tm t;
 
         n = *i;
         name = n.name();
@@ -1015,9 +1016,15 @@ azy_content_deserialize_atom_xml_entry(xml_node &node)
              if (rl) it->atom_links = eina_list_append(it->atom_links, rl);
           }
         else if (!strcmp(name, "updated"))
-          strptime(n.child_value(), "%FT%TZ", &it->updated);
+          {
+             strptime(n.child_value(), "%FT%TZ", &t);
+             it->updated = mktime(&t);
+          }
         else if (!strcmp(name, "published"))
-          strptime(n.child_value(), "%FT%TZ", &it->published);
+          {
+             strptime(n.child_value(), "%FT%TZ", &t);
+             it->published = mktime(&t);
+          }
      }
    return it;
 }
