@@ -1146,7 +1146,11 @@ azy_content_deserialize_atom_xml(Azy_Content *content,
         else if (!strcmp(name, "icon"))
           rss->img_url = eina_stringshare_add(n.child_value());
         else if (!strcmp(name, "updated"))
-          strptime(n.child_value(), "%FT%TZ", &rss->updated);
+          {
+             struct tm t;
+             strptime(n.child_value(), "%FT%TZ", &t);
+             rss->updated = mktime(&t);
+          }
         else if (!strcmp(name, "entry") && (!n.empty()))
           {
              Azy_Rss_Item *i;

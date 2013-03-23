@@ -160,6 +160,9 @@ struct Azy_Rss
    Eina_Stringshare *link;
    Eina_Stringshare *desc;
    time_t lastbuilddate;
+   unsigned int skipdays; // bitshift per day
+   unsigned long long skiphours; // bitshift per hour
+   unsigned int ttl; // in minutes
    struct
    {
       Eina_Stringshare *url;
@@ -175,14 +178,11 @@ struct Azy_Rss
    Eina_Stringshare *rights;
    Eina_Stringshare *logo;
    Eina_Stringshare *generator;
-   struct tm   updated;
+   time_t      updated;
    Eina_List  *categories;
    Eina_List  *contributors;
    Eina_List  *authors;
    Eina_List  *atom_links;
-   unsigned int skipdays; // bitshift per day
-   unsigned long long skiphours; // bitshift per hour
-   unsigned int ttl; // in minutes
 
    Eina_List  *items;
 };
