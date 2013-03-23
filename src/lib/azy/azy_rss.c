@@ -24,13 +24,18 @@
  */
 
 static Eina_Mempool *rss_mempool = NULL;
+static Eina_Mempool *rss_category_mempool = NULL;
 
 Eina_Bool
 azy_rss_init(const char *type)
 {
    if (!azy_rss_item_init(type)) return EINA_FALSE;
    rss_mempool = eina_mempool_add(type, "Azy_Rss", NULL, sizeof(Azy_Rss), 64);
-   if (rss_mempool) return EINA_TRUE;
+   if (rss_mempool)
+     {
+        rss_category_mempool = eina_mempool_add(type, "Azy_Rss_Category", NULL, sizeof(Azy_Rss_Category), 64);
+        return EINA_TRUE;
+     }
 
    if (strcmp(type, "pass_through")) return azy_rss_init("pass_through");
    azy_rss_item_shutdown();
@@ -44,6 +49,8 @@ azy_rss_shutdown(void)
    azy_rss_item_shutdown();
    eina_mempool_del(rss_mempool);
    rss_mempool = NULL;
+   eina_mempool_del(rss_category_mempool);
+   rss_category_mempool = NULL;
 }
 
 /*
@@ -63,6 +70,21 @@ azy_rss_new(void)
    memset(rss, 0, sizeof(Azy_Rss));
    AZY_MAGIC_SET(rss, AZY_MAGIC_RSS);
    return rss;
+}
+
+Azy_Rss_Category *
+azy_rss_category_new(void)
+{
+   return eina_mempool_calloc(rss_category_mempool, sizeof(Azy_Rss_Category));
+}
+
+void
+azy_rss_category_free(Azy_Rss_Category *cat)
+{
+   if (!cat) return;
+   eina_stringshare_del(cat->category);
+   eina_stringshare_del(cat->domain);
+   eina_mempool_free(rss_category_mempool, cat);
 }
 
 /**
@@ -128,7 +150,7 @@ azy_rss_free(Azy_Rss *rss)
         eina_stringshare_del(rss->generator);
         eina_stringshare_del(rss->subtitle);
         EINA_LIST_FREE(rss->categories, item)
-          eina_stringshare_del(item);
+          azy_rss_category_free(item);
         EINA_LIST_FREE(rss->contributors, item)
           azy_rss_contact_free(item);
         EINA_LIST_FREE(rss->authors, item)
@@ -157,7 +179,7 @@ azy_rss_free(Azy_Rss *rss)
  * @return An #Eina_List of #Azy_Rss_Item objects
  */
 const Eina_List *
-azy_rss_items_get(Azy_Rss *rss)
+azy_rss_items_get(const Azy_Rss *rss)
 {
    if (!AZY_MAGIC_CHECK(rss, AZY_MAGIC_RSS))
      {
@@ -196,8 +218,8 @@ azy_rss_items_steal(Azy_Rss *rss)
  * @param rss The #Azy_Rss (NOT NULL)
  * @return An #Eina_List of #Azy_Rss_Contact objects
  */
-Eina_List *
-azy_rss_authors_get(Azy_Rss *rss)
+const Eina_List *
+azy_rss_authors_get(const Azy_Rss *rss)
 {
    if (!AZY_MAGIC_CHECK(rss, AZY_MAGIC_RSS))
      {
@@ -214,8 +236,8 @@ azy_rss_authors_get(Azy_Rss *rss)
  * @param rss The #Azy_Rss (NOT NULL)
  * @return An #Eina_List of #Azy_Rss_Contact objects
  */
-Eina_List *
-azy_rss_contributors_get(Azy_Rss *rss)
+const Eina_List *
+azy_rss_contributors_get(const Azy_Rss *rss)
 {
    if (!AZY_MAGIC_CHECK(rss, AZY_MAGIC_RSS))
      {
@@ -232,8 +254,8 @@ azy_rss_contributors_get(Azy_Rss *rss)
  * @param rss The #Azy_Rss (NOT NULL)
  * @return An #Eina_List of #Azy_Rss_Link objects
  */
-Eina_List *
-azy_rss_links_get(Azy_Rss *rss)
+const Eina_List *
+azy_rss_links_get(const Azy_Rss *rss)
 {
    if (!AZY_MAGIC_CHECK(rss, AZY_MAGIC_RSS))
      {
@@ -250,8 +272,8 @@ azy_rss_links_get(Azy_Rss *rss)
  * @param rss The #Azy_Rss (NOT NULL)
  * @return An #Eina_List of stringshared strings
  */
-Eina_List *
-azy_rss_categories_get(Azy_Rss *rss)
+const Eina_List *
+azy_rss_categories_get(const Azy_Rss *rss)
 {
    if (!AZY_MAGIC_CHECK(rss, AZY_MAGIC_RSS))
      {
@@ -259,6 +281,28 @@ azy_rss_categories_get(Azy_Rss *rss)
         return NULL;
      }
    return rss->categories;
+}
+
+unsigned int
+azy_rss_skipdays_get(const Azy_Rss *rss)
+{
+   if (!AZY_MAGIC_CHECK(rss, AZY_MAGIC_RSS))
+     {
+        AZY_MAGIC_FAIL(rss, AZY_MAGIC_RSS);
+        return 0;
+     }
+   return rss->skipdays;
+}
+
+unsigned long long
+azy_rss_skiphours_get(const Azy_Rss *rss)
+{
+   if (!AZY_MAGIC_CHECK(rss, AZY_MAGIC_RSS))
+     {
+        AZY_MAGIC_FAIL(rss, AZY_MAGIC_RSS);
+        return 0;
+     }
+   return rss->skiphours;
 }
 
 #define DEF(NAME) \
@@ -269,8 +313,8 @@ azy_rss_categories_get(Azy_Rss *rss)
    @param rss The #Azy_Rss object (NOT NULL)
    @return The NAME, or NULL on failure
  */                                            \
-  const char *                                 \
-  azy_rss_##NAME##_get(Azy_Rss * rss)          \
+  Eina_Stringshare *                                 \
+  azy_rss_##NAME##_get(const Azy_Rss * rss)    \
   {                                            \
      if (!AZY_MAGIC_CHECK(rss, AZY_MAGIC_RSS)) \
        {                                       \
@@ -304,7 +348,7 @@ DEF(subtitle)
 void
 azy_rss_contact_print(const char *pre,
                       int indent,
-                      Azy_Rss_Contact *c)
+                      const Azy_Rss_Contact *c)
 {
    int i;
    if (!c) return;
@@ -338,7 +382,7 @@ azy_rss_contact_print(const char *pre,
 void
 azy_rss_link_print(const char *pre,
                    int indent,
-                   Azy_Rss_Link *li)
+                   const Azy_Rss_Link *li)
 {
    int i;
    if (!li) return;
@@ -380,7 +424,7 @@ azy_rss_link_print(const char *pre,
 void
 azy_rss_print(const char *pre,
               int indent,
-              Azy_Rss *rss)
+              const Azy_Rss *rss)
 {
    int i;
    const char *str;

@@ -124,13 +124,19 @@ typedef struct Azy_Rss_Item             Azy_Rss_Item;
  */
 typedef struct Azy_Rss_Link
 {
-   const char *title; /**< The title of the link */
-   const char *href; /**< The link URI */
-   const char *rel; /**< The relation type */
-   const char *type; /**< The content-type */
-   const char *hreflang; /**< The language of the URI */
+   Eina_Stringshare *title; /**< The title of the link */
+   Eina_Stringshare *href; /**< The link URI */
+   Eina_Stringshare *rel; /**< The relation type */
+   Eina_Stringshare *type; /**< The content-type */
+   Eina_Stringshare *hreflang; /**< The language of the URI */
    size_t      length; /**< The size of the URI */
 } Azy_Rss_Link;
+
+typedef struct Azy_Rss_Category
+{
+   Eina_Stringshare *category;
+   Eina_Stringshare *domain;
+} Azy_Rss_Category;
 /**
  * @typedef Azy_Rss_Contact
  * An object representing a contact from an RSS feed
@@ -362,6 +368,7 @@ EAPI const char               *azy_util_uuid_new(void);
 EAPI Azy_Net_Transport         azy_util_transport_get(const char *content_type);
 EAPI Eina_Bool azy_util_ip_is_valid(const char *ip);
 EAPI Eina_Bool azy_util_domain_match(const char *domain, const char *match);
+EAPI time_t azy_util_date_parse(char *start, char **end);
 EAPI char *azy_util_strdup(const char *str);
 EAPI Eina_Bool azy_util_streq(const char *a, const char *b);
 
@@ -546,41 +553,44 @@ EAPI void                      azy_rss_free(Azy_Rss *rss);
 EAPI void                      azy_rss_link_free(Azy_Rss_Link *li);
 EAPI void                      azy_rss_contact_free(Azy_Rss_Contact *c);
 EAPI void                      azy_rss_item_free(Azy_Rss_Item *item);
-EAPI const Eina_List          *azy_rss_items_get(Azy_Rss *rss);
+EAPI const Eina_List          *azy_rss_items_get(const Azy_Rss *rss);
 EAPI Eina_List                *azy_rss_items_steal(Azy_Rss *rss);
-EAPI Eina_List                *azy_rss_authors_get(Azy_Rss *rss);
-EAPI Eina_List                *azy_rss_contributors_get(Azy_Rss *rss);
-EAPI Eina_List                *azy_rss_categories_get(Azy_Rss *rss);
-EAPI Eina_List                *azy_rss_links_get(Azy_Rss *rss);
-EAPI const char               *azy_rss_title_get(Azy_Rss *rss);
-EAPI const char               *azy_rss_link_get(Azy_Rss *rss);
-EAPI const char               *azy_rss_img_url_get(Azy_Rss *rss);
-EAPI const char               *azy_rss_desc_get(Azy_Rss *rss);
-EAPI const char               *azy_rss_rights_get(Azy_Rss *rss);
-EAPI const char               *azy_rss_id_get(Azy_Rss *rss);
-EAPI const char               *azy_rss_logo_get(Azy_Rss *rss);
-EAPI const char               *azy_rss_generator_get(Azy_Rss *rss);
-EAPI const char               *azy_rss_subtitle_get(Azy_Rss *rss);
-EAPI Eina_List                *azy_rss_item_authors_get(Azy_Rss_Item *item);
-EAPI Eina_List                *azy_rss_item_contributors_get(Azy_Rss_Item *item);
-EAPI Eina_List                *azy_rss_item_categories_get(Azy_Rss_Item *item);
-EAPI Eina_List                *azy_rss_item_links_get(Azy_Rss_Item *item);
-EAPI const char               *azy_rss_item_title_get(Azy_Rss_Item *item);
-EAPI const char               *azy_rss_item_content_get(Azy_Rss_Item *item);
-EAPI const char               *azy_rss_item_content_encoded_get(Azy_Rss_Item *item);
-EAPI const char               *azy_rss_item_link_get(Azy_Rss_Item *item);
-EAPI const char               *azy_rss_item_desc_get(Azy_Rss_Item *item);
-EAPI const char               *azy_rss_item_date_get(Azy_Rss_Item *item);
-EAPI const char               *azy_rss_item_guid_get(Azy_Rss_Item *item);
-EAPI const char               *azy_rss_item_comment_url_get(Azy_Rss_Item *item);
-EAPI const char               *azy_rss_item_author_get(Azy_Rss_Item *item);
-EAPI const char               *azy_rss_item_rights_get(Azy_Rss_Item *rss);
-EAPI const char               *azy_rss_item_summary_get(Azy_Rss_Item *rss);
-EAPI const char               *azy_rss_item_id_get(Azy_Rss_Item *rss);
-EAPI void                      azy_rss_print(const char *pre, int indent, Azy_Rss *rss);
-EAPI void                      azy_rss_link_print(const char *pre, int indent, Azy_Rss_Link *li);
-EAPI void                      azy_rss_contact_print(const char *pre, int indent, Azy_Rss_Contact *c);
-EAPI void                      azy_rss_item_print(const char *pre, int indent, Azy_Rss_Item *item);
+EAPI unsigned int azy_rss_skipdays_get(const Azy_Rss *rss);
+EAPI unsigned long long azy_rss_skiphours_get(const Azy_Rss *rss);
+EAPI const Eina_List                *azy_rss_authors_get(const Azy_Rss *rss);
+EAPI const Eina_List                *azy_rss_contributors_get(const Azy_Rss *rss);
+EAPI const Eina_List                *azy_rss_categories_get(const Azy_Rss *rss);
+EAPI const Eina_List                *azy_rss_links_get(const Azy_Rss *rss);
+EAPI Eina_Stringshare               *azy_rss_title_get(const Azy_Rss *rss);
+EAPI Eina_Stringshare               *azy_rss_link_get(const Azy_Rss *rss);
+EAPI Eina_Stringshare               *azy_rss_img_url_get(const Azy_Rss *rss);
+EAPI Eina_Stringshare               *azy_rss_desc_get(const Azy_Rss *rss);
+EAPI Eina_Stringshare               *azy_rss_rights_get(const Azy_Rss *rss);
+EAPI Eina_Stringshare               *azy_rss_id_get(const Azy_Rss *rss);
+EAPI Eina_Stringshare               *azy_rss_logo_get(const Azy_Rss *rss);
+EAPI Eina_Stringshare               *azy_rss_generator_get(const Azy_Rss *rss);
+EAPI Eina_Stringshare               *azy_rss_subtitle_get(const Azy_Rss *rss);
+EAPI const Eina_List                *azy_rss_item_authors_get(const Azy_Rss_Item *item);
+EAPI const Eina_List                *azy_rss_item_contributors_get(const Azy_Rss_Item *item);
+EAPI const Eina_List                *azy_rss_item_categories_get(const Azy_Rss_Item *item);
+EAPI const Eina_List                *azy_rss_item_links_get(const Azy_Rss_Item *item);
+EAPI Eina_Stringshare               *azy_rss_item_title_get(const Azy_Rss_Item *item);
+EAPI Eina_Stringshare               *azy_rss_item_content_get(const Azy_Rss_Item *item);
+EAPI Eina_Stringshare               *azy_rss_item_content_encoded_get(const Azy_Rss_Item *item);
+EAPI Eina_Stringshare               *azy_rss_item_link_get(const Azy_Rss_Item *item);
+EAPI Eina_Stringshare               *azy_rss_item_desc_get(const Azy_Rss_Item *item);
+EAPI time_t                          azy_rss_item_date_get(const Azy_Rss_Item *item);
+EAPI Eina_Stringshare               *azy_rss_item_guid_get(const Azy_Rss_Item *item);
+EAPI Eina_Stringshare               *azy_rss_item_comment_url_get(const Azy_Rss_Item *item);
+EAPI Eina_Stringshare               *azy_rss_item_author_get(const Azy_Rss_Item *item);
+EAPI Eina_Stringshare               *azy_rss_item_rights_get(const Azy_Rss_Item *rss);
+EAPI Eina_Stringshare               *azy_rss_item_summary_get(const Azy_Rss_Item *rss);
+EAPI Eina_Stringshare               *azy_rss_item_id_get(const Azy_Rss_Item *rss);
+EAPI void azy_rss_item_enclosure_get(const Azy_Rss_Item *item, Eina_Stringshare **url, Eina_Stringshare **content_type, size_t *length);
+EAPI void                      azy_rss_print(const char *pre, int indent, const Azy_Rss *rss);
+EAPI void                      azy_rss_link_print(const char *pre, int indent, const Azy_Rss_Link *li);
+EAPI void                      azy_rss_contact_print(const char *pre, int indent, const Azy_Rss_Contact *c);
+EAPI void                      azy_rss_item_print(const char *pre, int indent, const Azy_Rss_Item *item);
 #ifdef __cplusplus
 }
 #endif

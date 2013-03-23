@@ -151,24 +151,27 @@ struct Azy_Rss
 {
    AZY_MAGIC;
    Eina_Bool   atom : 1; /* true if item is Azy_Rss_Atom */
-   const char *title;
-   const char *img_url;
+   Eina_Stringshare *title;
+   Eina_Stringshare *img_url;
 
    /* rss format only */
-   const char *link;
-   const char *desc;
+   Eina_Stringshare *link;
+   Eina_Stringshare *desc;
 
    /* atom format only */
-   const char *id;
-   const char *subtitle;
-   const char *rights;
-   const char *logo;
-   const char *generator;
+   Eina_Stringshare *id;
+   Eina_Stringshare *subtitle;
+   Eina_Stringshare *rights;
+   Eina_Stringshare *logo;
+   Eina_Stringshare *generator;
    struct tm   updated;
    Eina_List  *categories;
    Eina_List  *contributors;
    Eina_List  *authors;
    Eina_List  *atom_links;
+   unsigned int skipdays; // bitshift per day
+   unsigned long long skiphours; // bitshift per hour
+   unsigned int ttl; // in minutes
 
    Eina_List  *items;
 };
@@ -177,29 +180,37 @@ struct Azy_Rss_Item
 {
    AZY_MAGIC;
    Eina_Bool   atom : 1; /* true if item is Azy_Rss_Atom */
-   const char *title;
+   Eina_Stringshare *title;
 
    /* rss format only */
-   const char *link;
-   const char *desc;
-   const char *date;
-   const char *guid;
-   const char *comment_url;
-   const char *author;
-   const char *content;
-   const char *content_encoded;
+   Eina_Stringshare *link;
+   Eina_Stringshare *desc;
+   time_t date;
+   Eina_Stringshare *guid;
+   Eina_Stringshare *comment_url;
+   Eina_Stringshare *author;
+   Eina_Stringshare *content;
+   Eina_Stringshare *content_encoded;
 
    /* atom format only */
-   const char *rights;
-   const char *summary;
-   const char *id;
-   const char *icon;
+   Eina_Stringshare *rights;
+   Eina_Stringshare *summary;
+   Eina_Stringshare *id;
+   Eina_Stringshare *icon;
    struct tm   updated;
    struct tm   published;
+   struct
+   {
+      Eina_Stringshare *url;
+      size_t length;
+      Eina_Stringshare *type;
+   } enclosure;
    Eina_List  *categories;
    Eina_List  *contributors;
    Eina_List  *authors;
    Eina_List  *atom_links;
+
+   Eina_Bool permalink : 1; //guid is permalink (guid is a link)
 };
 
 struct Azy_Net
@@ -434,6 +445,8 @@ Eina_Bool
 
 Azy_Rss         *azy_rss_new(void);
 Azy_Rss_Item    *azy_rss_item_new(void);
+Azy_Rss_Category *azy_rss_category_new(void);
+void azy_rss_category_free(Azy_Rss_Category *cat);
 
 Eina_Bool        azy_content_serialize_request_xml(Azy_Content *content);
 Eina_Bool        azy_content_serialize_response_xml(Azy_Content *content);

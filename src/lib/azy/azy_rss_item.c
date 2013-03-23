@@ -88,7 +88,7 @@ azy_rss_item_free(Azy_Rss_Item *item)
         eina_stringshare_del(item->id);
         eina_stringshare_del(item->icon);
         EINA_LIST_FREE(item->categories, d)
-          eina_stringshare_del(d);
+          azy_rss_category_free(d);
         EINA_LIST_FREE(item->contributors, d)
           azy_rss_contact_free(d);
         EINA_LIST_FREE(item->authors, d)
@@ -100,7 +100,6 @@ azy_rss_item_free(Azy_Rss_Item *item)
      {
         eina_stringshare_del(item->link);
         eina_stringshare_del(item->desc);
-        eina_stringshare_del(item->date);
         eina_stringshare_del(item->guid);
         eina_stringshare_del(item->comment_url);
         eina_stringshare_del(item->author);
@@ -119,8 +118,8 @@ azy_rss_item_free(Azy_Rss_Item *item)
  * @param item The #Azy_Rss_Item (NOT NULL)
  * @return An #Eina_List of #Azy_Rss_Contact objects
  */
-Eina_List *
-azy_rss_item_authors_get(Azy_Rss_Item *item)
+const Eina_List *
+azy_rss_item_authors_get(const Azy_Rss_Item *item)
 {
    if (!AZY_MAGIC_CHECK(item, AZY_MAGIC_RSS_ITEM))
      {
@@ -137,8 +136,8 @@ azy_rss_item_authors_get(Azy_Rss_Item *item)
  * @param item The #Azy_Rss_Item (NOT NULL)
  * @return An #Eina_List of #Azy_Rss_Contact objects
  */
-Eina_List *
-azy_rss_item_contributors_get(Azy_Rss_Item *item)
+const Eina_List *
+azy_rss_item_contributors_get(const Azy_Rss_Item *item)
 {
    if (!AZY_MAGIC_CHECK(item, AZY_MAGIC_RSS_ITEM))
      {
@@ -155,8 +154,8 @@ azy_rss_item_contributors_get(Azy_Rss_Item *item)
  * @param item The #Azy_Rss_Item (NOT NULL)
  * @return An #Eina_List of #Azy_Rss_Link objects
  */
-Eina_List *
-azy_rss_item_links_get(Azy_Rss_Item *item)
+const Eina_List *
+azy_rss_item_links_get(const Azy_Rss_Item *item)
 {
    if (!AZY_MAGIC_CHECK(item, AZY_MAGIC_RSS_ITEM))
      {
@@ -167,14 +166,44 @@ azy_rss_item_links_get(Azy_Rss_Item *item)
 }
 
 /**
+ * @brief Retrieve the publish date from an item object
+ *
+ * @param item The #Azy_Rss_Item (NOT NULL)
+ * @return The publish date in unixtime
+ */
+time_t
+azy_rss_item_date_get(const Azy_Rss_Item *item)
+{
+   if (!AZY_MAGIC_CHECK(item, AZY_MAGIC_RSS_ITEM))
+     {
+        AZY_MAGIC_FAIL(item, AZY_MAGIC_RSS_ITEM);
+        return 0;
+     }
+   return item->date;
+}
+
+void
+azy_rss_item_enclosure_get(const Azy_Rss_Item *item, Eina_Stringshare **url, Eina_Stringshare **content_type, size_t *length)
+{
+   if (!AZY_MAGIC_CHECK(item, AZY_MAGIC_RSS_ITEM))
+     {
+        AZY_MAGIC_FAIL(item, AZY_MAGIC_RSS_ITEM);
+        return;
+     }
+   if (url) *url = item->enclosure.url;
+   if (content_type) *content_type = item->enclosure.type;
+   if (length) *length = item->enclosure.length;
+}
+
+/**
  * @brief Retrieve the list of categories from an item object
  *
- * This function returns a list of strings belonging to @p item
+ * This function returns a list of Azy_Rss_Category belonging to @p item
  * @param item The #Azy_Rss_Item (NOT NULL)
- * @return An #Eina_List of stringshared strings
+ * @return An #Eina_List of Azy_Rss_Category strings
  */
-Eina_List *
-azy_rss_item_categories_get(Azy_Rss_Item *item)
+const Eina_List *
+azy_rss_item_categories_get(const Azy_Rss_Item *item)
 {
    if (!AZY_MAGIC_CHECK(item, AZY_MAGIC_RSS_ITEM))
      {
@@ -192,8 +221,8 @@ azy_rss_item_categories_get(Azy_Rss_Item *item)
    @param item The #Azy_Rss object (NOT NULL)
    @return The NAME, or NULL on failure
  */                                                  \
-  const char *                                       \
-  azy_rss_item_##NAME##_get(Azy_Rss_Item * item)     \
+  Eina_Stringshare *                                   \
+  azy_rss_item_##NAME##_get(const Azy_Rss_Item * item)     \
   {                                                  \
      if (!AZY_MAGIC_CHECK(item, AZY_MAGIC_RSS_ITEM)) \
        {                                             \
@@ -206,7 +235,6 @@ azy_rss_item_categories_get(Azy_Rss_Item *item)
 DEF(title)
 DEF(link)
 DEF(desc)
-DEF(date)
 DEF(guid)
 DEF(comment_url)
 DEF(author)
@@ -231,7 +259,7 @@ DEF(content_encoded)
 void
 azy_rss_item_print(const char *pre,
                    int indent,
-                   Azy_Rss_Item *item)
+                   const Azy_Rss_Item *item)
 {
    int i;
    Eina_List *l;
@@ -314,7 +342,12 @@ azy_rss_item_print(const char *pre,
      {
         PRINT(link);
         PRINT(desc);
-        PRINT(date);
+        if (item->date)
+          {
+             for (i = 0; i < indent; i++)
+               printf("%s", pre);
+             printf("%s: %ld\n", "date", item->date);
+          }
         PRINT(guid);
         PRINT(comment_url);
         PRINT(author);

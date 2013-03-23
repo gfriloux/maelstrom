@@ -30,6 +30,32 @@
 # endif
 #endif
 
+typedef enum
+{
+   AZY_DATE_FIELD_IGNORE = -1,
+   AZY_DATE_FIELD_FAILURE = 0,
+   AZY_DATE_FIELD_TIME = (1 << 0),
+   AZY_DATE_FIELD_YEAR = (1 << 1),
+   AZY_DATE_FIELD_MONTH = (1 << 2),
+   AZY_DATE_FIELD_DAY = (1 << 3)
+} Azy_Date_Field;
+
+static const char *const months[] =
+{
+   "jan",
+   "feb",
+   "mar",
+   "apr",
+   "may",
+   "jun",
+   "jul",
+   "aug",
+   "sep",
+   "oct",
+   "nov",
+   "dec"
+};
+
 /* length of a uuid */
 #define UUID_LEN 36
 /**
@@ -288,6 +314,181 @@ azy_util_domain_match(const char *domain, const char *match)
         return EINA_FALSE;
      }
    return eina_str_has_suffix(domain, match);
+}
+
+
+static inline Eina_Bool
+_azy_date_char_is_delimiter(char c)
+{
+   return (c == 0x09) ||
+          ((c >= 0x20) && (c <= 0x2F)) ||
+          ((c >= 0x3B) && (c <= 0x40)) ||
+          ((c >= 0x5B) && (c <= 0x60)) ||
+          ((c >= 0x7B) && (c <= 0x7E))
+   ;
+}
+
+static inline Azy_Date_Field
+_azy_date_field_tokenize(char *start, char **end, Azy_Date_Field exclude)
+{
+   char *p = start;
+
+/*
+ * I feel like I should make a separate file for parsing this
+
+   http://tools.ietf.org/html/rfc6265
+   cookie-date     = *delimiter date-token-list *delimiter
+   date-token-list = date-token *( 1*delimiter date-token )
+   date-token      = 1*non-delimiter
+
+   delimiter       = %x09 / %x20-2F / %x3B-40 / %x5B-60 / %x7B-7E
+   non-delimiter   = %x00-08 / %x0A-1F / DIGIT / ":" / ALPHA / %x7F-FF
+   non-digit       = %x00-2F / %x3A-FF
+
+   day-of-month    = 1*2DIGIT ( non-digit *OCTET )
+   month           = ( "jan" / "feb" / "mar" / "apr" /
+                       "may" / "jun" / "jul" / "aug" /
+                       "sep" / "oct" / "nov" / "dec" ) *OCTET
+   year            = 2*4DIGIT ( non-digit *OCTET )
+   time            = hms-time ( non-digit *OCTET )
+   hms-time        = time-field ":" time-field ":" time-field
+   time-field      = 1*2DIGIT
+ */
+   while (!_azy_date_char_is_delimiter(p[0]))
+     p++;
+   *end = p;
+   if (isdigit(start[0]))
+     {
+        switch (p - start)
+          {
+           case 1:
+           case 2:
+             if (!(exclude & AZY_DATE_FIELD_DAY))
+               return AZY_DATE_FIELD_DAY;
+           case 4:
+             if (!(exclude & AZY_DATE_FIELD_YEAR))
+               return AZY_DATE_FIELD_YEAR;
+             return AZY_DATE_FIELD_IGNORE;
+
+           case 8:
+             if (start[2] == ':') // hmstime...hopefully
+               {
+                  char *pp = start;
+
+                  for (p = start, pp++; isdigit(pp[0]); pp++) ;
+                  if ((pp - p != 2) || (pp[0] != ':')) goto error;
+                  for (pp++, p = pp; isdigit(pp[0]); pp++) ;
+                  if ((pp - p != 2) || (pp[0] != ':')) goto error;
+                  for (pp++, p = pp; isdigit(pp[0]); pp++) ;
+                  if ((pp - p != 2) || (pp != *end)) goto error;
+                  return AZY_DATE_FIELD_TIME;
+               }
+
+           default: goto error;
+          }
+     }
+   if (!(exclude & AZY_DATE_FIELD_MONTH))
+     {
+        if (p - start == 3)
+          {
+             int x;
+
+             /* lowercase here to make memcmp work later */
+             for (x = 0; x < 3; x++)
+               start[x] = tolower(start[x]);
+             return AZY_DATE_FIELD_MONTH;
+          }
+     }
+   return AZY_DATE_FIELD_IGNORE;
+error:
+   *end = strchr(start, ';');
+   return AZY_DATE_FIELD_FAILURE;
+}
+
+time_t
+azy_util_date_parse(char *start, char **end)
+{
+   Azy_Date_Field found = 0;
+   char *p;
+   struct tm tm;
+   int x;
+
+   memset(&tm, 0, sizeof(tm));
+   tm.tm_isdst = -1;
+   while (start[0] && (start[0] != ';'))
+     {
+        //eg. Wed, 11-Sep-2013 11:51:23 GMT
+        switch (_azy_date_field_tokenize(start, &p, found))
+          {
+           case AZY_DATE_FIELD_IGNORE: break;
+
+           case AZY_DATE_FIELD_TIME:
+             x = strtol(start, NULL, 10);
+             if ((x < 0) || (x > 23)) goto error;
+             tm.tm_hour = x;
+             start += 3;
+             x = strtol(start, NULL, 10);
+             if ((x < 0) || (x > 59)) goto error;
+             tm.tm_min = x;
+             start += 3;
+             x = strtol(start, NULL, 10);
+             if ((x < 0) || (x > 59)) goto error;
+             tm.tm_sec = x;
+             found |= AZY_DATE_FIELD_TIME;
+             break;
+
+           case AZY_DATE_FIELD_YEAR:
+             x = strtol(start, NULL, 10);
+             if (p - start == 2)
+               {
+                  if ((x >= 70) && (x <= 99)) x += 1900;
+                  else if ((x >= 0) && (x <= 69))
+                    x += 2000;
+                  else return 0;
+               }
+             else
+               {
+                  if (x < 1601) goto error;
+               }
+             tm.tm_year = x - 1900;
+             found |= AZY_DATE_FIELD_YEAR;
+             break;
+
+           case AZY_DATE_FIELD_MONTH:
+             for (x = 0; x < 12; x++)
+               if (!memcmp(start, months[x], 3))
+                 {
+                    tm.tm_mon = x;
+                    found |= AZY_DATE_FIELD_MONTH;
+                    break;
+                 }
+             break;
+
+           case AZY_DATE_FIELD_DAY:
+             x = strtol(start, NULL, 10);
+             if ((x < 1) || (x > 31)) goto error;
+             tm.tm_mday = x;
+             found |= AZY_DATE_FIELD_DAY;
+             break;
+
+           case AZY_DATE_FIELD_FAILURE:
+           default: goto error;
+          }
+        if (found ==
+            (AZY_DATE_FIELD_TIME | AZY_DATE_FIELD_YEAR | AZY_DATE_FIELD_MONTH | AZY_DATE_FIELD_DAY)
+            )
+          break;
+        start = p;
+        while (_azy_date_char_is_delimiter(start[0]))
+          start++;
+     }
+   if (found ==
+       (AZY_DATE_FIELD_TIME | AZY_DATE_FIELD_YEAR | AZY_DATE_FIELD_MONTH | AZY_DATE_FIELD_DAY)
+       )
+     return mktime(&tm);
+error:
+   if (end && start[0]) *end = strchr(start, ';');
+   return 0;
 }
 
 /**
