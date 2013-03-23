@@ -178,7 +178,7 @@ void
 azy_net_cookie_free(Azy_Net_Cookie *ck)
 {
    DBG("(ck=%p)", ck);
-
+   if (!ck) return;
    if (!AZY_MAGIC_CHECK(ck, AZY_MAGIC_NET_COOKIE))
      {
         AZY_MAGIC_FAIL(ck, AZY_MAGIC_NET_COOKIE);

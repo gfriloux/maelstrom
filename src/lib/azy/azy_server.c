@@ -79,11 +79,12 @@ err:
  * This function frees @p server.
  * Note that the #Azy_Server_Module_Def objects are not freed
  * with this function.
- * @param server The server object to free (NOT NULL)
+ * @param server The server object to free
  */
 void
 azy_server_free(Azy_Server *server)
 {
+   if (!server) return;
    if (!AZY_MAGIC_CHECK(server, AZY_MAGIC_SERVER))
      {
         AZY_MAGIC_FAIL(server, AZY_MAGIC_SERVER);

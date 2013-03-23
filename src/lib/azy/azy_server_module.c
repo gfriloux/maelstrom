@@ -333,11 +333,12 @@ azy_server_module_def_new(const char *name)
  *
  * This function frees the given #Azy_Server_Module_Def, and should only
  * be called after the module will no longer be used.
- * @param def The #Azy_Server_Module_Def to free (NOT NULL)
+ * @param def The #Azy_Server_Module_Def to free
  */
 void
 azy_server_module_def_free(Azy_Server_Module_Def *def)
 {
+   if (!def) return;
    if (!AZY_MAGIC_CHECK(def, AZY_MAGIC_SERVER_MODULE_DEF))
      {
         AZY_MAGIC_FAIL(def, AZY_MAGIC_SERVER_MODULE_DEF);

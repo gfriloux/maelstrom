@@ -148,13 +148,13 @@ azy_net_buffer_steal(Azy_Net *net, size_t *size)
  *
  * This function frees an #Azy_Net object, including all data associated with it.
  * It does NOT free the Ecore_Con client/server object.
- * @param net The object to free (NOT NULL)
+ * @param net The object to free
  */
 void
 azy_net_free(Azy_Net *net)
 {
    DBG("(net=%p)", net);
-
+   if (!net) return;
    if (!AZY_MAGIC_CHECK(net, AZY_MAGIC_NET))
      {
         AZY_MAGIC_FAIL(net, AZY_MAGIC_NET);

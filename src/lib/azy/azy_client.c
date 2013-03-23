@@ -841,13 +841,14 @@ azy_client_current(Azy_Client *cli)
  * This function frees a client and ALL associated data.  If called
  * on a connected client, azy_client_close will be called and then the client
  * will be freed.
- * @param client The client (NOT NULL)
+ * @param client The client
  */
 void
 azy_client_free(Azy_Client *client)
 {
    DBG("(client=%p)", client);
 
+   if (!client) return;
    if (!AZY_MAGIC_CHECK(client, AZY_MAGIC_CLIENT))
      {
         AZY_MAGIC_FAIL(client, AZY_MAGIC_CLIENT);

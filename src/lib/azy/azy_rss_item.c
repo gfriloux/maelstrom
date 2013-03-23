@@ -66,7 +66,7 @@ azy_rss_item_new(void)
  * @brief Free an #Azy_Rss_Item object
  *
  * This function frees an #Azy_Rss_Item object
- * @param item The rss item object (NOT NULL)
+ * @param item The rss item object
  */
 void
 azy_rss_item_free(Azy_Rss_Item *item)

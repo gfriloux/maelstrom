@@ -107,7 +107,7 @@ azy_content_new(const char *method)
  *
  * This function frees a content object and all subobjects within it
  * including parameters added.
- * @param content The content to free (NOT NULL)
+ * @param content The content to free
  */
 void
 azy_content_free(Azy_Content *content)
@@ -115,7 +115,7 @@ azy_content_free(Azy_Content *content)
    Eina_Value *v;
 
    DBG("(content=%p)", content);
-
+   if (!content) return;
    if (!AZY_MAGIC_CHECK(content, AZY_MAGIC_CONTENT))
      {
         AZY_MAGIC_FAIL(content, AZY_MAGIC_CONTENT);
