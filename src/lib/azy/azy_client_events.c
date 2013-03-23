@@ -149,7 +149,7 @@ _azy_client_handler_get(Azy_Client_Handler_Data *hd)
              snprintf(buf, sizeof(buf), "%" PRIi64 " bytes:\n<<<<<<<<<<<<<\n%%.%" PRIi64 "s\n<<<<<<<<<<<<<", EBUFLEN(hd->recv->buffer), EBUFLEN(hd->recv->buffer));
              ERR(buf, EBUF(hd->recv->buffer));
           }
-        content->ret = ret;
+        if (ret) content->ret = ret;
         break;
       case AZY_NET_TRANSPORT_HTML: //some asshole sites don't correctly report rss content-type
         if (azy_content_deserialize_xml(content, (char*)EBUF(hd->recv->buffer), EBUFLEN(hd->recv->buffer))) break;
