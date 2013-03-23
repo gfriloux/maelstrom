@@ -355,9 +355,9 @@ struct Azy_Client
 
    const char          *addr;
    int                  port;
-   int                  secure;
-
+   Eina_Bool            secure : 1;
    Eina_Bool            connected : 1;
+   Eina_Bool            upgraded : 1;
 };
 
 struct Azy_Client_Handler_Data

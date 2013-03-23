@@ -81,7 +81,8 @@ main(void)
 
    EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "identi.ca", 443), 1);
 
-   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_connect(cli, EINA_TRUE), 1);
+   azy_client_secure_set(cli, EINA_TRUE);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_connect(cli), 1);
 
    azy_net_uri_set(azy_client_net_get(cli), "/api/statuses/public_timeline.json");
    azy_net_protocol_set(azy_client_net_get(cli), AZY_NET_PROTOCOL_HTTP_1_0);

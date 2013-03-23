@@ -114,7 +114,8 @@ ui_azy_connect(Contact_List *cl EINA_UNUSED)
    Azy_Net *net;
 
    if (notified) return EINA_FALSE;
-   azy_client_connect(cli, EINA_TRUE);
+   azy_client_secure_set(cli, EINA_TRUE);
+   azy_client_connect(cli);
    net = azy_client_net_get(cli);
    if (!azy_net_uri_get(net))
      azy_net_uri_set(net, "/zmike/shotgun/commits/master.atom");

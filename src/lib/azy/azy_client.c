@@ -238,9 +238,46 @@ azy_client_upgrade(Azy_Client *client)
         AZY_MAGIC_FAIL(client, AZY_MAGIC_CLIENT);
         return EINA_FALSE;
      }
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(client->secure, EINA_FALSE);
    if (!client->connected) return EINA_FALSE;
 
    return ecore_con_ssl_server_upgrade(client->net->conn, ECORE_CON_USE_MIXED);
+}
+
+
+/**
+ * @brief Get the security flag for the connection
+ * @param client The client object (NOT NULL)
+ * @param secure If #EINA_TRUE, the connection is secure
+ */
+Eina_Bool
+azy_client_secure_get(const Azy_Client *client)
+{
+   DBG("(client=%p)", client);
+   if (!AZY_MAGIC_CHECK(client, AZY_MAGIC_CLIENT))
+     {
+        AZY_MAGIC_FAIL(client, AZY_MAGIC_CLIENT);
+        return EINA_FALSE;
+     }
+   return client->secure;
+}
+
+/**
+ * @brief Set the security flag for the connection
+ * @param client The client object (NOT NULL)
+ * @param secure If #EINA_TRUE, TLS will be used in the connection
+ */
+void
+azy_client_secure_set(Azy_Client *client, Eina_Bool secure)
+{
+   DBG("(client=%p)", client);
+   if (!AZY_MAGIC_CHECK(client, AZY_MAGIC_CLIENT))
+     {
+        AZY_MAGIC_FAIL(client, AZY_MAGIC_CLIENT);
+        return;
+     }
+   EINA_SAFETY_ON_TRUE_RETURN(client->connected);
+   client->secure = !!secure;
 }
 
 /**
@@ -249,17 +286,15 @@ azy_client_upgrade(Azy_Client *client)
  * This function begins the connection process for @p client to its
  * previously set server.  This will return EINA_FALSE immediately if an error occurs.
  * @param client The client object (NOT NULL)
- * @param secure If #EINA_TRUE, TLS will be used in the connection
  * @return #EINA_TRUE if successful, or #EINA_FALSE on failure
  */
 Eina_Bool
-azy_client_connect(Azy_Client *client,
-                   Eina_Bool secure)
+azy_client_connect(Azy_Client *client)
 {
-   DBG("(client=%p)", client);
    Ecore_Con_Server *svr;
    int flags = ECORE_CON_REMOTE_NODELAY;
 
+   DBG("(client=%p)", client);
    if (!AZY_MAGIC_CHECK(client, AZY_MAGIC_CLIENT))
      {
         AZY_MAGIC_FAIL(client, AZY_MAGIC_CLIENT);
@@ -268,14 +303,12 @@ azy_client_connect(Azy_Client *client,
    if ((client->connected) || (!client->addr) || (!client->port))
      return EINA_FALSE;
 
-   client->secure = !!secure;
+   if (client->upgraded)
+     client->secure = client->upgraded = EINA_FALSE;
+   if (client->secure) flags |= ECORE_CON_USE_MIXED;
 
-   if (secure) flags |= ECORE_CON_USE_MIXED;
-
-   if (!(svr = ecore_con_server_connect(flags, client->addr, client->port, NULL)))
+   if (!(svr = ecore_con_server_connect(flags, client->addr, client->port, client)))
      return EINA_FALSE;
-
-   ecore_con_server_data_set(svr, client);
 
    client->net = azy_net_new(svr);
    azy_net_header_set(client->net, "host", client->addr);
@@ -357,7 +390,8 @@ azy_client_util_connect(const char *host)
      client->addr = eina_stringshare_add_length(domain, path - domain);
    else
      client->addr = eina_stringshare_add(domain);
-   if (azy_client_connect(client, secure))
+   azy_client_secure_set(client, secure);
+   if (azy_client_connect(client))
      {
         if (path) client->net->http.req.http_path = eina_stringshare_add(path);
         return client;
@@ -772,7 +806,7 @@ azy_client_redirect(Azy_Client *cli)
 
    hd = eina_list_data_get(cli->conns);
    if (!hd) return EINA_FALSE;
-   if (hd->redirect) azy_client_connect(cli, cli->secure);
+   if (hd->redirect) azy_client_connect(cli);
    return hd->redirect;
 }
 

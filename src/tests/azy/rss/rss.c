@@ -85,7 +85,7 @@ main(void)
 //   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "www.enlightenment.org", 80), 1);
 //   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "rss.cnn.com", 80), 1);
 
-   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_connect(cli, EINA_FALSE), 1);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_connect(cli), 1);
 
    azy_net_uri_set(azy_client_net_get(cli), "/rss/examples/rss2sample.xml");
 //   azy_net_uri_set(azy_client_net_get(cli), "/rss.php?p=news&l=en");
@@ -100,7 +100,8 @@ main(void)
    ecore_main_loop_begin();
 
    EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "github.com", 443), 1);
-   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_connect(cli, EINA_TRUE), 1);
+   azy_client_secure_set(cli, EINA_TRUE);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_connect(cli), 1);
    azy_net_uri_set(azy_client_net_get(cli), "/zmike/shotgun/commits/master.atom");
    ecore_main_loop_begin();
 

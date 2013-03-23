@@ -244,7 +244,7 @@ main(void)
    handler = ecore_event_handler_add(AZY_EVENT_CLIENT_DISCONNECTED, (Ecore_Event_Handler_Cb)_disconnected, cli);
 
    /* connect to the servlet on the server specified by uri */
-   if (!azy_client_connect(cli, EINA_FALSE))
+   if (!azy_client_connect(cli))
      return 1;
 
    ecore_main_loop_begin();

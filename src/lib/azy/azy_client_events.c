@@ -86,6 +86,7 @@ _azy_client_handler_upgrade(Azy_Client_Handler_Data *hd,
      }
 
    hd->client->refcount++;
+   hd->client->secure = hd->client->upgraded = EINA_TRUE;
    ecore_event_add(AZY_EVENT_CLIENT_UPGRADE, hd->client, (Ecore_End_Cb)_azy_event_handler_fake_free, azy_client_free);
    return ECORE_CALLBACK_RENEW;
 }
@@ -303,7 +304,7 @@ _azy_client_handler_redirect(Azy_Client_Handler_Data *hd)
         azy_net_free(hd->recv);
         hd->recv = NULL;
         azy_events_connection_kill(hd->client->net->conn, EINA_FALSE, NULL);
-        azy_client_connect(hd->client, hd->client->secure);
+        azy_client_connect(hd->client);
         return;
      }
 
