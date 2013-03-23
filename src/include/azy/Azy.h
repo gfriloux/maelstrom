@@ -581,6 +581,7 @@ EAPI Eina_Stringshare               *azy_rss_item_link_get(const Azy_Rss_Item *i
 EAPI Eina_Stringshare               *azy_rss_item_desc_get(const Azy_Rss_Item *item);
 EAPI time_t                          azy_rss_item_date_get(const Azy_Rss_Item *item);
 EAPI Eina_Stringshare               *azy_rss_item_guid_get(const Azy_Rss_Item *item);
+EAPI Eina_Bool                       azy_rss_item_guid_is_permalink(const Azy_Rss_Item *item);
 EAPI Eina_Stringshare               *azy_rss_item_comment_url_get(const Azy_Rss_Item *item);
 EAPI Eina_Stringshare               *azy_rss_item_author_get(const Azy_Rss_Item *item);
 EAPI Eina_Stringshare               *azy_rss_item_rights_get(const Azy_Rss_Item *rss);

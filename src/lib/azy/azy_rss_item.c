@@ -213,6 +213,17 @@ azy_rss_item_categories_get(const Azy_Rss_Item *item)
    return item->categories;
 }
 
+Eina_Bool
+azy_rss_item_guid_is_permalink(const Azy_Rss_Item *item)
+{
+   if (!AZY_MAGIC_CHECK(item, AZY_MAGIC_RSS_ITEM))
+     {
+        AZY_MAGIC_FAIL(item, AZY_MAGIC_RSS_ITEM);
+        return EINA_FALSE;
+     }
+   return item->permalink;
+}
+
 #define DEF(NAME) \
 /**
    @brief Retrieve the NAME of an rss item object
@@ -222,7 +233,7 @@ azy_rss_item_categories_get(const Azy_Rss_Item *item)
    @return The NAME, or NULL on failure
  */                                                  \
   Eina_Stringshare *                                   \
-  azy_rss_item_##NAME##_get(const Azy_Rss_Item * item)     \
+  azy_rss_item_##NAME##_get(const Azy_Rss_Item *item)     \
   {                                                  \
      if (!AZY_MAGIC_CHECK(item, AZY_MAGIC_RSS_ITEM)) \
        {                                             \
