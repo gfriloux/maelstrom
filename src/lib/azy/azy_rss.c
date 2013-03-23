@@ -296,6 +296,14 @@ azy_rss_categories_get(const Azy_Rss *rss)
    return rss->categories;
 }
 
+/**
+ * @brief Retrieve the skipdays from an rss object
+ *
+ * This function returns a bitwise ORed number of the days which the
+ * rss feed is not updated (eg. (1<<0) flag for skipping the first day of the week)
+ * @param rss The #Azy_Rss (NOT NULL)
+ * @return The skipdays
+ */
 unsigned int
 azy_rss_skipdays_get(const Azy_Rss *rss)
 {
@@ -307,6 +315,34 @@ azy_rss_skipdays_get(const Azy_Rss *rss)
    return rss->skipdays;
 }
 
+/**
+ * @brief Retrieve the skipdays from an rss object
+ *
+ * This function returns the TTL (time-to-live) for the rss feed
+ * data. This value is the time for which the feed data should be cached
+ * before refreshing.
+ * @param rss The #Azy_Rss (NOT NULL)
+ * @return The TTL
+ */
+unsigned int
+azy_rss_ttl_get(const Azy_Rss *rss)
+{
+   if (!AZY_MAGIC_CHECK(rss, AZY_MAGIC_RSS))
+     {
+        AZY_MAGIC_FAIL(rss, AZY_MAGIC_RSS);
+        return 0;
+     }
+   return rss->ttl;
+}
+
+/**
+ * @brief Retrieve the skiphours from an rss object
+ *
+ * This function returns a bitwise ORed number of the hours which the
+ * rss feed is not updated (eg. (1<<0) flag for skipping the first hour of the day)
+ * @param rss The #Azy_Rss (NOT NULL)
+ * @return The skiphours
+ */
 unsigned long long
 azy_rss_skiphours_get(const Azy_Rss *rss)
 {

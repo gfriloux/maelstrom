@@ -556,6 +556,7 @@ EAPI void                      azy_rss_ref(Azy_Rss *rss);
 EAPI void                      azy_rss_item_free(Azy_Rss_Item *item);
 EAPI const Eina_List          *azy_rss_items_get(const Azy_Rss *rss);
 EAPI Eina_List                *azy_rss_items_steal(Azy_Rss *rss);
+EAPI unsigned int azy_rss_ttl_get(const Azy_Rss *rss);
 EAPI unsigned int azy_rss_skipdays_get(const Azy_Rss *rss);
 EAPI unsigned long long azy_rss_skiphours_get(const Azy_Rss *rss);
 EAPI const Eina_List                *azy_rss_authors_get(const Azy_Rss *rss);
