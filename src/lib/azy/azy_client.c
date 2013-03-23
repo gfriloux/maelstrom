@@ -297,24 +297,43 @@ Azy_Client *
 azy_client_util_connect(const char *host)
 {
    Azy_Client *client;
-   Eina_Bool secure = EINA_FALSE;
+   Eina_Bool secure = EINA_FALSE, ftp = EINA_FALSE;
    const char *domain, *portstr, *path = NULL;
    int port = 80;
 
    EINA_SAFETY_ON_NULL_RETURN_VAL(host, NULL);
-   if (!strncmp(host, "http", 4))
+   switch (host[0])
      {
-        domain = host + 4;
-        if (domain[0] == 's')
+      case 'h':
+      case 'H':
+        if (strncasecmp(host + 1, "ttp", 3))
+          domain = host;
+        else
           {
-             domain++;
-             secure = EINA_TRUE;
+             domain = host + 4;
+             if ((domain[0] == 's') || (domain[0] == 'S'))
+               {
+                  domain++;
+                  secure = EINA_TRUE;
+               }
+             if (strncmp(domain, "://", 3)) return NULL;
+             domain += 3;
           }
-        if (strncmp(domain, "://", 3)) return NULL;
-        domain += 3;
+        break;
+      case 'f':
+      case 'F':
+        if (strncasecmp(host + 1, "tp://", 5))
+          domain = host;
+        else
+          {
+             domain = host + 5;
+             ftp = EINA_TRUE;
+          }
+        break;
+      default:
+        domain = host;
+        break;
      }
-   else
-     domain = host;
    portstr = strchr(domain, ':');
    if (portstr)
      {
@@ -327,6 +346,7 @@ azy_client_util_connect(const char *host)
      {
         path = strchr(domain, '/');
         if (secure) port = 443;
+        else if (ftp) port = 21;
      }
    client = azy_client_new();
    EINA_SAFETY_ON_NULL_RETURN_VAL(client, NULL);
