@@ -612,7 +612,7 @@ _azy_events_chunk_parse(Azy_Net *net, unsigned char *start, int64_t len)
           }
      }
    if (!net->buffer) net->buffer = eina_binbuf_new();
-   if (net->need_chunk_size || (net->progress + len <= net->http.chunk_size))
+   if (net->need_chunk_size || (!net->http.chunk_size) || (net->progress + len <= net->http.chunk_size))
      rlen = len;
    else if (!net->http.post_headers_buf)
      rlen = net->http.chunk_size - net->progress;
