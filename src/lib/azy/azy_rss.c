@@ -24,16 +24,202 @@
  */
 
 static Eina_Mempool *rss_mempool = NULL;
-static Eina_Mempool *rss_category_mempool = NULL;
+
+static Eet_Data_Descriptor *rss_edd = NULL;
+static Eet_Data_Descriptor *rss_union_edd = NULL;
+static Eet_Data_Descriptor *rss_union_rss_edd = NULL;
+static Eet_Data_Descriptor *rss_union_atom_edd = NULL;
+static Eet_Data_Descriptor *rss_contact_edd = NULL;
+static Eet_Data_Descriptor *rss_category_edd = NULL;
+static Eet_Data_Descriptor *rss_link_edd = NULL;
+
+static const char *const rss_mapping[] = {"rss", "atom"};
+
+const char *
+_azy_rss_eet_union_type_get(const void *data, Eina_Bool *unknow)
+{
+   const Azy_Rss *rss = data;
+
+   if (unknow) *unknow = EINA_FALSE;
+
+   if (rss->atom < 2) return rss_mapping[rss->atom];
+   if (unknow) *unknow = EINA_TRUE;
+
+   return NULL;
+}
+
+Eina_Bool
+_azy_rss_eet_union_type_set(const char *type, void *data, Eina_Bool unknow)
+{
+   Azy_Rss *rss = data;
+   int i;
+
+   if (unknow) return EINA_FALSE;
+
+   for (i = 0; i < 2; ++i)
+     if (!strcmp(rss_mapping[i], type))
+       {
+          rss->atom = i;
+          return EINA_TRUE;
+       }
+
+   return EINA_FALSE;
+}
+
+#define ADD(name, type) \
+  EET_DATA_DESCRIPTOR_ADD_BASIC(rss_contact_edd, Azy_Rss_Contact, #name, name, EET_T_##type)
+static void
+_azy_rss_contact_edd_init(void)
+{
+   Eet_Data_Descriptor_Class eddc;
+
+   EET_EINA_STREAM_DATA_DESCRIPTOR_CLASS_SET(&eddc, Azy_Rss_Contact);
+   rss_contact_edd = eet_data_descriptor_stream_new(&eddc);
+   ADD(name, INLINED_STRING);
+   ADD(uri, INLINED_STRING);
+   ADD(email, INLINED_STRING);
+#undef ADD
+}
+
+#define ADD(name, type) \
+  EET_DATA_DESCRIPTOR_ADD_BASIC(rss_category_edd, Azy_Rss_Category, #name, name, EET_T_##type)
+static void
+_azy_rss_category_edd_init(void)
+{
+   Eet_Data_Descriptor_Class eddc;
+
+   EET_EINA_STREAM_DATA_DESCRIPTOR_CLASS_SET(&eddc, Azy_Rss_Category);
+   rss_category_edd = eet_data_descriptor_stream_new(&eddc);
+   ADD(category, INLINED_STRING);
+   ADD(domain, INLINED_STRING);
+#undef ADD
+}
+
+#define ADD(name, type) \
+  EET_DATA_DESCRIPTOR_ADD_BASIC(rss_link_edd, Azy_Rss_Link, #name, name, EET_T_##type)
+static void
+_azy_rss_link_edd_init(void)
+{
+   Eet_Data_Descriptor_Class eddc;
+
+   EET_EINA_STREAM_DATA_DESCRIPTOR_CLASS_SET(&eddc, Azy_Rss_Link);
+   rss_link_edd = eet_data_descriptor_stream_new(&eddc);
+   ADD(title, INLINED_STRING);
+   ADD(href, INLINED_STRING);
+   ADD(rel, INLINED_STRING);
+   ADD(type, INLINED_STRING);
+   ADD(hreflang, INLINED_STRING);
+   ADD(length, ULONG_LONG);
+#undef ADD
+}
+
+
+#define ADD(name, type) \
+  EET_DATA_DESCRIPTOR_ADD_BASIC(rss_union_rss_edd, Azy_Rss_Type_Rss, #name, name, EET_T_##type)
+static void
+_azy_rss_rss_edd_init(void)
+{
+   Eet_Data_Descriptor_Class eddc;
+
+   EET_EINA_STREAM_DATA_DESCRIPTOR_CLASS_SET(&eddc, Azy_Rss_Type_Rss);
+   rss_union_rss_edd = eet_data_descriptor_stream_new(&eddc);
+   ADD(link, INLINED_STRING);
+   ADD(desc, INLINED_STRING);
+   ADD(lastbuilddate, ULONG_LONG);
+   ADD(skipdays, UINT);
+   ADD(skiphours, ULONG_LONG);
+   ADD(ttl, UINT);
+   ADD(image.url, INLINED_STRING);
+   ADD(image.title, INLINED_STRING);
+   ADD(image.link, INLINED_STRING);
+   ADD(image.desc, INLINED_STRING);
+   ADD(image.w, INT);
+   ADD(image.h, INT);
+#undef ADD
+}
+
+#define ADD(name, type) \
+  EET_DATA_DESCRIPTOR_ADD_BASIC(rss_union_atom_edd, Azy_Rss_Type_Atom, #name, name, EET_T_##type)
+static void
+_azy_rss_atom_edd_init(void)
+{
+   Eet_Data_Descriptor_Class eddc;
+
+   EET_EINA_STREAM_DATA_DESCRIPTOR_CLASS_SET(&eddc, Azy_Rss_Type_Atom);
+   rss_union_atom_edd = eet_data_descriptor_stream_new(&eddc);
+   ADD(id, INLINED_STRING);
+   ADD(subtitle, INLINED_STRING);
+   ADD(rights, INLINED_STRING);
+   ADD(logo, INLINED_STRING);
+   ADD(updated, ULONG_LONG);
+   EET_DATA_DESCRIPTOR_ADD_LIST(rss_union_atom_edd, Azy_Rss_Type_Atom, "contributors", contributors, azy_rss_contact_edd_get());
+   EET_DATA_DESCRIPTOR_ADD_LIST(rss_union_atom_edd, Azy_Rss_Type_Atom, "authors", authors, azy_rss_contact_edd_get());
+   EET_DATA_DESCRIPTOR_ADD_LIST(rss_union_atom_edd, Azy_Rss_Type_Atom, "atom_links", atom_links, azy_rss_link_edd_get());
+#undef ADD
+}
+
+static void *
+_azy_rss_mempool_alloc(size_t size)
+{
+   Azy_Rss *rss;
+
+   rss = eina_mempool_calloc(rss_mempool, size);
+   AZY_MAGIC_SET(rss, AZY_MAGIC_RSS);
+   rss->refcount = 1;
+   return rss;
+}
+
+static void
+_azy_rss_mempool_free(void *mem)
+{
+   Azy_Rss *rss = mem;
+   AZY_MAGIC_SET(rss, AZY_MAGIC_NONE);
+   eina_mempool_free(rss_mempool, mem);
+}
+
+static void
+_azy_rss_edd_init(void)
+{
+   Eet_Data_Descriptor_Class eddc;
+
+   EET_EINA_STREAM_DATA_DESCRIPTOR_CLASS_SET(&eddc, Azy_Rss);
+   eddc.func.mem_alloc = _azy_rss_mempool_alloc;
+   eddc.func.mem_free = _azy_rss_mempool_free;
+   rss_edd = eet_data_descriptor_stream_new(&eddc);
+
+   eddc.version = EET_DATA_DESCRIPTOR_CLASS_VERSION;
+   eddc.func.type_get = _azy_rss_eet_union_type_get;
+   eddc.func.type_set = _azy_rss_eet_union_type_set;
+   rss_union_edd = eet_data_descriptor_stream_new(&eddc);
+
+#define ADD(name, type) \
+  EET_DATA_DESCRIPTOR_ADD_BASIC(rss_edd, Azy_Rss, #name, name, EET_T_##type)
+
+   EET_DATA_DESCRIPTOR_ADD_MAPPING(rss_union_edd, "rss", rss_union_rss_edd);
+   EET_DATA_DESCRIPTOR_ADD_MAPPING(rss_union_edd, "atom", rss_union_atom_edd);
+   ADD(title, INLINED_STRING);
+   ADD(img_url, INLINED_STRING);
+   ADD(generator, INLINED_STRING);
+   EET_DATA_DESCRIPTOR_ADD_LIST(rss_edd, Azy_Rss, "categories", categories, azy_rss_category_edd_get());
+   EET_DATA_DESCRIPTOR_ADD_LIST(rss_edd, Azy_Rss, "items", items, azy_rss_item_edd_get());
+   EET_DATA_DESCRIPTOR_ADD_UNION(rss_edd, Azy_Rss, "data", data, atom, rss_union_edd);
+#undef ADD
+}
 
 Eina_Bool
 azy_rss_init(const char *type)
 {
-   if (!azy_rss_item_init(type)) return EINA_FALSE;
    rss_mempool = eina_mempool_add(type, "Azy_Rss", NULL, sizeof(Azy_Rss), 64);
    if (rss_mempool)
      {
-        rss_category_mempool = eina_mempool_add(type, "Azy_Rss_Category", NULL, sizeof(Azy_Rss_Category), 64);
+        eet_init();
+        _azy_rss_category_edd_init();
+        _azy_rss_contact_edd_init();
+        _azy_rss_link_edd_init();
+        azy_rss_item_init(type);
+        _azy_rss_rss_edd_init();
+        _azy_rss_atom_edd_init();
+        _azy_rss_edd_init();
         return EINA_TRUE;
      }
 
@@ -47,10 +233,24 @@ void
 azy_rss_shutdown(void)
 {
    azy_rss_item_shutdown();
+
+   eet_data_descriptor_free(rss_contact_edd);
+   eet_data_descriptor_free(rss_category_edd);
+   eet_data_descriptor_free(rss_link_edd);
+   eet_data_descriptor_free(rss_union_edd);
+   eet_data_descriptor_free(rss_union_rss_edd);
+   eet_data_descriptor_free(rss_union_atom_edd);
+   eet_data_descriptor_free(rss_edd);
+   rss_edd = NULL;
+   rss_union_edd = NULL;
+   rss_union_rss_edd = NULL;
+   rss_union_atom_edd = NULL;
+   rss_contact_edd = NULL;
+   rss_category_edd = NULL;
+   rss_link_edd = NULL;
+   eet_shutdown();
    eina_mempool_del(rss_mempool);
    rss_mempool = NULL;
-   eina_mempool_del(rss_category_mempool);
-   rss_category_mempool = NULL;
 }
 
 /*
@@ -75,7 +275,7 @@ azy_rss_new(void)
 Azy_Rss_Category *
 azy_rss_category_new(void)
 {
-   return eina_mempool_calloc(rss_category_mempool, sizeof(Azy_Rss_Category));
+   return calloc(1, sizeof(Azy_Rss_Category));
 }
 
 void
@@ -84,7 +284,7 @@ azy_rss_category_free(Azy_Rss_Category *cat)
    if (!cat) return;
    eina_stringshare_del(cat->category);
    eina_stringshare_del(cat->domain);
-   eina_mempool_free(rss_category_mempool, cat);
+   free(cat);
 }
 
 /**
@@ -176,6 +376,10 @@ azy_rss_free(Azy_Rss *rss)
    eina_mempool_free(rss_mempool, rss);
 }
 
+/**
+ * @brief Increase the refcount of an rss object to prevent its deletion
+ * @param rss The object to ref (NOT NULL)
+ */
 void
 azy_rss_ref(Azy_Rss *rss)
 {
@@ -185,6 +389,30 @@ azy_rss_ref(Azy_Rss *rss)
         return;
      }
    rss->refcount++;
+}
+
+Eet_Data_Descriptor *
+azy_rss_contact_edd_get(void)
+{
+   return rss_contact_edd;
+}
+
+Eet_Data_Descriptor *
+azy_rss_category_edd_get(void)
+{
+   return rss_category_edd;
+}
+
+Eet_Data_Descriptor *
+azy_rss_link_edd_get(void)
+{
+   return rss_link_edd;
+}
+
+Eet_Data_Descriptor *
+azy_rss_edd_get(void)
+{
+   return rss_edd;
 }
 
 /**

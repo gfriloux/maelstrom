@@ -148,93 +148,100 @@ struct Azy_Content
    const char           *faultmsg; //if non-null, message to reply with instead of message associated with errcode
 };
 
+typedef struct Azy_Rss_Type_Rss
+{
+   /* rss format only */
+   Eina_Stringshare *link;
+   Eina_Stringshare *desc;
+   time_t lastbuilddate;
+   unsigned int skipdays; // bitshift per day
+   unsigned long long skiphours; // bitshift per hour
+   unsigned int ttl; // in minutes
+   struct
+   {
+      Eina_Stringshare *url;
+      Eina_Stringshare *title;
+      Eina_Stringshare *link;
+      Eina_Stringshare *desc;
+      int w, h;
+   } image;
+} Azy_Rss_Type_Rss;
+
+typedef struct Azy_Rss_Type_Atom
+{
+   /* atom format only */
+   Eina_Stringshare *id;
+   Eina_Stringshare *subtitle;
+   Eina_Stringshare *rights;
+   Eina_Stringshare *logo;
+   time_t      updated;
+   Eina_List  *contributors; //Azy_Rss_Contact
+   Eina_List  *authors; //Azy_Rss_Contact
+   Eina_List  *atom_links; //Azy_Rss_Link
+} Azy_Rss_Type_Atom;
+
 struct Azy_Rss
 {
    AZY_MAGIC;
+   Eina_Bool   atom; /* true if item is Azy_Rss_Atom */
    unsigned int refcount;
-   Eina_Bool   atom : 1; /* true if item is Azy_Rss_Atom */
    Eina_Stringshare *title;
    Eina_Stringshare *img_url;
    Eina_Stringshare *generator;
-   Eina_List  *categories;
-   Eina_List  *items;
+   Eina_List  *categories; //Azy_Rss_Category
+   Eina_List  *items; //Azy_Rss_Item
 
    union
    {
-      struct
-      {
-         /* rss format only */
-         Eina_Stringshare *link;
-         Eina_Stringshare *desc;
-         time_t lastbuilddate;
-         unsigned int skipdays; // bitshift per day
-         unsigned long long skiphours; // bitshift per hour
-         unsigned int ttl; // in minutes
-         struct
-         {
-            Eina_Stringshare *url;
-            Eina_Stringshare *title;
-            Eina_Stringshare *link;
-            Eina_Stringshare *desc;
-            int w, h;
-         } image;
-      } rss;
-
-      struct
-      {
-         /* atom format only */
-         Eina_Stringshare *id;
-         Eina_Stringshare *subtitle;
-         Eina_Stringshare *rights;
-         Eina_Stringshare *logo;
-         time_t      updated;
-         Eina_List  *contributors;
-         Eina_List  *authors;
-         Eina_List  *atom_links;
-      } atom;
+      Azy_Rss_Type_Rss rss;
+      Azy_Rss_Type_Atom atom;
    } data;
 };
+
+typedef struct Azy_Rss_Item_Type_Rss
+{
+   /* rss format only */
+   Eina_Stringshare *link;
+   Eina_Stringshare *desc;
+   Eina_Stringshare *guid;
+   Eina_Stringshare *comment_url;
+   Eina_Stringshare *author;
+   Eina_Stringshare *content;
+   Eina_Stringshare *content_encoded;
+   struct
+   {
+      Eina_Stringshare *url;
+      size_t length;
+      Eina_Stringshare *type;
+   } enclosure;
+   Eina_Bool permalink; //guid is permalink (guid is a link)
+} Azy_Rss_Item_Type_Rss;
+
+typedef struct Azy_Rss_Item_Type_Atom
+{
+   /* atom format only */
+   Eina_Stringshare *rights;
+   Eina_Stringshare *summary;
+   Eina_Stringshare *id;
+   Eina_Stringshare *icon;
+   time_t   updated;
+   Eina_List  *contributors; //Azy_Rss_Contact
+   Eina_List  *authors; //Azy_Rss_Contact
+   Eina_List  *atom_links; //Azy_Rss_Link
+} Azy_Rss_Item_Type_Atom;
 
 struct Azy_Rss_Item
 {
    AZY_MAGIC;
-   Eina_Bool   atom : 1; /* true if item is Azy_Rss_Atom */
+   Eina_Bool   atom; /* true if item is Azy_Rss_Atom */
    Eina_Stringshare *title;
-   Eina_List  *categories;
+   Eina_List  *categories; //Azy_Rss_Category
    time_t published;
 
    union
    {
-      struct
-      {
-         /* rss format only */
-         Eina_Stringshare *link;
-         Eina_Stringshare *desc;
-         Eina_Stringshare *guid;
-         Eina_Stringshare *comment_url;
-         Eina_Stringshare *author;
-         Eina_Stringshare *content;
-         Eina_Stringshare *content_encoded;
-         struct
-         {
-            Eina_Stringshare *url;
-            size_t length;
-            Eina_Stringshare *type;
-         } enclosure;
-         Eina_Bool permalink : 1; //guid is permalink (guid is a link)
-      } rss;
-      struct
-      {
-         /* atom format only */
-         Eina_Stringshare *rights;
-         Eina_Stringshare *summary;
-         Eina_Stringshare *id;
-         Eina_Stringshare *icon;
-         time_t   updated;
-         Eina_List  *contributors;
-         Eina_List  *authors;
-         Eina_List  *atom_links;
-      } atom;
+      Azy_Rss_Item_Type_Rss rss;
+      Azy_Rss_Item_Type_Atom atom;
    } data;
 };
 
@@ -472,6 +479,8 @@ Azy_Rss         *azy_rss_new(void);
 Azy_Rss_Item    *azy_rss_item_new(void);
 Azy_Rss_Category *azy_rss_category_new(void);
 void azy_rss_category_free(Azy_Rss_Category *cat);
+const char *_azy_rss_eet_union_type_get(const void *data, Eina_Bool *unknow);
+Eina_Bool _azy_rss_eet_union_type_set(const char *type, void *data, Eina_Bool unknow);
 
 Eina_Bool        azy_content_serialize_request_xml(Azy_Content *content);
 Eina_Bool        azy_content_serialize_response_xml(Azy_Content *content);

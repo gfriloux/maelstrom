@@ -20,6 +20,7 @@
 #define AZY_H
 
 #include <Eina.h>
+#include <Eet.h>
 
 #ifdef EAPI
 # undef EAPI
@@ -597,6 +598,12 @@ EAPI void                      azy_rss_category_print(const char *pre, int inden
 EAPI void                      azy_rss_link_print(const char *pre, int indent, const Azy_Rss_Link *li);
 EAPI void                      azy_rss_contact_print(const char *pre, int indent, const Azy_Rss_Contact *c);
 EAPI void                      azy_rss_item_print(const char *pre, int indent, const Azy_Rss_Item *item);
+
+EAPI Eet_Data_Descriptor *azy_rss_contact_edd_get(void);
+EAPI Eet_Data_Descriptor *azy_rss_category_edd_get(void);
+EAPI Eet_Data_Descriptor *azy_rss_link_edd_get(void);
+EAPI Eet_Data_Descriptor *azy_rss_edd_get(void);
+EAPI Eet_Data_Descriptor *azy_rss_item_edd_get(void);
 #ifdef __cplusplus
 }
 #endif

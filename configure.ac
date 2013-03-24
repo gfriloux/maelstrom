@@ -80,6 +80,55 @@ AC_SUBST([CXX_PIC])
 min_efl_version=1.7
 MAELSTROM_REQUIRES=
 
+#############################
+
+want_email=
+build_email=
+AC_ARG_ENABLE([email],
+   [AC_HELP_STRING([--disable-email], [disable building email @<:@default=detect@:>@])],
+   [want_email=$enableval]
+)
+
+if test "x$want_email" != "xno" ; then
+   EMAIL_REQUIRES="ecore-con >= $min_efl_version ecore >= $min_efl_version eina >= $min_efl_version"
+   PKG_CHECK_MODULES(EMAIL, [$EMAIL_REQUIRES], [build_email=email], [build_email=])
+fi
+AM_CONDITIONAL(BUILD_EMAIL, [test "x${build_email}" != "x"])
+
+if test -n "$build_email" ; then
+   MAELSTROM_REQUIRES="$EMAIL_REQUIRES"
+   email_pc=email.pc
+fi
+
+#################################
+
+want_shotgun=
+build_shotgun=
+AC_ARG_ENABLE([shotgun],
+   [AC_HELP_STRING([--disable-shotgun], [disable building shotgun @<:@default=detect@:>@])],
+   [want_shotgun=$enableval]
+)
+
+if test "x$want_shotgun" != "xno" ; then
+   SHOTGUN_REQUIRES="ecore-con >= $min_efl_version ecore >= $min_efl_version eina >= $min_efl_version"
+   if test -n "$EMAIL_LIBS" ; then
+     SHOTGUN_CFLAGS="$EMAIL_CFLAGS"
+     SHOTGUN_LIBS="$EMAIL_LIBS"
+     build_shotgun=shotgun
+   else
+      PKG_CHECK_MODULES(SHOTGUN, [$SHOTGUN_REQUIRES], [build_shotgun=shotgun], [build_shotgun=])
+   fi
+fi
+AM_CONDITIONAL(BUILD_SHOTGUN, [test "x${build_shotgun}" != "x"])
+if test -n "$build_shotgun" ; then
+   if test -z "$build_email" ; then
+      MAELSTROM_REQUIRES="$SHOTGUN_REQUIRES"
+   fi
+   shotgun_pc=shotgun.pc
+fi
+
+#############################
+
 want_azy=
 build_azy=
 AC_ARG_ENABLE([azy],
@@ -91,8 +140,18 @@ if test "x$want_azy" != "xno" ; then
    if test -z "$YACC" ; then
       AC_ERROR([yacc not found])
    fi
-   AZY_REQUIRES="ecore-con >= $min_efl_version ecore >= $min_efl_version eina >= $min_efl_version"
-   PKG_CHECK_MODULES(AZY, [$AZY_REQUIRES], [build_azy=azy], [build_azy=])
+   AZY_REQUIRES="ecore-con >= $min_efl_version ecore >= $min_efl_version eina >= $min_efl_version eet >= $min_efl_version"
+   if test -n "$EMAIL_LIBS" ; then
+     PKG_CHECK_MODULES(EET, [eet >= $min_efl_version], [build_azy=azy], [build_azy=])
+     AZY_CFLAGS="$EMAIL_CFLAGS $EET_CFLAGS"
+     AZY_LIBS="$EMAIL_LIBS $EET_LIBS"
+   elif test -n "$SHOTGUN_LIBS" ; then
+     PKG_CHECK_MODULES(EET, [eet >= $min_efl_version], [build_azy=azy], [build_azy=])
+     AZY_CFLAGS="$SHOTGUN_CFLAGS $EET_CFLAGS"
+     AZY_LIBS="$SHOTGUN_LIBS $EET_LIBS"
+   else
+     PKG_CHECK_MODULES(AZY, [$AZY_REQUIRES], [build_azy=azy], [build_azy=])
+   fi
 fi
 AM_CONDITIONAL(BUILD_AZY, [test "x${build_azy}" != "x"])
 
@@ -103,7 +162,11 @@ AC_ARG_ENABLE([mysql-tests],
 )
 
 if test -n "$build_azy" ; then
-   MAELSTROM_REQUIRES+=" $AZY_REQUIRES"
+   if test -z "$build_email" && test -z "$build_shotgun" ; then
+      MAELSTROM_REQUIRES="$AZY_REQUIRES"
+   else
+      MAELSTROM_REQUIRES+=" eet >= $min_efl_version"
+   fi
    azy_pc=azy.pc
    if test "x$want_mysql" != "xno" ; then
       AC_PATH_PROG([mysql_config], [mysql_config])
@@ -136,55 +199,7 @@ else
    AM_CONDITIONAL([NEED_RE2C], [false])
 fi
 
-
-want_email=
-build_email=
-AC_ARG_ENABLE([email],
-   [AC_HELP_STRING([--disable-email], [disable building email @<:@default=detect@:>@])],
-   [want_email=$enableval]
-)
-
-if test "x$want_email" != "xno" ; then
-   EMAIL_REQUIRES="ecore-con >= $min_efl_version ecore >= $min_efl_version eina >= $min_efl_version"
-   if test -n "$AZY_LIBS" ; then
-     EMAIL_CFLAGS="$AZY_CFLAGS"
-     EMAIL_LIBS="$AZY_LIBS"
-     build_email=email
-   else
-      PKG_CHECK_MODULES(EMAIL, [$EMAIL_REQUIRES], [build_email=email], [build_email=])
-   fi
-fi
-AM_CONDITIONAL(BUILD_EMAIL, [test "x${build_email}" != "x"])
-
-if test -n "$build_email" ; then
-   if test -z "$build_azy" ; then
-      MAELSTROM_REQUIRES+=" $EMAIL_REQUIRES"
-   fi
-   email_pc=email.pc
-fi
-
-want_shotgun=
-build_shotgun=
-AC_ARG_ENABLE([shotgun],
-   [AC_HELP_STRING([--disable-shotgun], [disable building shotgun @<:@default=detect@:>@])],
-   [want_shotgun=$enableval]
-)
-
-if test "x$want_shotgun" != "xno" ; then
-   SHOTGUN_REQUIRES="ecore-con >= $min_efl_version ecore >= $min_efl_version eina >= $min_efl_version"
-   if test -n "$AZY_LIBS" ; then
-     SHOTGUN_CFLAGS="$AZY_CFLAGS"
-     SHOTGUN_LIBS="$AZY_LIBS"
-     build_shotgun=shotgun
-   elif test -n "$EMAIL_LIBS" ; then
-     SHOTGUN_CFLAGS="$EMAIL_CFLAGS"
-     SHOTGUN_LIBS="$EMAIL_LIBS"
-     build_shotgun=shotgun
-   else
-      PKG_CHECK_MODULES(SHOTGUN, [$SHOTGUN_REQUIRES], [build_shotgun=shotgun], [build_shotgun=])
-   fi
-fi
-AM_CONDITIONAL(BUILD_SHOTGUN, [test "x${build_shotgun}" != "x"])
+#################################
 
 build_shotgun_gui=
 want_shotgun_gui=
@@ -193,10 +208,6 @@ AC_ARG_ENABLE([shotgun-gui],
    [want_shotgun_gui=$enableval], [])
 
 if test -n "$build_shotgun" ; then
-   if test -z "$build_azy" -a test -z "$build_email" ; then
-      MAELSTROM_REQUIRES+=" $SHOTGUN_REQUIRES"
-   fi
-   shotgun_pc=shotgun.pc
    if test "x$want_shotgun_gui" != "xno"; then
       if test -z "$build_azy" ; then
          AC_ERROR([azy is required to build shotgun gui])
@@ -219,6 +230,8 @@ if test -n "$build_shotgun" ; then
    fi
 fi
 AM_CONDITIONAL([BUILD_SHOTGUN_GUI], [test "x${build_shotgun_gui}" != "x"])
+
+##############################
 
 AC_ARG_WITH([edje-cc],
    [AC_HELP_STRING([--with-edje-cc=PATH],
