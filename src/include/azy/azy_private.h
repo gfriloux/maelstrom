@@ -495,6 +495,8 @@ Eina_Bool        azy_content_deserialize_request_json(Azy_Content *content, cons
 Eina_Bool        azy_content_deserialize_response_json(Azy_Content *content, const char *buf, ssize_t len);
 
 Eina_Bool        azy_content_buffer_set_(Azy_Content *content, unsigned char *buffer, size_t length);
+
+void azy_util_cleanup(void);
 #ifdef __cplusplus
 }
 #endif

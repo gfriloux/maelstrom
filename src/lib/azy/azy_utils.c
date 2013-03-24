@@ -28,6 +28,8 @@
 # ifdef HAVE_RPCDCE_H
 #  include <Rpcdce.h>
 # endif
+#else
+static FILE *uuid_file = NULL;
 #endif
 
 typedef enum
@@ -58,6 +60,14 @@ static const char *const months[] =
 
 /* length of a uuid */
 #define UUID_LEN 36
+
+void
+azy_util_cleanup(void)
+{
+   if (uuid_file) fclose(uuid_file);
+   uuid_file = NULL;
+}
+
 /**
  * @defgroup Azy_Utils Utilities
  * @brief Functions which provide utility
@@ -181,14 +191,17 @@ azy_util_uuid_new(void)
 
 #ifdef __linux__
    char uuid[UUID_LEN + 1];
-   FILE *f;
-   if (!(f = fopen("/proc/sys/kernel/random/uuid", "r")))
-     return NULL;
+   if (uuid_file)
+     rewind(uuid_file);
+   else
+     {
+        uuid_file = fopen("/proc/sys/kernel/random/uuid", "r");
+        EINA_SAFETY_ON_NULL_RETURN_VAL(uuid_file, NULL);
+     }
 
-   if (fgets(uuid, UUID_LEN + 1, f))
+   if (fgets(uuid, sizeof(uuid), uuid_file))
      ret = eina_stringshare_add_length(uuid, UUID_LEN);
 
-   fclose(f);
 #endif
    return ret;
 }

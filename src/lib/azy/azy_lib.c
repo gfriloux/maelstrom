@@ -212,6 +212,7 @@ azy_shutdown(void)
      eina_log_domain_unregister(azy_rpc_log_dom);
    azy_net_cookie_shutdown_();
    azy_rss_shutdown();
+   azy_util_cleanup();
    ecore_con_shutdown();
    ecore_shutdown();
    eina_shutdown();
