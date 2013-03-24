@@ -563,6 +563,8 @@ EAPI unsigned int azy_rss_ttl_get(const Azy_Rss *rss);
 EAPI unsigned int azy_rss_skipdays_get(const Azy_Rss *rss);
 EAPI unsigned long long azy_rss_skiphours_get(const Azy_Rss *rss);
 EAPI time_t azy_rss_updated_get(const Azy_Rss *rss);
+EAPI Eina_Bool azy_rss_atom_get(const Azy_Rss *rss);
+EAPI Eina_Bool azy_rss_item_atom_get(const Azy_Rss_Item *item);
 EAPI const Eina_List                *azy_rss_authors_get(const Azy_Rss *rss);
 EAPI const Eina_List                *azy_rss_contributors_get(const Azy_Rss *rss);
 EAPI const Eina_List                *azy_rss_categories_get(const Azy_Rss *rss);

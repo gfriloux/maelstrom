@@ -234,7 +234,23 @@ azy_rss_item_edd_get(void)
 }
 
 /**
- * @brief Get whether an item is marked as read
+ * @brief Return whether an item is from an atom feed
+ * @param item The item (NOT NULL)
+ * @return EINA_TRUE if item's feed is atom, else EINA_FALSE for rss2
+ */
+Eina_Bool
+azy_rss_item_atom_get(const Azy_Rss_Item *item)
+{
+   if (!AZY_MAGIC_CHECK(item, AZY_MAGIC_RSS_ITEM))
+     {
+        AZY_MAGIC_FAIL(item, AZY_MAGIC_RSS_ITEM);
+        return EINA_FALSE;
+     }
+   return item->atom;
+}
+
+/**
+ * @brief Return whether an item is marked as read
  * @param item The item (NOT NULL)
  * @return EINA_TRUE if item is marked read, else EINA_FALSE
  */
@@ -280,6 +296,7 @@ azy_rss_item_authors_get(const Azy_Rss_Item *item)
         AZY_MAGIC_FAIL(item, AZY_MAGIC_RSS_ITEM);
         return NULL;
      }
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(!item->atom, NULL);
    return item->data.atom.authors;
 }
 
@@ -298,6 +315,7 @@ azy_rss_item_contributors_get(const Azy_Rss_Item *item)
         AZY_MAGIC_FAIL(item, AZY_MAGIC_RSS_ITEM);
         return NULL;
      }
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(!item->atom, NULL);
    return item->data.atom.contributors;
 }
 
@@ -316,6 +334,7 @@ azy_rss_item_links_get(const Azy_Rss_Item *item)
         AZY_MAGIC_FAIL(item, AZY_MAGIC_RSS_ITEM);
         return NULL;
      }
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(!item->atom, NULL);
    return item->data.atom.atom_links;
 }
 
@@ -344,6 +363,7 @@ azy_rss_item_enclosure_get(const Azy_Rss_Item *item, Eina_Stringshare **url, Ein
         AZY_MAGIC_FAIL(item, AZY_MAGIC_RSS_ITEM);
         return;
      }
+   EINA_SAFETY_ON_TRUE_RETURN(item->atom);
    if (url) *url = item->data.rss.enclosure.url;
    if (content_type) *content_type = item->data.rss.enclosure.type;
    if (length) *length = item->data.rss.enclosure.length;
@@ -375,10 +395,11 @@ azy_rss_item_guid_is_permalink(const Azy_Rss_Item *item)
         AZY_MAGIC_FAIL(item, AZY_MAGIC_RSS_ITEM);
         return EINA_FALSE;
      }
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(item->atom, EINA_FALSE);
    return item->data.rss.permalink;
 }
 
-#define DEF(NAME, MEMBER) \
+#define DEF(NAME, CHECK, MEMBER) \
 /**
    @brief Retrieve the NAME of an rss item object
    This function will return the NAME of @p item.  The NAME will be stringshared,
@@ -394,22 +415,23 @@ azy_rss_item_guid_is_permalink(const Azy_Rss_Item *item)
           AZY_MAGIC_FAIL(item, AZY_MAGIC_RSS_ITEM);  \
           return NULL;                               \
        }                                             \
+     CHECK                                             \
      return item->MEMBER;                              \
   }
 
-DEF(title, title)
-DEF(uuid, uuid)
-DEF(link, data.rss.link)
-DEF(desc, data.rss.desc)
-DEF(guid, data.rss.guid)
-DEF(comment_url, data.rss.comment_url)
-DEF(author, data.rss.author)
-DEF(content, data.rss.content)
-DEF(content_encoded, data.rss.content_encoded)
-DEF(rights, data.atom.rights)
-DEF(summary, data.atom.summary)
-DEF(id, data.atom.id)
-DEF(icon, data.atom.icon)
+DEF(title,, title)
+DEF(uuid,, uuid)
+DEF(link, EINA_SAFETY_ON_TRUE_RETURN_VAL(item->atom, NULL);, data.rss.link)
+DEF(desc, EINA_SAFETY_ON_TRUE_RETURN_VAL(item->atom, NULL);, data.rss.desc)
+DEF(guid, EINA_SAFETY_ON_TRUE_RETURN_VAL(item->atom, NULL);, data.rss.guid)
+DEF(comment_url, EINA_SAFETY_ON_TRUE_RETURN_VAL(item->atom, NULL);, data.rss.comment_url)
+DEF(author, EINA_SAFETY_ON_TRUE_RETURN_VAL(item->atom, NULL);, data.rss.author)
+DEF(content, EINA_SAFETY_ON_TRUE_RETURN_VAL(item->atom, NULL);, data.rss.content)
+DEF(content_encoded, EINA_SAFETY_ON_TRUE_RETURN_VAL(item->atom, NULL);, data.rss.content_encoded)
+DEF(rights, EINA_SAFETY_ON_TRUE_RETURN_VAL(!item->atom, NULL);, data.atom.rights)
+DEF(summary, EINA_SAFETY_ON_TRUE_RETURN_VAL(!item->atom, NULL);, data.atom.summary)
+DEF(id, EINA_SAFETY_ON_TRUE_RETURN_VAL(!item->atom, NULL);, data.atom.id)
+DEF(icon, EINA_SAFETY_ON_TRUE_RETURN_VAL(!item->atom, NULL);, data.atom.icon)
 
 #undef DEF
 

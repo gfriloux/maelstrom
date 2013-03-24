@@ -527,6 +527,25 @@ azy_rss_categories_get(const Azy_Rss *rss)
 }
 
 /**
+ * @brief Return whether a feed is an atom feed
+ *
+ * This function returns true if the feed is an rss atom feed,
+ * otherwise it should be assumed to be an rss2 feed.
+ * @param rss The #Azy_Rss (NOT NULL)
+ * @return EINA_TRUE if feed is an atom feed, else EINA_FALSE
+ */
+Eina_Bool
+azy_rss_atom_get(const Azy_Rss *rss)
+{
+   if (!AZY_MAGIC_CHECK(rss, AZY_MAGIC_RSS))
+     {
+        AZY_MAGIC_FAIL(rss, AZY_MAGIC_RSS);
+        return EINA_FALSE;
+     }
+   return rss->atom;
+}
+
+/**
  * @brief Retrieve the skipdays from an rss object
  *
  * This function returns a bitwise ORed number of the days which the
@@ -542,6 +561,7 @@ azy_rss_skipdays_get(const Azy_Rss *rss)
         AZY_MAGIC_FAIL(rss, AZY_MAGIC_RSS);
         return 0;
      }
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(rss->atom, 0);
    return rss->data.rss.skipdays;
 }
 
@@ -562,6 +582,7 @@ azy_rss_ttl_get(const Azy_Rss *rss)
         AZY_MAGIC_FAIL(rss, AZY_MAGIC_RSS);
         return 0;
      }
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(rss->atom, 0);
    return rss->data.rss.ttl;
 }
 
@@ -600,10 +621,11 @@ azy_rss_skiphours_get(const Azy_Rss *rss)
         AZY_MAGIC_FAIL(rss, AZY_MAGIC_RSS);
         return 0;
      }
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(rss->atom, 0);
    return rss->data.rss.skiphours;
 }
 
-#define DEF(NAME, MEMBER) \
+#define DEF(NAME, CHECK, MEMBER) \
 /**
    @brief Retrieve the NAME of an rss object
    This function will return the NAME of @p rss.  The NAME will be stringshared,
@@ -619,18 +641,19 @@ azy_rss_skiphours_get(const Azy_Rss *rss)
           AZY_MAGIC_FAIL(rss, AZY_MAGIC_RSS);  \
           return NULL;                         \
        }                                       \
+     CHECK                                      \
      return rss->MEMBER;                         \
   }
 
-DEF(title, title)
-DEF(link, data.rss.link)
-DEF(img_url, img_url)
-DEF(desc, data.rss.desc)
-DEF(rights, data.atom.rights)
-DEF(id, data.atom.id)
-DEF(logo, data.atom.logo)
-DEF(generator, generator)
-DEF(subtitle, data.atom.subtitle)
+DEF(title, , title)
+DEF(img_url, , img_url)
+DEF(generator, , generator)
+DEF(link, EINA_SAFETY_ON_TRUE_RETURN_VAL(rss->atom, NULL);, data.rss.link)
+DEF(desc, EINA_SAFETY_ON_TRUE_RETURN_VAL(rss->atom, NULL);, data.rss.desc)
+DEF(rights, EINA_SAFETY_ON_TRUE_RETURN_VAL(!rss->atom, NULL);, data.atom.rights)
+DEF(id, EINA_SAFETY_ON_TRUE_RETURN_VAL(!rss->atom, NULL);, data.atom.id)
+DEF(logo, EINA_SAFETY_ON_TRUE_RETURN_VAL(!rss->atom, NULL);, data.atom.logo)
+DEF(subtitle, EINA_SAFETY_ON_TRUE_RETURN_VAL(!rss->atom, NULL);, data.atom.subtitle)
 
 #undef DEF
 
