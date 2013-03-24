@@ -194,6 +194,7 @@ azy_rss_item_free(Azy_Rss_Item *item)
      }
 
    eina_stringshare_del(item->title);
+   eina_stringshare_del(item->uuid);
    EINA_LIST_FREE(item->categories, d)
      azy_rss_category_free(d);
    if (item->atom)
