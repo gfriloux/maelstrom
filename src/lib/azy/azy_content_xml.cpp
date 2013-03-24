@@ -792,8 +792,8 @@ azy_content_deserialize_rss_xml(Azy_Content *content,
           rss->data.rss.desc = eina_stringshare_add(n.child_value());
         else if ((!rss->generator) && (!strcmp(name, "generator")))
           rss->generator = eina_stringshare_add(n.child_value());
-        else if ((!rss->data.rss.lastbuilddate) && (!strcmp(name, "lastBuildDate")))
-          rss->data.rss.lastbuilddate = azy_util_date_parse(strdupa(n.child_value()), NULL);
+        else if ((!rss->updated) && (!strcmp(name, "lastBuildDate")))
+          rss->updated = azy_util_date_parse(strdupa(n.child_value()), NULL);
         else if (!strcmp(name, "image"))
           {
              for (xml_node::iterator x = n.begin(); x != n.end(); ++x)
@@ -1159,7 +1159,7 @@ azy_content_deserialize_atom_xml(Azy_Content *content,
           {
              struct tm t;
              strptime(n.child_value(), "%FT%TZ", &t);
-             rss->data.atom.updated = mktime(&t);
+             rss->updated = mktime(&t);
           }
         else if (!strcmp(name, "entry") && (!n.empty()))
           {

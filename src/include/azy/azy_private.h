@@ -153,7 +153,6 @@ typedef struct Azy_Rss_Type_Rss
    /* rss format only */
    Eina_Stringshare *link;
    Eina_Stringshare *desc;
-   time_t lastbuilddate;
    unsigned int skipdays; // bitshift per day
    unsigned long long skiphours; // bitshift per hour
    unsigned int ttl; // in minutes
@@ -174,7 +173,6 @@ typedef struct Azy_Rss_Type_Atom
    Eina_Stringshare *subtitle;
    Eina_Stringshare *rights;
    Eina_Stringshare *logo;
-   time_t      updated;
    Eina_List  *contributors; //Azy_Rss_Contact
    Eina_List  *authors; //Azy_Rss_Contact
    Eina_List  *atom_links; //Azy_Rss_Link
@@ -188,6 +186,7 @@ struct Azy_Rss
    Eina_Stringshare *title;
    Eina_Stringshare *img_url;
    Eina_Stringshare *generator;
+   time_t      updated;
    Eina_List  *categories; //Azy_Rss_Category
    Eina_List  *items; //Azy_Rss_Item
 

@@ -125,7 +125,6 @@ _azy_rss_rss_edd_init(void)
    rss_union_rss_edd = eet_data_descriptor_stream_new(&eddc);
    ADD(link, INLINED_STRING);
    ADD(desc, INLINED_STRING);
-   ADD(lastbuilddate, ULONG_LONG);
    ADD(skipdays, UINT);
    ADD(skiphours, ULONG_LONG);
    ADD(ttl, UINT);
@@ -151,7 +150,6 @@ _azy_rss_atom_edd_init(void)
    ADD(subtitle, INLINED_STRING);
    ADD(rights, INLINED_STRING);
    ADD(logo, INLINED_STRING);
-   ADD(updated, ULONG_LONG);
    EET_DATA_DESCRIPTOR_ADD_LIST(rss_union_atom_edd, Azy_Rss_Type_Atom, "contributors", contributors, azy_rss_contact_edd_get());
    EET_DATA_DESCRIPTOR_ADD_LIST(rss_union_atom_edd, Azy_Rss_Type_Atom, "authors", authors, azy_rss_contact_edd_get());
    EET_DATA_DESCRIPTOR_ADD_LIST(rss_union_atom_edd, Azy_Rss_Type_Atom, "atom_links", atom_links, azy_rss_link_edd_get());
@@ -200,6 +198,7 @@ _azy_rss_edd_init(void)
    ADD(title, INLINED_STRING);
    ADD(img_url, INLINED_STRING);
    ADD(generator, INLINED_STRING);
+   ADD(updated, ULONG_LONG);
    EET_DATA_DESCRIPTOR_ADD_LIST(rss_edd, Azy_Rss, "categories", categories, azy_rss_category_edd_get());
    EET_DATA_DESCRIPTOR_ADD_LIST(rss_edd, Azy_Rss, "items", items, azy_rss_item_edd_get());
    EET_DATA_DESCRIPTOR_ADD_UNION(rss_edd, Azy_Rss, "data", data, atom, rss_union_edd);
@@ -567,6 +566,25 @@ azy_rss_ttl_get(const Azy_Rss *rss)
 }
 
 /**
+ * @brief Retrieve the last update time from an rss object
+ *
+ * This function returns the last updated time for the rss feed
+ * data. This value is the time at which the feed was last updated by the server
+ * @param rss The #Azy_Rss (NOT NULL)
+ * @return The time, as unixtime
+ */
+time_t
+azy_rss_updated_get(const Azy_Rss *rss)
+{
+   if (!AZY_MAGIC_CHECK(rss, AZY_MAGIC_RSS))
+     {
+        AZY_MAGIC_FAIL(rss, AZY_MAGIC_RSS);
+        return 0;
+     }
+   return rss->updated;
+}
+
+/**
  * @brief Retrieve the skiphours from an rss object
  *
  * This function returns a bitwise ORed number of the hours which the
@@ -742,6 +760,8 @@ azy_rss_print(const char *pre,
    int i;
    Eina_List *l;
    void *item;
+   struct tm *t;
+   char buf[1024];
 
    if (!AZY_MAGIC_CHECK(rss, AZY_MAGIC_RSS))
      {
@@ -763,6 +783,12 @@ azy_rss_print(const char *pre,
    PRINT(title);
    PRINT(img_url);
    PRINT(generator);
+
+   t = localtime(&rss->updated);
+   strftime(buf, sizeof(buf), "%FT%TZ", t);
+   for (i = 0; i < indent; i++)
+     printf("%s", pre);
+   printf("updated: %s\n", buf);
    EINA_LIST_FOREACH(rss->categories, l, item)
      {
         
@@ -808,16 +834,8 @@ azy_rss_print(const char *pre,
      }
    else
      {
-        struct tm *t;
-        char buf[1024];
-
-        t = localtime(&rss->data.rss.lastbuilddate);
-        strftime(buf, sizeof(buf), "%FT%TZ", t);
         PRINT(data.rss.link);
         PRINT(data.rss.desc);
-        for (i = 0; i < indent; i++)
-          printf("%s", pre);
-        printf("updated: %s\n", buf);
         PRINT(data.rss.image.url);
         PRINT(data.rss.image.title);
         PRINT(data.rss.image.link);
