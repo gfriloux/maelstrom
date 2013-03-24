@@ -788,8 +788,8 @@ azy_content_deserialize_rss_xml(Azy_Content *content,
              if (cat)
                rss->categories = eina_list_append(rss->categories, cat);
           }
-        else if ((!rss->data.rss.desc) && (!strcmp(name, "description")))
-          rss->data.rss.desc = eina_stringshare_add(n.child_value());
+        else if ((!rss->desc) && (!strcmp(name, "description")))
+          rss->desc = eina_stringshare_add(n.child_value());
         else if ((!rss->generator) && (!strcmp(name, "generator")))
           rss->generator = eina_stringshare_add(n.child_value());
         else if ((!rss->updated) && (!strcmp(name, "lastBuildDate")))
@@ -841,8 +841,8 @@ azy_content_deserialize_rss_xml(Azy_Content *content,
                     i->title = eina_stringshare_add(nn.child_value());
                   else if ((!i->data.rss.link) && (!strcmp(name, "link")))
                     i->data.rss.link = eina_stringshare_add(nn.child_value());
-                  else if ((!i->data.rss.desc) && (!strcmp(name, "description")))
-                    i->data.rss.desc = eina_stringshare_add(nn.child_value());
+                  else if ((!i->desc) && (!strcmp(name, "description")))
+                    i->desc = eina_stringshare_add(nn.child_value());
                   else if ((!i->data.rss.author) && (!strcmp(name, "author")))
                     eina_stringshare_replace(&i->data.rss.author, nn.child_value());
                   else if (!strcmp(name, "enclosure"))
@@ -1025,15 +1025,15 @@ azy_content_deserialize_atom_xml_entry(xml_node &node)
         n = *i;
         name = n.name();
 
-#define SET(X)                         \
-  if ((!it->X) && (!strcmp(name, #X))) \
-    it->X = eina_stringshare_add(n.child_value())
+#define SET(MEM, STR)                         \
+  if ((!it->MEM) && (!strcmp(name, #STR))) \
+    it->MEM = eina_stringshare_add(n.child_value())
 
-        SET(title);
-        else SET(data.atom.rights);
-        else SET(data.atom.summary);
-        else SET(data.atom.id);
-        else SET(data.atom.icon);
+        SET(title, title);
+        else SET(data.atom.rights, rights);
+        else SET(desc, summary);
+        else SET(data.atom.id, id);
+        else SET(data.atom.icon, icon);
 #undef SET
         else if (!strcmp(name, "category"))
           it->categories = eina_list_append(it->categories, eina_stringshare_add(n.attribute("term").value()));
@@ -1113,16 +1113,16 @@ azy_content_deserialize_atom_xml(Azy_Content *content,
       atomEntry*
    }
  */
-#define SET(X)                          \
-  if ((!rss->X) && (!strcmp(name, #X))) \
-    rss->X = eina_stringshare_add(n.child_value())
+#define SET(MEM, STR)                          \
+  if ((!rss->MEM) && (!strcmp(name, #STR))) \
+    rss->MEM = eina_stringshare_add(n.child_value())
 
-        SET(title);
-        else SET(data.atom.rights);
-        else SET(data.atom.subtitle);
-        else SET(generator);
-        else SET(data.atom.logo);
-        else SET(data.atom.id);
+        SET(title, title);
+        else SET(data.atom.rights, rights);
+        else SET(desc, subtitle);
+        else SET(generator, generator);
+        else SET(data.atom.logo, logo);
+        else SET(data.atom.id, id);
 #undef SET
         else if (!strcmp(name, "category"))
           {

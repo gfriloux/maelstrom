@@ -152,7 +152,6 @@ typedef struct Azy_Rss_Type_Rss
 {
    /* rss format only */
    Eina_Stringshare *link;
-   Eina_Stringshare *desc;
    unsigned int skipdays; // bitshift per day
    unsigned long long skiphours; // bitshift per hour
    unsigned int ttl; // in minutes
@@ -170,7 +169,6 @@ typedef struct Azy_Rss_Type_Atom
 {
    /* atom format only */
    Eina_Stringshare *id;
-   Eina_Stringshare *subtitle;
    Eina_Stringshare *rights;
    Eina_Stringshare *logo;
    Eina_List  *contributors; //Azy_Rss_Contact
@@ -186,6 +184,7 @@ struct Azy_Rss
    Eina_Stringshare *title;
    Eina_Stringshare *img_url;
    Eina_Stringshare *generator;
+   Eina_Stringshare *desc;
    time_t      updated;
    Eina_List  *categories; //Azy_Rss_Category
    Eina_List  *items; //Azy_Rss_Item
@@ -201,7 +200,6 @@ typedef struct Azy_Rss_Item_Type_Rss
 {
    /* rss format only */
    Eina_Stringshare *link;
-   Eina_Stringshare *desc;
    Eina_Stringshare *guid;
    Eina_Stringshare *comment_url;
    Eina_Stringshare *author;
@@ -220,7 +218,6 @@ typedef struct Azy_Rss_Item_Type_Atom
 {
    /* atom format only */
    Eina_Stringshare *rights;
-   Eina_Stringshare *summary;
    Eina_Stringshare *id;
    Eina_Stringshare *icon;
    time_t   updated;
@@ -236,6 +233,7 @@ struct Azy_Rss_Item
    Eina_Bool read; /* whether item is marked as read */
    Eina_Stringshare *title;
    Eina_Stringshare *uuid; //Eina_Stringshare; not spec!
+   Eina_Stringshare *desc;
    Eina_List  *categories; //Azy_Rss_Category
    time_t published;
 

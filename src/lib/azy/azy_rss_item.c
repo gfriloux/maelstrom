@@ -33,7 +33,6 @@ _azy_rss_item_rss_edd_init(void)
    EET_EINA_STREAM_DATA_DESCRIPTOR_CLASS_SET(&eddc, Azy_Rss_Item_Type_Rss);
    rss_item_union_rss_edd = eet_data_descriptor_stream_new(&eddc);
    ADD(link, INLINED_STRING);
-   ADD(desc, INLINED_STRING);
    ADD(guid, INLINED_STRING);
    ADD(comment_url, INLINED_STRING);
    ADD(author, INLINED_STRING);
@@ -56,7 +55,6 @@ _azy_rss_item_atom_edd_init(void)
    EET_EINA_STREAM_DATA_DESCRIPTOR_CLASS_SET(&eddc, Azy_Rss_Item_Type_Atom);
    rss_item_union_atom_edd = eet_data_descriptor_stream_new(&eddc);
    ADD(rights, INLINED_STRING);
-   ADD(summary, INLINED_STRING);
    ADD(id, INLINED_STRING);
    ADD(icon, INLINED_STRING);
    ADD(updated, ULONG_LONG);
@@ -105,6 +103,7 @@ _azy_rss_item_edd_init(void)
    ADD(read, UCHAR);
    ADD(title, INLINED_STRING);
    ADD(uuid, INLINED_STRING);
+   ADD(desc, INLINED_STRING);
    ADD(published, ULONG_LONG);
    EET_DATA_DESCRIPTOR_ADD_LIST(rss_item_edd, Azy_Rss_Item, "categories", categories, azy_rss_category_edd_get());
    EET_DATA_DESCRIPTOR_ADD_UNION(rss_item_edd, Azy_Rss_Item, "data", data, atom, rss_item_union_edd);
@@ -195,12 +194,12 @@ azy_rss_item_free(Azy_Rss_Item *item)
 
    eina_stringshare_del(item->title);
    eina_stringshare_del(item->uuid);
+   eina_stringshare_del(item->desc);
    EINA_LIST_FREE(item->categories, d)
      azy_rss_category_free(d);
    if (item->atom)
      {
         eina_stringshare_del(item->data.atom.rights);
-        eina_stringshare_del(item->data.atom.summary);
         eina_stringshare_del(item->data.atom.id);
         eina_stringshare_del(item->data.atom.icon);
         EINA_LIST_FREE(item->data.atom.contributors, d)
@@ -213,7 +212,6 @@ azy_rss_item_free(Azy_Rss_Item *item)
    else
      {
         eina_stringshare_del(item->data.rss.link);
-        eina_stringshare_del(item->data.rss.desc);
         eina_stringshare_del(item->data.rss.guid);
         eina_stringshare_del(item->data.rss.comment_url);
         eina_stringshare_del(item->data.rss.author);
@@ -421,15 +419,14 @@ azy_rss_item_guid_is_permalink(const Azy_Rss_Item *item)
 
 DEF(title,, title)
 DEF(uuid,, uuid)
+DEF(desc,, desc)
 DEF(link, EINA_SAFETY_ON_TRUE_RETURN_VAL(item->atom, NULL);, data.rss.link)
-DEF(desc, EINA_SAFETY_ON_TRUE_RETURN_VAL(item->atom, NULL);, data.rss.desc)
 DEF(guid, EINA_SAFETY_ON_TRUE_RETURN_VAL(item->atom, NULL);, data.rss.guid)
 DEF(comment_url, EINA_SAFETY_ON_TRUE_RETURN_VAL(item->atom, NULL);, data.rss.comment_url)
 DEF(author, EINA_SAFETY_ON_TRUE_RETURN_VAL(item->atom, NULL);, data.rss.author)
 DEF(content, EINA_SAFETY_ON_TRUE_RETURN_VAL(item->atom, NULL);, data.rss.content)
 DEF(content_encoded, EINA_SAFETY_ON_TRUE_RETURN_VAL(item->atom, NULL);, data.rss.content_encoded)
 DEF(rights, EINA_SAFETY_ON_TRUE_RETURN_VAL(!item->atom, NULL);, data.atom.rights)
-DEF(summary, EINA_SAFETY_ON_TRUE_RETURN_VAL(!item->atom, NULL);, data.atom.summary)
 DEF(id, EINA_SAFETY_ON_TRUE_RETURN_VAL(!item->atom, NULL);, data.atom.id)
 DEF(icon, EINA_SAFETY_ON_TRUE_RETURN_VAL(!item->atom, NULL);, data.atom.icon)
 
@@ -473,6 +470,7 @@ azy_rss_item_print(const char *pre,
   } while (0)
 
    PRINT(title);
+   PRINT(desc);
    t = localtime(&item->published);
    strftime(buf, sizeof(buf), "%FT%TZ", t);
    for (i = 0; i < indent; i++)
@@ -498,7 +496,6 @@ azy_rss_item_print(const char *pre,
      {
         PRINT(data.atom.rights);
         PRINT(data.atom.id);
-        PRINT(data.atom.summary);
         PRINT(data.atom.icon);
 
         t = localtime(&item->data.atom.updated);
@@ -529,7 +526,6 @@ azy_rss_item_print(const char *pre,
    else
      {
         PRINT(data.rss.link);
-        PRINT(data.rss.desc);
         PRINT(data.rss.guid);
         PRINT(data.rss.comment_url);
         PRINT(data.rss.author);
