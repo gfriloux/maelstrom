@@ -592,7 +592,9 @@ EAPI Eina_Stringshare               *azy_rss_item_author_get(const Azy_Rss_Item 
 EAPI Eina_Stringshare               *azy_rss_item_rights_get(const Azy_Rss_Item *rss);
 EAPI Eina_Stringshare               *azy_rss_item_summary_get(const Azy_Rss_Item *rss);
 EAPI Eina_Stringshare               *azy_rss_item_id_get(const Azy_Rss_Item *rss);
-EAPI void azy_rss_item_enclosure_get(const Azy_Rss_Item *item, Eina_Stringshare **url, Eina_Stringshare **content_type, size_t *length);
+EAPI Eina_Bool                 azy_rss_item_read_get(const Azy_Rss_Item *item);
+EAPI void                      azy_rss_item_read_set(Azy_Rss_Item *item, Eina_Bool is_read);
+EAPI void                      azy_rss_item_enclosure_get(const Azy_Rss_Item *item, Eina_Stringshare **url, Eina_Stringshare **content_type, size_t *length);
 EAPI void                      azy_rss_print(const char *pre, int indent, const Azy_Rss *rss);
 EAPI void                      azy_rss_category_print(const char *pre, int indent, const Azy_Rss_Category *cat);
 EAPI void                      azy_rss_link_print(const char *pre, int indent, const Azy_Rss_Link *li);

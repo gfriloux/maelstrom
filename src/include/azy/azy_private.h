@@ -234,6 +234,7 @@ struct Azy_Rss_Item
 {
    AZY_MAGIC;
    Eina_Bool   atom; /* true if item is Azy_Rss_Atom */
+   Eina_Bool read; /* whether item is marked as read */
    Eina_Stringshare *title;
    Eina_List  *categories; //Azy_Rss_Category
    time_t published;

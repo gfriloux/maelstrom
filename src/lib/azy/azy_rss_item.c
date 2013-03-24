@@ -102,6 +102,7 @@ _azy_rss_item_edd_init(void)
 
    EET_DATA_DESCRIPTOR_ADD_MAPPING(rss_item_union_edd, "rss", rss_item_union_rss_edd);
    EET_DATA_DESCRIPTOR_ADD_MAPPING(rss_item_union_edd, "atom", rss_item_union_atom_edd);
+   ADD(read, UCHAR);
    ADD(title, INLINED_STRING);
    ADD(published, ULONG_LONG);
    EET_DATA_DESCRIPTOR_ADD_LIST(rss_item_edd, Azy_Rss_Item, "categories", categories, azy_rss_category_edd_get());
@@ -221,6 +222,38 @@ Eet_Data_Descriptor *
 azy_rss_item_edd_get(void)
 {
    return rss_item_edd;
+}
+
+/**
+ * @brief Get whether an item is marked as read
+ * @param item The item (NOT NULL)
+ * @return EINA_TRUE if item is marked read, else EINA_FALSE
+ */
+Eina_Bool
+azy_rss_item_read_get(const Azy_Rss_Item *item)
+{
+   if (!AZY_MAGIC_CHECK(item, AZY_MAGIC_RSS_ITEM))
+     {
+        AZY_MAGIC_FAIL(item, AZY_MAGIC_RSS_ITEM);
+        return EINA_FALSE;
+     }
+   return item->read;
+}
+
+/**
+ * @brief Set whether an item is marked as read
+ * @param item The item (NOT NULL)
+ * @param is_read EINA_TRUE if item should be marked read, else EINA_FALSE
+ */
+void
+azy_rss_item_read_set(Azy_Rss_Item *item, Eina_Bool is_read)
+{
+   if (!AZY_MAGIC_CHECK(item, AZY_MAGIC_RSS_ITEM))
+     {
+        AZY_MAGIC_FAIL(item, AZY_MAGIC_RSS_ITEM);
+        return;
+     }
+   item->read = !!is_read;
 }
 
 /**
