@@ -577,7 +577,6 @@ EAPI Eina_Stringshare               *azy_rss_rights_get(const Azy_Rss *rss);
 EAPI Eina_Stringshare               *azy_rss_id_get(const Azy_Rss *rss);
 EAPI Eina_Stringshare               *azy_rss_logo_get(const Azy_Rss *rss);
 EAPI Eina_Stringshare               *azy_rss_generator_get(const Azy_Rss *rss);
-EAPI Eina_Stringshare               *azy_rss_subtitle_get(const Azy_Rss *rss);
 EAPI const Eina_List                *azy_rss_item_authors_get(const Azy_Rss_Item *item);
 EAPI const Eina_List                *azy_rss_item_contributors_get(const Azy_Rss_Item *item);
 EAPI const Eina_List                *azy_rss_item_categories_get(const Azy_Rss_Item *item);
@@ -594,7 +593,6 @@ EAPI Eina_Bool                       azy_rss_item_guid_is_permalink(const Azy_Rs
 EAPI Eina_Stringshare               *azy_rss_item_comment_url_get(const Azy_Rss_Item *item);
 EAPI Eina_Stringshare               *azy_rss_item_author_get(const Azy_Rss_Item *item);
 EAPI Eina_Stringshare               *azy_rss_item_rights_get(const Azy_Rss_Item *rss);
-EAPI Eina_Stringshare               *azy_rss_item_summary_get(const Azy_Rss_Item *rss);
 EAPI Eina_Stringshare               *azy_rss_item_id_get(const Azy_Rss_Item *rss);
 EAPI Eina_Bool                 azy_rss_item_read_get(const Azy_Rss_Item *item);
 EAPI void                      azy_rss_item_read_set(Azy_Rss_Item *item, Eina_Bool is_read);
