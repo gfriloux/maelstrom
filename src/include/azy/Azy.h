@@ -580,6 +580,7 @@ EAPI const Eina_List                *azy_rss_item_contributors_get(const Azy_Rss
 EAPI const Eina_List                *azy_rss_item_categories_get(const Azy_Rss_Item *item);
 EAPI const Eina_List                *azy_rss_item_links_get(const Azy_Rss_Item *item);
 EAPI Eina_Stringshare               *azy_rss_item_title_get(const Azy_Rss_Item *item);
+EAPI Eina_Stringshare               *azy_rss_item_uuid_get(const Azy_Rss_Item *item);
 EAPI Eina_Stringshare               *azy_rss_item_content_get(const Azy_Rss_Item *item);
 EAPI Eina_Stringshare               *azy_rss_item_content_encoded_get(const Azy_Rss_Item *item);
 EAPI Eina_Stringshare               *azy_rss_item_link_get(const Azy_Rss_Item *item);

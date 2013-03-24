@@ -104,6 +104,7 @@ _azy_rss_item_edd_init(void)
    EET_DATA_DESCRIPTOR_ADD_MAPPING(rss_item_union_edd, "atom", rss_item_union_atom_edd);
    ADD(read, UCHAR);
    ADD(title, INLINED_STRING);
+   ADD(uuid, INLINED_STRING);
    ADD(published, ULONG_LONG);
    EET_DATA_DESCRIPTOR_ADD_LIST(rss_item_edd, Azy_Rss_Item, "categories", categories, azy_rss_category_edd_get());
    EET_DATA_DESCRIPTOR_ADD_UNION(rss_item_edd, Azy_Rss_Item, "data", data, atom, rss_item_union_edd);
@@ -165,6 +166,13 @@ azy_rss_item_new(void)
 
    AZY_MAGIC_SET(item, AZY_MAGIC_RSS_ITEM);
    return item;
+}
+
+void
+azy_rss_item_append(Azy_Rss *rss, Azy_Rss_Item *item)
+{
+   item->uuid = azy_util_uuid_new();
+   rss->items = eina_list_append(rss->items, item);
 }
 
 /**
@@ -389,6 +397,7 @@ azy_rss_item_guid_is_permalink(const Azy_Rss_Item *item)
   }
 
 DEF(title, title)
+DEF(uuid, uuid)
 DEF(link, data.rss.link)
 DEF(desc, data.rss.desc)
 DEF(guid, data.rss.guid)
