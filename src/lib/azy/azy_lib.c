@@ -114,7 +114,7 @@ _azy_magic_fail(const void *d,
          "    Supplied: %08x - %s",
          (unsigned int)req_m, eina_magic_string_get(req_m),
          (unsigned int)m, eina_magic_string_get(m));
-   ERR("*** NAUGHTY PROGRAMMER!!!\n"
+   CRI("*** NAUGHTY PROGRAMMER!!!\n"
        "*** SPANK SPANK SPANK!!!\n"
        "*** Now go fix your code. Tut tut tut!\n"
        "*** This message brought to you by Ecore.");
