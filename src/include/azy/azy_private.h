@@ -478,6 +478,7 @@ Azy_Rss         *azy_rss_new(void);
 Azy_Rss_Item    *azy_rss_item_new(void);
 Azy_Rss_Category *azy_rss_category_new(void);
 void azy_rss_category_free(Azy_Rss_Category *cat);
+void azy_rss_item_append(Azy_Rss *rss, Azy_Rss_Item *item);
 const char *_azy_rss_eet_union_type_get(const void *data, Eina_Bool *unknow);
 Eina_Bool _azy_rss_eet_union_type_set(const char *type, void *data, Eina_Bool unknow);
 

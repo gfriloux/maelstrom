@@ -878,7 +878,7 @@ azy_content_deserialize_rss_xml(Azy_Content *content,
                   else if ((!i->data.rss.content_encoded) && (!strcmp(name, "content:encoded")))
                     i->data.rss.content_encoded = eina_stringshare_add(nn.child_value());
                }
-             rss->items = eina_list_append(rss->items, i);
+             azy_rss_item_append(rss, i);
           }
         else if (!strcmp(name, "ttl"))
           {
@@ -1166,7 +1166,7 @@ azy_content_deserialize_atom_xml(Azy_Content *content,
              Azy_Rss_Item *i;
 
              i = azy_content_deserialize_atom_xml_entry(n);
-             if (i) rss->items = eina_list_append(rss->items, i);
+             if (i) azy_rss_item_append(rss, i);
           }
      }
    content->ret_is_rss = 1;
