@@ -408,6 +408,7 @@ _azy_events_header_add(Azy_Net *net, char *key, char *value)
           {
            case AZY_NET_TRANSFER_ENCODING_CHUNKED:
              INFO("TRANSFER ENCODING: CHUNKED");
+             net->need_chunk_size = 1;
              break;
 
            default: break;
@@ -486,6 +487,7 @@ _azy_events_chunk_size_parser(Azy_Net *net, const unsigned char *start, int64_t 
         if (!net->headers_read)
           net->http.post_headers_buf = eina_binbuf_new();
      }
+   r += ESBUFLEN(net->separator), *len -= ESBUFLEN(net->separator);
    return r;
 }
 
@@ -563,19 +565,18 @@ skip_header:
         /* double separator: STOP */
         if (!strncmp((char *)p, s, slen))
           {
-             INFO("HEADERS PARSED!");
              if (net->http.post_headers_buf || (!net->http.transfer_encoding))
                {
+                  INFO("HEADERS PARSED!");
                   net->headers_read = EINA_TRUE;
                   break;
                }
              p = _azy_events_skip_blank(p, &len);
              r = _azy_events_chunk_size_parser(net, p, &len);
-             if (r)
-               {
-                  net->headers_read = EINA_TRUE;
-                  p = r;
-               }
+             if (r) p = r;
+             /* may still need chunk size here, but we should automatically pick it up later */
+             INFO("HEADERS PARSED!");
+             net->headers_read = EINA_TRUE;
              break;
           }
         r = azy_util_memstr(p, (const unsigned char *)s, len, slen);
@@ -760,12 +761,12 @@ azy_events_header_parse(Azy_Net *net,
      p = _azy_events_headers_parser(net, start, &len, r - start);
 
    if (net->http.post_headers_buf && net->headers_read) return EINA_TRUE;
-   /* FIXME: length check and failure */
+   if (!net->http.content_length) net->http.content_length = -1;
+   if (!len) return EINA_TRUE;
    p += ESBUFLEN(net->separator), len -= ESBUFLEN(net->separator);
 
    if (!net->headers_read) return EINA_TRUE;
 
-   if (!net->http.content_length) net->http.content_length = -1;
    if (!len) return EINA_TRUE;
    /* if we get here, we need to append to the buffers */
 
