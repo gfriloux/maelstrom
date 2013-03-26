@@ -209,27 +209,33 @@ AC_ARG_ENABLE([shotgun-gui],
    [AC_HELP_STRING([--disable-shotgun-gui], [disable building shotgun gui executable. @<:@default=detect@:>@])],
    [want_shotgun_gui=$enableval], [])
 
-if test -n "$build_shotgun" ; then
-   if test "x$want_shotgun_gui" != "xno"; then
-      if test -z "$build_azy" ; then
-         AC_ERROR([azy is required to build shotgun gui])
-      fi
-      PKG_CHECK_MODULES([SHOTGUN_GUI],
-         [
-          eet >= $min_efl_version
-          evas >= $min_efl_version
-          ecore-file >= $min_efl_version
-          ecore-imf >= $min_efl_version
-          edje >= $min_efl_version
-          elementary >= $min_efl_version
-          efx
-         ],
-         [build_shotgun_gui=yes],
-         [build_shotgun_gui=]
-      )
-   else
-       build_shotgun_gui=
+if test "x$want_shotgun_gui" = "xyes" ; then
+   if test -z "$build_azy" ; then
+      AC_ERROR([azy is required to build shotgun gui])
    fi
+   if test -z "$build_shotgun" ; then
+      AC_ERROR([shotgun lib is required to build shotgun gui])
+   fi
+elif test -z "$want_shotgun_gui" ; then
+   if test -z "$build_azy" || test -z "$build_shotgun" ; then
+      want_shotgun_gui=no
+   fi
+fi
+
+if test "x$want_shotgun_gui" != "xno" ; then
+   PKG_CHECK_MODULES([SHOTGUN_GUI],
+      [
+       eet >= $min_efl_version
+       evas >= $min_efl_version
+       ecore-file >= $min_efl_version
+       ecore-imf >= $min_efl_version
+       edje >= $min_efl_version
+       elementary >= $min_efl_version
+       efx
+      ],
+      [build_shotgun_gui=yes],
+      [build_shotgun_gui=]
+   )
 fi
 AM_CONDITIONAL([BUILD_SHOTGUN_GUI], [test "x${build_shotgun_gui}" != "x"])
 
