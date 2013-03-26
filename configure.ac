@@ -77,6 +77,8 @@ CXX_PIC="$lt_prog_compiler_pic_CXX"
 AC_SUBST([CC_PIC])
 AC_SUBST([CXX_PIC])
 
+PKG_PROG_PKG_CONFIG
+
 min_efl_version=1.7
 MAELSTROM_REQUIRES=
 
