@@ -487,7 +487,6 @@ _azy_events_chunk_size_parser(Azy_Net *net, const unsigned char *start, int64_t 
         if (!net->headers_read)
           net->http.post_headers_buf = eina_binbuf_new();
      }
-   r += ESBUFLEN(net->separator), *len -= ESBUFLEN(net->separator);
    return r;
 }
 
@@ -597,11 +596,16 @@ _azy_events_chunk_parse(Azy_Net *net, unsigned char *start, int64_t len)
    if (net->need_chunk_size)
      {
         p = _azy_events_chunk_size_parser(net, p, &len);
-        if (!p) p = start;
-        else if (net->http.post_headers_buf)
+        if (p) //length is guaranteed in chunk size parser
+          {
+             p += ESBUFLEN(net->separator), len -= ESBUFLEN(net->separator);
+          }
+        else p = start;
+        if (net->http.post_headers_buf)
           {
              if ((size_t)len > ESBUFLEN(net->separator))
                {
+                  /* skip second CRLF */
                   p += ESBUFLEN(net->separator), len -= ESBUFLEN(net->separator);
                   r = azy_util_memstr(p, (unsigned char *)ESBUF(net->separator), len, ESBUFLEN(net->separator));
                   if (r)
@@ -612,13 +616,12 @@ _azy_events_chunk_parse(Azy_Net *net, unsigned char *start, int64_t len)
                }
           }
      }
+   rlen = len;
    if (!net->buffer) net->buffer = eina_binbuf_new();
    if (net->need_chunk_size || (!net->http.chunk_size) || (net->progress + len <= net->http.chunk_size))
      rlen = len;
    else if (!net->http.post_headers_buf)
      rlen = net->http.chunk_size - net->progress;
-   else
-     rlen = len;
    azy_events_recv_progress(net, p, rlen);
    if ((!net->http.chunk_size) || (net->progress < net->http.chunk_size)) return rlen;
    net->http.chunk_size = 0;
