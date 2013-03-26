@@ -345,10 +345,11 @@ _chat_conv_filter(Contact_List *cl, Evas_Object *obj EINA_UNUSED, char **str)
    char *http, *last;
    const char *start, *end;
    Eina_Strbuf *buf;
-   size_t len;
+   size_t len, slen;
 
    start = *str;
-   http = strstr(start, "http");
+   slen = strlen(start);
+   http = (char*)azy_util_memstr((unsigned char*)start, (unsigned char*)"http", slen, 4);
    if (!http) return;
 
    buf = eina_strbuf_new();
@@ -367,7 +368,7 @@ _chat_conv_filter(Contact_List *cl, Evas_Object *obj EINA_UNUSED, char **str)
         start = end = strchr(http, ' ');
         if (!end) /* address goes to end of message */
           {
-             len = strlen(http);
+             len = slen - (http - (*str));
              _chat_conv_filter_helper(cl, d, &buf, http, &len);
              //DBG("ANCHOR: ");
              //DBG(fmt, http);
@@ -377,7 +378,7 @@ _chat_conv_filter(Contact_List *cl, Evas_Object *obj EINA_UNUSED, char **str)
         _chat_conv_filter_helper(cl, d, &buf, http, &len);
              //DBG("ANCHOR: ");
              //DBG(fmt, http);
-        last = strstr(start, "http");
+        last = (char*)azy_util_memstr((unsigned char*)start, (unsigned char*)"http", slen - (start - (*str)), 4);
         if (!last) break;
         http = last;
      }
