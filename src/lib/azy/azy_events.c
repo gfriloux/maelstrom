@@ -621,7 +621,7 @@ _azy_events_chunk_parse(Azy_Net *net, unsigned char *start, int64_t len)
    if (net->need_chunk_size || (!net->http.chunk_size) || (net->progress + len <= net->http.chunk_size))
      rlen = len;
    else if (!net->http.post_headers_buf)
-     rlen = net->http.chunk_size - net->progress;
+     rlen = net->http.chunk_size - MIN(net->progress, net->http.chunk_size);
    azy_events_recv_progress(net, p, rlen);
    if ((!net->http.chunk_size) || (net->progress < net->http.chunk_size)) return rlen;
    net->http.chunk_size = 0;
@@ -797,7 +797,10 @@ azy_events_header_parse(Azy_Net *net,
    INFO("Set recv size to %" PRIi64 " (previous %" PRIi64 ")", rlen, prev_size);
    net->buffer = eina_binbuf_new();
    net->progress = 0;
-   azy_events_recv_progress(net, p, rlen);
+   if (net->http.transfer_encoding)
+     azy_events_transfer_decode(net, p, rlen);
+   else
+     azy_events_recv_progress(net, p, rlen);
 
    return EINA_TRUE;
 }
