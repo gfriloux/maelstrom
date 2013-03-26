@@ -52,25 +52,11 @@ disconnected(void *data EINA_UNUSED, int type EINA_UNUSED, Azy_Client *ev)
    return ECORE_CALLBACK_RENEW;
 }
 
-static Eina_Bool
-connected(void *data EINA_UNUSED, int type EINA_UNUSED, Azy_Client *cli)
-{
-   Azy_Client_Call_Id id;
-
-   if (!azy_client_current(cli))
-     {
-        id = azy_client_blank(cli, AZY_NET_TYPE_GET, NULL, NULL, NULL);
-        EINA_SAFETY_ON_TRUE_RETURN_VAL(!id, ECORE_CALLBACK_CANCEL);
-        azy_client_callback_free_set(cli, id, (Ecore_Cb)azy_rss_free);
-     }
-
-   return ECORE_CALLBACK_RENEW;
-}
-
 int
 main(void)
 {
    Azy_Client *cli;
+   Azy_Client_Call_Id id;
 
    eina_init();
    ecore_init();
@@ -78,34 +64,27 @@ main(void)
    eina_log_domain_level_set("azy", EINA_LOG_LEVEL_DBG);
    eina_log_domain_level_set("ecore_con", EINA_LOG_LEVEL_DBG);
 
-   cli = azy_client_new();
-
-   EINA_SAFETY_ON_NULL_RETURN_VAL(cli, 1);
-   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "cyber.law.harvard.edu", 80), 1);
-//   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "www.enlightenment.org", 80), 1);
-//   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "rss.cnn.com", 80), 1);
-
-   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_connect(cli), 1);
-
-   azy_net_uri_set(azy_client_net_get(cli), "/rss/examples/rss2sample.xml");
-//   azy_net_uri_set(azy_client_net_get(cli), "/rss.php?p=news&l=en");
-//   azy_net_uri_set(azy_client_net_get(cli), "/rss/cnn_topstories.rss");
-
-   azy_net_protocol_set(azy_client_net_get(cli), AZY_NET_PROTOCOL_HTTP_1_0);
-
-   ecore_event_handler_add(AZY_EVENT_CLIENT_CONNECTED, (Ecore_Event_Handler_Cb)connected, NULL);
    ecore_event_handler_add(AZY_EVENT_CLIENT_TRANSFER_COMPLETE, (Ecore_Event_Handler_Cb)ret_, NULL);
    ecore_event_handler_add(AZY_EVENT_CLIENT_DISCONNECTED, (Ecore_Event_Handler_Cb)disconnected, NULL);
    ecore_event_handler_add(AZY_EVENT_CLIENT_TRANSFER_PROGRESS, (Ecore_Event_Handler_Cb)download_status, NULL);
+
+   cli = azy_client_util_connect("http://www.avweb.com/topnews.xml");
+   EINA_SAFETY_ON_NULL_RETURN_VAL(cli, 1);
+   id = azy_client_blank(cli, AZY_NET_TYPE_GET, NULL, NULL, NULL);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(!id, ECORE_CALLBACK_CANCEL);
+   azy_client_callback_free_set(cli, id, (Ecore_Cb)azy_rss_free);
+
    ecore_main_loop_begin();
 
-   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_host_set(cli, "github.com", 443), 1);
-   azy_client_secure_set(cli, EINA_TRUE);
-   EINA_SAFETY_ON_TRUE_RETURN_VAL(!azy_client_connect(cli), 1);
-   azy_net_uri_set(azy_client_net_get(cli), "/zmike/shotgun/commits/master.atom");
+   azy_client_free(cli);
+
+   cli = azy_client_util_connect("http://git.enlightenment.org/core/efl.git/atom/?h=master");
+   EINA_SAFETY_ON_NULL_RETURN_VAL(cli, 1);
+   id = azy_client_blank(cli, AZY_NET_TYPE_GET, NULL, NULL, NULL);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(!id, ECORE_CALLBACK_CANCEL);
+   azy_client_callback_free_set(cli, id, (Ecore_Cb)azy_rss_free);
+
    ecore_main_loop_begin();
-
-
    azy_client_free(cli);
 
    azy_shutdown();
