@@ -146,7 +146,6 @@ shotgun_strtohtml(const char *s)
       { '\'', "&apos;", 6 },
       { '\"', "&quot;", 6 },
       { '&', "&amp;", 5 },
-      { '/', "&frasl;", 7 },
       { 0, NULL, 0 }
    };
 
