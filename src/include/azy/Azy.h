@@ -537,7 +537,8 @@ EAPI void                      azy_client_net_set(Azy_Client *client, Azy_Net *n
 EAPI const char               *azy_client_addr_get(Azy_Client *client);
 EAPI Eina_Bool                 azy_client_addr_set(Azy_Client *client, const char *addr);
 EAPI int                       azy_client_port_get(Azy_Client *client);
-EAPI Azy_Client *azy_client_util_connect(const char *host);
+EAPI Azy_Client *azy_client_util_connect(const char *addr);
+EAPI Eina_Bool azy_client_util_reconnect(Azy_Client *client);
 EAPI Eina_Bool azy_client_secure_get(const Azy_Client *client);
 EAPI void azy_client_secure_set(Azy_Client *client, Eina_Bool secure);
 EAPI Eina_Bool                 azy_client_connect(Azy_Client *client);

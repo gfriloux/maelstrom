@@ -24,12 +24,97 @@ EAPI int AZY_EVENT_CLIENT_CONNECTED;
 EAPI int AZY_EVENT_CLIENT_UPGRADE;
 EAPI int AZY_EVENT_CLIENT_TRANSFER_COMPLETE;
 
+static Azy_Client *
+_azy_client_util_connect(Azy_Client *client, const char *addr)
+{
+   Eina_Bool secure = EINA_FALSE, ftp = EINA_FALSE, new_client = EINA_FALSE;
+   const char *domain, *portstr, *path = NULL;
+   int port = 80;
+
+   switch (addr[0])
+     {
+      case 'h':
+      case 'H':
+        if (strncasecmp(addr + 1, "ttp", 3))
+          domain = addr;
+        else
+          {
+             domain = addr + 4;
+             if ((domain[0] == 's') || (domain[0] == 'S'))
+               {
+                  domain++;
+                  secure = EINA_TRUE;
+               }
+             if (strncmp(domain, "://", 3)) return NULL;
+             domain += 3;
+          }
+        break;
+      case 'f':
+      case 'F':
+        if (strncasecmp(addr + 1, "tp://", 5))
+          domain = addr;
+        else
+          {
+             domain = addr + 5;
+             ftp = EINA_TRUE;
+          }
+        break;
+      default:
+        domain = addr;
+        break;
+     }
+   portstr = strchr(domain, ':');
+   if (portstr)
+     {
+        if (!isdigit(portstr[1])) return NULL;
+        port = strtol(portstr, (char**)&path, 10);
+        if ((port < 0) || (port > 65535)) return NULL;
+        if (path && (path[0] != '/')) return NULL;
+     }
+   else
+     {
+        path = strchr(domain, '/');
+        if (secure) port = 443;
+        else if (ftp) port = 21;
+     }
+   if (!client)
+     {
+        client = azy_client_new();
+        new_client = EINA_TRUE;
+     }
+   EINA_SAFETY_ON_NULL_RETURN_VAL(client, NULL);
+   client->port = port;
+   if (portstr)
+     eina_stringshare_replace_length(&client->addr, domain, portstr - domain);
+   else if (path)
+     eina_stringshare_replace_length(&client->addr, domain, path - domain);
+   else
+     eina_stringshare_replace(&client->addr, domain);
+   azy_client_secure_set(client, secure);
+   if (azy_client_connect(client))
+     {
+        eina_stringshare_replace(&client->net->http.req.http_path, path);
+        eina_stringshare_replace(&client->util_connect_url, addr);
+        return client;
+     }
+   if (new_client)
+     {
+        azy_client_free(client);
+        return NULL;
+     }
+   return client;
+}
+
+/////////////////////////////////////////////
+
 void
 azy_client_unref(Azy_Client *client)
 {
    client->refcount--;
    if (!client->refcount) azy_client_free(client);
 }
+
+/////////////////////////////////////////////
 
 /**
  * @defgroup Azy_Client Client Functions
@@ -329,82 +414,39 @@ azy_client_connect(Azy_Client *client)
  *
  * This function parses a protocol schema + hostname and then performs a connection,
  * simplifying the setup of a new connection.
- * @param host The hostname and schema with which to connect, eg. http://www.google.com
+ * @param addr The hostname and schema with which to connect, eg. http://www.google.com/some/url.jpg.cbr
+ * @return A currenctly-connecting #Azy_Client, @c NULL on failure
+ * @note If the protocol schema is missing, standard HTTP will be used
+ */
+Eina_Bool
+azy_client_util_reconnect(Azy_Client *client)
+{
+   DBG("(client=%p)", client);
+   if (!AZY_MAGIC_CHECK(client, AZY_MAGIC_CLIENT))
+     {
+        AZY_MAGIC_FAIL(client, AZY_MAGIC_CLIENT);
+        return EINA_FALSE;
+     }
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(!!client->net, EINA_FALSE);
+   if (!client->util_connect_url) return EINA_FALSE;
+   _azy_client_util_connect(client, client->util_connect_url);
+   return !!client->net;
+}
+
+/**
+ * @brief Create, set the host for, and connect a new #Azy_Client
+ *
+ * This function parses a protocol schema + hostname and then performs a connection,
+ * simplifying the setup of a new connection.
+ * @param addr The hostname and schema with which to connect, eg. http://www.google.com/some/url.jpg.cbr
  * @return A currenctly-connecting #Azy_Client, @c NULL on failure
  * @note If the protocol schema is missing, standard HTTP will be used
  */
 Azy_Client *
-azy_client_util_connect(const char *host)
+azy_client_util_connect(const char *addr)
 {
-   Azy_Client *client;
-   Eina_Bool secure = EINA_FALSE, ftp = EINA_FALSE;
-   const char *domain, *portstr, *path = NULL;
-   int port = 80;
-
-   EINA_SAFETY_ON_NULL_RETURN_VAL(host, NULL);
-   switch (host[0])
-     {
-      case 'h':
-      case 'H':
-        if (strncasecmp(host + 1, "ttp", 3))
-          domain = host;
-        else
-          {
-             domain = host + 4;
-             if ((domain[0] == 's') || (domain[0] == 'S'))
-               {
-                  domain++;
-                  secure = EINA_TRUE;
-               }
-             if (strncmp(domain, "://", 3)) return NULL;
-             domain += 3;
-          }
-        break;
-      case 'f':
-      case 'F':
-        if (strncasecmp(host + 1, "tp://", 5))
-          domain = host;
-        else
-          {
-             domain = host + 5;
-             ftp = EINA_TRUE;
-          }
-        break;
-      default:
-        domain = host;
-        break;
-     }
-   portstr = strchr(domain, ':');
-   if (portstr)
-     {
-        if (!isdigit(portstr[1])) return NULL;
-        port = strtol(portstr, (char**)&path, 10);
-        if ((port < 0) || (port > 65535)) return NULL;
-        if (path && (path[0] != '/')) return NULL;
-     }
-   else
-     {
-        path = strchr(domain, '/');
-        if (secure) port = 443;
-        else if (ftp) port = 21;
-     }
-   client = azy_client_new();
-   EINA_SAFETY_ON_NULL_RETURN_VAL(client, NULL);
-   client->port = port;
-   if (portstr)
-     client->addr = eina_stringshare_add_length(domain, portstr - domain);
-   else if (path)
-     client->addr = eina_stringshare_add_length(domain, path - domain);
-   else
-     client->addr = eina_stringshare_add(domain);
-   azy_client_secure_set(client, secure);
-   if (azy_client_connect(client))
-     {
-        if (path) client->net->http.req.http_path = eina_stringshare_add(path);
-        return client;
-     }
-   azy_client_free(client);
-   return NULL;
+   EINA_SAFETY_ON_NULL_RETURN_VAL(addr, NULL);
+   return _azy_client_util_connect(NULL, addr);
 }
 
 /**
@@ -879,6 +921,7 @@ azy_client_free(Azy_Client *client)
      eina_hash_free(client->callbacks);
    if (client->free_callbacks)
      eina_hash_free(client->free_callbacks);
+   eina_stringshare_del(client->util_connect_url);
    if (client->conns)
      client->conns = eina_list_free(client->conns);
    free(client);

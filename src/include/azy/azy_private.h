@@ -372,6 +372,7 @@ struct Azy_Client
    void                *data;
    Azy_Net             *net;
    Eina_Binbuf         *overflow;
+   Eina_Stringshare    *util_connect_url;
 
    Ecore_Event_Handler *add;
    Ecore_Event_Handler *del;
