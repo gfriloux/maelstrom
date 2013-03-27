@@ -51,7 +51,7 @@ _azy_rss_eet_union_type_get(const void *data, Eina_Bool *unknow)
 Eina_Bool
 _azy_rss_eet_union_type_set(const char *type, void *data, Eina_Bool unknow)
 {
-   Azy_Rss *rss = data;
+   Eina_Bool *atom = data;
    int i;
 
    if (unknow) return EINA_FALSE;
@@ -59,7 +59,7 @@ _azy_rss_eet_union_type_set(const char *type, void *data, Eina_Bool unknow)
    for (i = 0; i < 2; ++i)
      if (!strcmp(rss_mapping[i], type))
        {
-          rss->atom = i;
+          *atom = i;
           return EINA_TRUE;
        }
 
