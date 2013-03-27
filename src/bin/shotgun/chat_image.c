@@ -142,13 +142,12 @@ chat_image_status(void *data EINA_UNUSED, int type EINA_UNUSED, Azy_Event_Client
      {
         if (i->buf) eina_binbuf_free(i->buf);
         i->buf = NULL;
-        azy_client_free(i->client);
-        i->client = NULL;
+        azy_client_close(i->client);
         if (++i->tries < IMAGE_FETCH_TRIES)
           {
              Azy_Client_Call_Id id;
 
-             i->client = azy_client_util_connect(i->addr);
+             azy_client_util_reconnect(i->client);
              id = azy_client_blank(i->client, AZY_NET_TYPE_GET, NULL, NULL, NULL);
              if (id)
                azy_client_callback_set(i->client, id, (Azy_Client_Transfer_Complete_Cb)_chat_image_complete);
@@ -160,6 +159,11 @@ chat_image_status(void *data EINA_UNUSED, int type EINA_UNUSED, Azy_Event_Client
                   azy_client_free(i->client);
                   i->client = NULL;
                }
+          }
+        else
+          {
+             azy_client_free(i->client);
+             i->client = NULL;
           }
         i->cl->image_list = eina_inlist_remove(i->cl->image_list, EINA_INLIST_GET(i));
         eina_hash_del_by_key(i->cl->images, i->addr);
