@@ -87,7 +87,7 @@ _azy_client_handler_upgrade(Azy_Client_Handler_Data *hd,
 
    hd->client->refcount++;
    hd->client->secure = hd->client->upgraded = EINA_TRUE;
-   ecore_event_add(AZY_EVENT_CLIENT_UPGRADE, hd->client, (Ecore_End_Cb)_azy_event_handler_fake_free, azy_client_free);
+   ecore_event_add(AZY_EVENT_CLIENT_UPGRADE, hd->client, (Ecore_End_Cb)_azy_event_handler_fake_free, azy_client_unref);
    return ECORE_CALLBACK_RENEW;
 }
 
@@ -116,7 +116,7 @@ _azy_client_transfer_complete(Azy_Client_Handler_Data *hd, Azy_Content *content)
    else
      azy_events_client_transfer_complete_event(hd, content);
    _azy_client_handler_data_free(hd);
-   if (cb) azy_client_free(client);
+   if (cb) azy_client_unref(client);
 }
 
 static Eina_Bool
@@ -524,7 +524,7 @@ _azy_client_handler_del(Azy_Client *client,
      }
 
    //client->refcount++; don't increase refcount here, canceled out by also refcount-- from disconnecting
-   ecore_event_add(AZY_EVENT_CLIENT_DISCONNECTED, client, (Ecore_End_Cb)_azy_event_handler_fake_free, azy_client_free);
+   ecore_event_add(AZY_EVENT_CLIENT_DISCONNECTED, client, (Ecore_End_Cb)_azy_event_handler_fake_free, azy_client_unref);
    return ECORE_CALLBACK_CANCEL;
 }
 
@@ -543,7 +543,7 @@ _azy_client_handler_add(Azy_Client *client,
    client->connected = EINA_TRUE;
 
    client->refcount += 2; //one for event, one for being connected
-   ecore_event_add(AZY_EVENT_CLIENT_CONNECTED, client, (Ecore_End_Cb)_azy_event_handler_fake_free, azy_client_free);
+   ecore_event_add(AZY_EVENT_CLIENT_CONNECTED, client, (Ecore_End_Cb)_azy_event_handler_fake_free, azy_client_unref);
    EINA_LIST_FOREACH(client->conns, l, hd)
      {
         if (hd->redirect) /* saved call from redirect, send again */

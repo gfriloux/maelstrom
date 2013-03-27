@@ -24,6 +24,13 @@ EAPI int AZY_EVENT_CLIENT_CONNECTED;
 EAPI int AZY_EVENT_CLIENT_UPGRADE;
 EAPI int AZY_EVENT_CLIENT_TRANSFER_COMPLETE;
 
+void
+azy_client_unref(Azy_Client *client)
+{
+   client->refcount--;
+   if (!client->refcount) azy_client_free(client);
+}
+
 /**
  * @defgroup Azy_Client Client Functions
  * @brief Functions which affect #Azy_Client
@@ -854,11 +861,10 @@ azy_client_free(Azy_Client *client)
         AZY_MAGIC_FAIL(client, AZY_MAGIC_CLIENT);
         return;
      }
-
-   if (client->refcount) client->refcount--;
-   if (client->refcount) return;
    if (client->connected)
      azy_client_close(client);
+   if (client->refcount) client->refcount--;
+   if (client->refcount) return;
    AZY_MAGIC_SET(client, AZY_MAGIC_NONE);
    eina_stringshare_del(client->addr);
    if (client->overflow)

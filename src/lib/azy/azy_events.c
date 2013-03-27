@@ -865,7 +865,8 @@ azy_events_length_overflows(int64_t current, int64_t max)
 static void
 _azy_events_client_transfer_progress_event_free(void *d EINA_UNUSED, Azy_Event_Client_Transfer_Progress *dse)
 {
-   azy_client_free(dse->client);
+   dse->client->refcount--;
+   if (!dse->client->refcount) azy_client_free(dse->client);
    azy_net_free(dse->net);
    free(dse);
 }
@@ -919,7 +920,8 @@ void
 azy_events_client_transfer_complete_event_free(Azy_Client *client, Azy_Event_Client_Transfer_Complete *cse)
 {
    azy_events_client_transfer_complete_cleanup(client, cse->content);
-   azy_client_free(client);
+   client->refcount--;
+   if (!client->refcount) azy_client_free(client);
    free(cse);
 }
 

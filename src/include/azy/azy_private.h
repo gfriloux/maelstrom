@@ -463,6 +463,7 @@ Eina_Binbuf     *azy_events_overflow_add(Azy_Net *net, const unsigned char *data
 int              azy_net_cookie_init_(void);
 void             azy_net_cookie_shutdown_(void);
 
+void             azy_client_unref(Azy_Client *client);
 Eina_Bool        _azy_client_handler_add(Azy_Client *client, int type, Ecore_Con_Event_Server_Add *add);
 Eina_Bool        _azy_client_handler_del(Azy_Client *client, int type, Ecore_Con_Event_Server_Del *del);
 Eina_Bool        _azy_client_handler_data(Azy_Client_Handler_Data *handler_data, int type, Ecore_Con_Event_Server_Data *ev);
