@@ -105,25 +105,50 @@ _chat_image_sort_cb(Image *a, Image *b)
 }
 
 Eina_Error
-_chat_image_complete(Azy_Client *cli, Azy_Content *content, Eina_Binbuf *buf)
+_chat_image_complete(Azy_Client *cli, Azy_Content *content EINA_UNUSED, Eina_Binbuf *buf)
 {
    Image *i = azy_client_data_get(cli);
-   int status;
-   const char *h;
-   Azy_Net *net = azy_content_net_get(content);
 
-   status = azy_net_code_get(net);
-   DBG("%i code for image: %s", status, azy_net_uri_get(net));
    if (i->buf) eina_binbuf_free(i->buf);
    i->buf = buf;
+   i->timestamp = (unsigned long long)ecore_time_unix_get();
+   if (ui_eet_image_add(i->addr, i->buf, i->timestamp) == 1)
+     i->cl->image_size += eina_binbuf_length_get(i->buf);
+   if (i->client) azy_client_free(i->client);
+   i->client = NULL;
+   chat_image_cleanup(i->cl);
+   if (i->cl->dbus_image == i)
+     {
+        Elm_Entry_Anchor_Info e;
+
+        memset(&e, 0, sizeof(Elm_Entry_Anchor_Info));
+        e.name = i->addr;
+        chat_conv_image_show(i->cl, NULL, &e);
+     }
+   return ECORE_CALLBACK_RENEW;
+}
+
+Eina_Bool
+chat_image_status(void *data EINA_UNUSED, int type EINA_UNUSED, Azy_Event_Client_Transfer_Progress *ev)
+{
+   int status;
+   const char *h;
+   Image *i = azy_client_data_get(ev->client);
+
+   if (i->valid) return ECORE_CALLBACK_RENEW; //already checked
+   status = azy_net_code_get(ev->net);
+   DBG("%i code for image: %s", status, azy_net_uri_get(ev->net));
    if (status != 200)
      {
         if (i->buf) eina_binbuf_free(i->buf);
         i->buf = NULL;
+        azy_client_free(i->client);
+        i->client = NULL;
         if (++i->tries < IMAGE_FETCH_TRIES)
           {
              Azy_Client_Call_Id id;
 
+             i->client = azy_client_util_connect(i->addr);
              id = azy_client_blank(i->client, AZY_NET_TYPE_GET, NULL, NULL, NULL);
              if (id)
                azy_client_callback_set(i->client, id, (Azy_Client_Transfer_Complete_Cb)_chat_image_complete);
@@ -136,9 +161,11 @@ _chat_image_complete(Azy_Client *cli, Azy_Content *content, Eina_Binbuf *buf)
                   i->client = NULL;
                }
           }
+        i->cl->image_list = eina_inlist_remove(i->cl->image_list, EINA_INLIST_GET(i));
+        eina_hash_del_by_key(i->cl->images, i->addr);
         return ECORE_CALLBACK_RENEW;
      }
-   h = azy_net_header_get(net, "content-type");
+   h = azy_net_header_get(ev->net, "content-type");
    if (h)
      {
         if (strncasecmp(h, "image/", 6))
@@ -151,29 +178,8 @@ _chat_image_complete(Azy_Client *cli, Azy_Content *content, Eina_Binbuf *buf)
              i->client = NULL;
           }
      }
-   if (status != 200)
-     {
-        i->cl->image_list = eina_inlist_remove(i->cl->image_list, EINA_INLIST_GET(i));
-        eina_hash_del_by_key(i->cl->images, i->addr);
-        return ECORE_CALLBACK_RENEW;
-     }
-   i->timestamp = (unsigned long long)ecore_time_unix_get();
-   if (!i->dummy)
-     {
-        if (ui_eet_image_add(i->addr, i->buf, i->timestamp) == 1)
-          i->cl->image_size += eina_binbuf_length_get(i->buf);
-        if (i->client) azy_client_free(i->client);
-        i->client = NULL;
-        chat_image_cleanup(i->cl);
-     }
-   if (i->cl->dbus_image == i)
-     {
-        Elm_Entry_Anchor_Info e;
+   i->valid = !i->dummy;
 
-        memset(&e, 0, sizeof(Elm_Entry_Anchor_Info));
-        e.name = i->addr;
-        chat_conv_image_show(i->cl, NULL, &e);
-     }
    return ECORE_CALLBACK_RENEW;
 }
 
