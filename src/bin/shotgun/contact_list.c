@@ -972,7 +972,7 @@ contact_list_user_del(Contact *c, Shotgun_Event_Presence *ev)
      {
         if (c->list_item)
           {
-             INF("Removing user %s", c->base->jid);
+             //INF("Removing user %s", c->base->jid);
              c->list->list_item_del[c->list->mode](c->list_item);
           }
         c->list_item = NULL;

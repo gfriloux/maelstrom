@@ -177,7 +177,7 @@ event_presence_cb(Contact_List *cl, int type EINA_UNUSED, Shotgun_Event_Presence
    char *jid, *p;
    Eina_List *l = NULL;
 
-   INF("PRESENCE FOR %s", ev->jid);
+   //INF("PRESENCE FOR %s", ev->jid);
    p = strchr(ev->jid, '/');
    if (p) jid = strndupa(ev->jid, p - ev->jid);
    else jid = (char*)ev->jid;
