@@ -6,9 +6,13 @@ src_lib_libmaelstrom_la_CPPFLAGS += \
 
 email_source += \
 src/lib/email/attachment.c \
+src/lib/email/auth.c \
 src/lib/email/contact.c \
 src/lib/email/email.c \
 src/lib/email/email_utils.c \
+src/lib/email/imap_funcs.c \
+src/lib/email/imap_handlers.c \
+src/lib/email/imap_login.c \
 src/lib/email/message.c \
 src/lib/email/pop_handlers.c \
 src/lib/email/pop_list.c \

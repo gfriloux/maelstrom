@@ -20,6 +20,9 @@ void *alloca (size_t);
 #include <Ecore_Con.h>
 #include "Email.h"
 #include <inttypes.h>
+#include <ctype.h>
+#include "match.h"
+#include "md5.h"
 
 #define DBG(...)            EINA_LOG_DOM_DBG(email_log_dom, __VA_ARGS__)
 #define INF(...)            EINA_LOG_DOM_INFO(email_log_dom, __VA_ARGS__)
@@ -34,7 +37,10 @@ extern Eina_Hash *_email_contacts_hash;
 #define EMAIL_POP3S_PORT 995
 
 #define EMAIL_SMTP_PORT 25
-#define EMAIL_ESMTP_PORT 27
+
+#define EMAIL_IMAP_PORT 143
+#define EMAIL_IMAPS_PORT 993
+#define EMAIL_IMAP4_SSL_PORT 585 //< wtf is this used for???
 
 #define EMAIL_POP3_LIST "LIST\r\n"
 #define EMAIL_POP3_STAT "STAT\r\n"
@@ -43,10 +49,24 @@ extern Eina_Hash *_email_contacts_hash;
 #define EMAIL_POP3_RETR "RETR %"PRIu32"\r\n"
 
 #define EMAIL_QUIT "QUIT\r\n"
+#define EMAIL_STARTTLS "STARTTLS\r\n"
 
 #define EMAIL_SMTP_FROM "MAIL FROM: <%s>\r\n"
 #define EMAIL_SMTP_TO "RCPT TO: <%s>\r\n"
 #define EMAIL_SMTP_DATA "DATA\r\n"
+
+#define CRLF "\r\n"
+#define CRLFLEN 2
+
+#define EBUF(X)             ((X) ? eina_binbuf_string_get(X) : NULL)
+#define EBUFLEN(X)          ((X) ? eina_binbuf_length_get(X) : 0)
+
+#define ESBUF(X)            ((X) ? eina_strbuf_string_get(X) : NULL)
+#define ESBUFLEN(X)         ((X) ? eina_strbuf_length_get(X) : 0)
+
+#define EMAIL_RETURN_ERROR -1 /*< protocol error */
+#define EMAIL_RETURN_EAGAIN 0 /*< current parser needs more data */
+#define EMAIL_RETURN_DONE 1 /*< parser successfully parsed all data */
 
 typedef enum
 {
@@ -65,6 +85,40 @@ typedef enum
    EMAIL_SMTP_STATE_DATA,
    EMAIL_SMTP_STATE_BODY,
 } Email_Smtp_State;
+
+typedef enum
+{
+   EMAIL_IMAP_STATUS_NONE,
+   EMAIL_IMAP_STATUS_OK,
+   EMAIL_IMAP_STATUS_NO,
+   EMAIL_IMAP_STATUS_BAD,
+   EMAIL_IMAP_STATUS_LAST
+} Email_Imap_Status;
+
+typedef enum
+{
+   EMAIL_POP_OP_STAT = 1,
+   EMAIL_POP_OP_LIST,
+   EMAIL_POP_OP_RSET,
+   EMAIL_POP_OP_DELE,
+   EMAIL_POP_OP_RETR,
+   EMAIL_POP_OP_QUIT,
+   EMAIL_POP_OP_SEND,
+} Email_Pop_Op;
+
+typedef enum
+{
+   EMAIL_IMAP_OP_CAPABILITY = 1,
+   EMAIL_IMAP_OP_LOGIN,
+   EMAIL_IMAP_OP_LIST,
+} Email_Imap_Op;
+
+/* for simple flag parsing */
+typedef void (*Email_Flag_Set_Cb)(Email *, unsigned int);
+
+#if (EINA_VERSION_MAJOR == 1) && (EINA_VERSION_MINOR < 8)
+# define eina_list_last_data_get(X) eina_list_data_get(eina_list_last(X))
+#endif
 
 struct Email_Message
 {
@@ -116,7 +170,7 @@ struct Email
    void *data;
    Eina_List *certs;
 
-   Email_Op current;
+   unsigned int current;
    Eina_List *ops;
    Eina_List *op_ids;
    Eina_List *cbs;
@@ -124,8 +178,23 @@ struct Email
 
    Ecore_Event_Handler *h_data, *h_del, *h_error, *h_upgrade;
 
-   Email_Smtp_State smtp_state;
-   unsigned int internal_state;
+   union
+   {
+      struct
+      {
+         Email_Smtp_State state;
+         unsigned int internal_state;
+      } smtp;
+      struct
+      {
+         unsigned int opcount; //current max operation number
+         unsigned int current; //current operation number
+         int state; //for various parsers to save their states; < 0 when we're parsing a resp line
+         Email_Imap_Status status; //status of current op
+         Eina_Bool caps : 1; //whether capabilities have been parsed yet
+         Eina_Bool resp : 1; //whether respcode for current line has been parsed yet
+      } imap;
+   } protocol;
 
    union
    {
@@ -133,7 +202,7 @@ struct Email
       {
          Eina_Binbuf *apop_str;
          Eina_Bool apop : 1;
-      } pop_features;
+      } pop;
       struct
       {
          const char *domain;
@@ -145,17 +214,38 @@ struct Email
          Eina_Bool cram : 1;
          Eina_Bool login : 1;
          Eina_Bool plain : 1;
-      } smtp_features;
+      } smtp;
+      struct
+      {
+         Eina_Bool AUTH_CRAM_MD5 : 1;
+         Eina_Bool AUTH_GSSAPI : 1;
+         Eina_Bool AUTH_NTLM : 1;
+         Eina_Bool AUTH_PLAIN : 1;
+
+         Eina_Bool ACL : 1;
+         Eina_Bool CHILDREN : 1;
+         Eina_Bool IDLE : 1;
+         Eina_Bool IMAP4 : 1;
+         Eina_Bool IMAP4rev1 : 1;
+         Eina_Bool LITERALPLUS : 1;
+         Eina_Bool LOGINDISABLED : 1;
+         Eina_Bool NAMESPACE : 1;
+         Eina_Bool QUOTA : 1;
+         Eina_Bool SORT : 1;
+         Eina_Bool UIDPLUS : 1;
+      } imap;
    } features;
-   Eina_Bool pop3 : 1;
-   Eina_Bool imap : 1;
-   Eina_Bool smtp : 1;
+   Email_Type type;
+   Eina_Bool upgrade : 1;
    Eina_Bool secure : 1;
    Eina_Bool deleted : 1;
+   Eina_Bool need_crlf : 1; //protocol is searching for next CRLF
 };
 
+#define DIFF(EXP) (unsigned int)(EXP)
+
 static inline Eina_Bool
-email_op_ok(const unsigned char *data, int size)
+email_op_pop_ok(const unsigned char *data, int size)
 {
    return !((size < 3) || (data[0] != '+') || strncasecmp((char*)data + 1, "OK", 2));
 }
@@ -163,15 +253,58 @@ email_op_ok(const unsigned char *data, int size)
 static inline void
 email_write(Email *e, const void *data, size_t size)
 {
-   DBG("Sending:\n%s", (char*)data);
+   if (eina_log_domain_level_check(email_log_dom, EINA_LOG_LEVEL_DBG))
+     DBG("Sending:\n%s", (char*)data);
    ecore_con_server_send(e->svr, data, size);
 }
 
-Eina_Hash *_email_contacts_hash;
+static inline Eina_Bool
+email_is_pop(const Email *e)
+{
+   return e->type == EMAIL_TYPE_POP3;
+}
+
+static inline Eina_Bool
+email_is_smtp(const Email *e)
+{
+   return e->type == EMAIL_TYPE_SMTP;
+}
+
+static inline Eina_Bool
+email_is_imap(const Email *e)
+{
+   return e->type == EMAIL_TYPE_IMAP4;
+}
+
+/* use this for offset updates to ensure the current offset doesn't get overwritten */
+static inline void
+imap_offset_update(size_t *offset, size_t new)
+{
+   *offset += new;
+}
+
+static inline void
+email_imap_write(Email *e, const void *data, size_t size)
+{
+   char buf[64];
+
+   e->protocol.imap.current = e->protocol.imap.opcount++;
+   snprintf(buf, sizeof(buf), "%u ", e->protocol.imap.current);
+   email_write(e, buf, strlen(buf));
+   email_write(e, data, size);
+}
+
+extern Eina_Hash *_email_contacts_hash;
+
+void auth_cram_md5(Email *e, const unsigned char *data, size_t size);
 
 Eina_Bool upgrade_pop(Email *e, int type, Ecore_Con_Event_Server_Upgrade *ev);
 Eina_Bool data_pop(Email *e, int type, Ecore_Con_Event_Server_Data *ev);
 Eina_Bool error_pop(Email *e, int type, Ecore_Con_Event_Server_Error *ev );
+
+Eina_Bool upgrade_imap(Email *e, int type, Ecore_Con_Event_Server_Upgrade *ev);
+Eina_Bool data_imap(Email *e, int type, Ecore_Con_Event_Server_Data *ev);
+Eina_Bool error_imap(Email *e, int type, Ecore_Con_Event_Server_Error *ev );
 
 Eina_Bool upgrade_smtp(Email *e, int type, Ecore_Con_Event_Server_Upgrade *ev);
 Eina_Bool data_smtp(Email *e, int type, Ecore_Con_Event_Server_Data *ev);
@@ -187,6 +320,7 @@ Eina_Bool send_smtp(Email *e);
 
 void email_login_pop(Email *e, Ecore_Con_Event_Server_Data *ev);
 void email_login_smtp(Email *e, Ecore_Con_Event_Server_Data *ev);
+int email_login_imap(Email *e, const unsigned char *data, size_t size, size_t *offset);
 
 void email_fake_free(void *d, void *e);
 char *email_base64_encode(const char *string, double len, int *);

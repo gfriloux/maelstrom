@@ -41,17 +41,17 @@ features_detect_smtp(Email *e, const unsigned char *data, int size)
                {
                   if (!strncasecmp((char*)p, "CRAM-MD5", 8))
                     {
-                       e->features.smtp_features.cram = EINA_TRUE;
+                       e->features.smtp.cram = EINA_TRUE;
                        INF("Detected CRAM-MD5");
                     }
                   else if (!strncasecmp((char*)p, "LOGIN", 5))
                     {
-                       e->features.smtp_features.login = EINA_TRUE;
+                       e->features.smtp.login = EINA_TRUE;
                        INF("Detected LOGIN");
                     }
                   else if (!strncasecmp((char*)p, "PLAIN", 5))
                     {
-                       e->features.smtp_features.plain = EINA_TRUE;
+                       e->features.smtp.plain = EINA_TRUE;
                        INF("Detected PLAIN");
                     }
                   p = memchr(p + 1, ' ', n - p);
@@ -59,16 +59,16 @@ features_detect_smtp(Email *e, const unsigned char *data, int size)
              p = n;
           }
         else if (!strncasecmp((char*)p, "PIPELINING", 10))
-          e->features.smtp_features.pipelining = EINA_TRUE;
+          e->features.smtp.pipelining = EINA_TRUE;
         else if (!strncasecmp((char*)p, "SIZE", 4))
           {
              char *x;
-             e->features.smtp_features.size = strtoull((char*)p + 5, &x, 10);
-             INF("Detected max size: %zu", e->features.smtp_features.size);
+             e->features.smtp.size = strtoull((char*)p + 5, &x, 10);
+             INF("Detected max size: %zu", e->features.smtp.size);
              p = (unsigned char*)x;
           }
         else if (!strncasecmp((char*)p, "8BITMIME", 8))
-          e->features.smtp_features.eightbit = EINA_TRUE;
+          e->features.smtp.eightbit = EINA_TRUE;
      }
 }
 
@@ -89,9 +89,15 @@ email_login_smtp(Email *e, Ecore_Con_Event_Server_Data *ev)
              ecore_con_server_del(ev->server);
              return;
           }
+        if (!e->upgrade)
+          {
+             /* TODO: throw error event or something */
+             ecore_con_server_del(e->svr);
+             return;
+          }
         if (((char*)ev->data)[1] == '5')
           {
-             email_write(e, "STARTTLS\r\n", sizeof("STARTTLS\r\n") - 1);
+             email_write(e, EMAIL_STARTTLS, sizeof(EMAIL_STARTTLS) - 1);
              features_detect_smtp(e, ev->data, ev->size);
           }
         else
@@ -116,17 +122,17 @@ email_login_smtp(Email *e, Ecore_Con_Event_Server_Data *ev)
         if (p && (p - (unsigned char*)ev->data + 7 < ev->size))
           {
              if (!strncasecmp((char*)p + 1, "ESMTP", 5))
-               e->features.smtp_features.ssl = EINA_TRUE;
+               e->features.smtp.ssl = EINA_TRUE;
           }
 
-        size = sizeof(char) * (sizeof("EHLO \r\n") + strlen(e->features.smtp_features.domain));
+        size = sizeof(char) * (sizeof("EHLO \r\n") + strlen(e->features.smtp.domain));
 
         buf = alloca(size);
-        if (e->features.smtp_features.ssl)
-          snprintf(buf, size, "EHLO %s\r\n", e->features.smtp_features.domain);
+        if (e->features.smtp.ssl)
+          snprintf(buf, size, "EHLO %s\r\n", e->features.smtp.domain);
         else
-          snprintf(buf, size, "HELO %s\r\n", e->features.smtp_features.domain);
-        if (!e->flags) e->state++;
+          snprintf(buf, size, "HELO %s\r\n", e->features.smtp.domain);
+        if (e->upgrade && (!e->flags)) e->state++;
         else e->state = EMAIL_STATE_USER;
         email_write(e, buf, size - 1);
         return;
@@ -135,12 +141,12 @@ email_login_smtp(Email *e, Ecore_Con_Event_Server_Data *ev)
         if (!memcmp(ev->data, "250", 3))
           {
              features_detect_smtp(e, ev->data, ev->size);
-             if (e->features.smtp_features.cram)
+             if (e->features.smtp.cram)
                {
                   DBG("Beginning AUTH CRAM-MD5");
                   email_write(e, "AUTH CRAM-MD5\r\n", sizeof("AUTH CRAM-MD5\r\n") - 1);
                }
-             else if (e->features.smtp_features.plain)
+             else if (e->features.smtp.plain)
                {
                   char *plain;
 
@@ -153,7 +159,7 @@ email_login_smtp(Email *e, Ecore_Con_Event_Server_Data *ev)
                   free(plain);
                   ecore_con_server_send(e->svr, buf, size - 1);
                }
-             else if (e->features.smtp_features.login)
+             else if (e->features.smtp.login)
                {
                   INF("Beginning AUTH LOGIN");
                   email_write(e, "AUTH LOGIN\r\n", sizeof("AUTH LOGIN\r\n") - 1);
@@ -167,26 +173,9 @@ email_login_smtp(Email *e, Ecore_Con_Event_Server_Data *ev)
           }
         else if (!memcmp(ev->data, "334", 3))
           {
-             if (e->features.smtp_features.cram)
-               {
-                  char *b64, md5sum[33];
-                  unsigned char *bin, digest[16];
-                  int bsize;
-                  Eina_Strbuf *sbuf;
-
-                  bin = email_base64_decode(ev->data + 4, ev->size - 6, &bsize);
-                  email_md5_hmac_encode(digest, (char*)bin, bsize, e->password, strlen(e->password));
-                  free(bin);
-                  email_md5_digest_to_str(digest, md5sum);
-                  sbuf = eina_strbuf_new();
-                  eina_strbuf_append_printf(sbuf, "%s %s", e->username, md5sum);
-                  b64 = email_base64_encode(eina_strbuf_string_get(sbuf), eina_strbuf_length_get(sbuf), &bsize);
-                  eina_strbuf_free(sbuf);
-                  ecore_con_server_send(e->svr, b64, bsize);
-                  ecore_con_server_send(e->svr, "\r\n", 2);
-                  free(b64);
-               }
-             else if (e->features.smtp_features.login)
+             if (e->features.smtp.cram)
+               auth_cram_md5(e, ev->data + 4, ev->size - 6);
+             else if (e->features.smtp.login)
                {
                   /* continuation of AUTH LOGIN */
                   char *b64;

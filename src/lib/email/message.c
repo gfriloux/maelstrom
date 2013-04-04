@@ -153,7 +153,7 @@ email_message_send(Email *e, Email_Message *msg, Email_Send_Cb cb)
    msg->owner = e;
    e->op_ids = eina_list_append(e->op_ids, msg);
    e->cbs = eina_list_append(e->cbs, cb);
-   e->ops = eina_list_append(e->ops, (uintptr_t*)EMAIL_OP_SEND);
+   e->ops = eina_list_append(e->ops, (uintptr_t*)EMAIL_POP_OP_SEND);
    if (!e->current) send_smtp(e);
    return EINA_TRUE;
 }

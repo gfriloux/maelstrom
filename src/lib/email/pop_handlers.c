@@ -19,26 +19,26 @@ next_pop(Email *e)
    if (e->cbs) e->cbs = eina_list_remove_list(e->ops, e->cbs);
    switch (e->current)
      {
-      case EMAIL_OP_STAT:
+      case EMAIL_POP_OP_STAT:
         email_write(e, EMAIL_POP3_STAT, sizeof(EMAIL_POP3_STAT) - 1);
         break;
-      case EMAIL_OP_LIST:
+      case EMAIL_POP_OP_LIST:
         email_write(e, EMAIL_POP3_LIST, sizeof(EMAIL_POP3_LIST) - 1);
         break;
-      case EMAIL_OP_RSET:
+      case EMAIL_POP_OP_RSET:
         email_write(e, EMAIL_POP3_RSET, sizeof(EMAIL_POP3_RSET) - 1);
         break;
-      case EMAIL_OP_DELE:
+      case EMAIL_POP_OP_DELE:
         snprintf(buf, sizeof(buf), EMAIL_POP3_DELE, (unsigned int)(uintptr_t)e->op_ids->data);
         e->op_ids = eina_list_remove_list(e->op_ids, e->op_ids);
         email_write(e, buf, strlen(buf));
         break;
-      case EMAIL_OP_RETR:
+      case EMAIL_POP_OP_RETR:
         snprintf(buf, sizeof(buf), EMAIL_POP3_RETR, (unsigned int)(uintptr_t)e->op_ids->data);
         e->op_ids = eina_list_remove_list(e->op_ids, e->op_ids);
         email_write(e, buf, strlen(buf));
         break;
-      case EMAIL_OP_QUIT:
+      case EMAIL_POP_OP_QUIT:
         email_write(e, EMAIL_QUIT, sizeof(EMAIL_QUIT) - 1);
         break;
       default:
@@ -52,6 +52,7 @@ upgrade_pop(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Upgrade *ev)
    if (e != ecore_con_server_data_get(ev->server)) return ECORE_CALLBACK_PASS_ON;
 
    e->state++;
+   e->secure = 1;
    email_login_pop(e, NULL);
    return ECORE_CALLBACK_RENEW;
 }
@@ -85,33 +86,33 @@ data_pop(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
 
    switch (e->current)
      {
-      case EMAIL_OP_STAT:
+      case EMAIL_POP_OP_STAT:
         if (!email_pop3_stat_read(e, ev->data, ev->size)) return ECORE_CALLBACK_RENEW;
         break;
-      case EMAIL_OP_LIST:
+      case EMAIL_POP_OP_LIST:
         if (!email_pop3_list_read(e, ev)) return ECORE_CALLBACK_RENEW;
         break;
-      case EMAIL_OP_RETR:
+      case EMAIL_POP_OP_RETR:
         if (!email_pop3_retr_read(e, ev)) return ECORE_CALLBACK_RENEW;
         break;
-      case EMAIL_OP_DELE:
-      case EMAIL_OP_QUIT:
+      case EMAIL_POP_OP_DELE:
+      case EMAIL_POP_OP_QUIT:
       {
          Email_Cb cb;
 
          cb = eina_list_data_get(e->cbs);
-         if (!email_op_ok(ev->data, ev->size))
+         if (!email_op_pop_ok(ev->data, ev->size))
            {
-              if (e->current == EMAIL_OP_DELE) ERR("Error with DELE");
+              if (e->current == EMAIL_POP_OP_DELE) ERR("Error with DELE");
               else ERR("Error with QUIT");
            }
          else
            {
-              if (e->current == EMAIL_OP_DELE) INF("DELE successful");
+              if (e->current == EMAIL_POP_OP_DELE) INF("DELE successful");
               else INF("QUIT");
            }
          if (cb) cb(e);
-         if (e->current == EMAIL_OP_QUIT) ecore_con_server_del(e->svr);
+         if (e->current == EMAIL_POP_OP_QUIT) ecore_con_server_del(e->svr);
          break;
       }
       default:

@@ -1,7 +1,7 @@
 #include "email_private.h"
 
 Eina_Bool
-email_stat(Email *e, Email_Stat_Cb cb)
+email_pop3_stat(Email *e, Email_Stat_Cb cb)
 {
    EINA_SAFETY_ON_NULL_RETURN_VAL(e, EINA_FALSE);
    EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, EINA_FALSE);
@@ -9,15 +9,15 @@ email_stat(Email *e, Email_Stat_Cb cb)
    e->cbs = eina_list_append(e->cbs, cb);
    if (!e->ops)
      {
-        e->current = EMAIL_OP_STAT;
+        e->current = EMAIL_POP_OP_STAT;
         email_write(e, "STAT\r\n", 6);
      }
-   e->ops = eina_list_append(e->ops, (uintptr_t*)EMAIL_OP_STAT);
+   e->ops = eina_list_append(e->ops, (uintptr_t*)EMAIL_POP_OP_STAT);
    return EINA_TRUE;
 }
 
 Eina_Bool
-email_list(Email *e, Email_List_Cb cb)
+email_pop3_list(Email *e, Email_List_Cb cb)
 {
    EINA_SAFETY_ON_NULL_RETURN_VAL(e, EINA_FALSE);
    EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, EINA_FALSE);
@@ -25,15 +25,15 @@ email_list(Email *e, Email_List_Cb cb)
    e->cbs = eina_list_append(e->cbs, cb);
    if (!e->ops)
      {
-        e->current = EMAIL_OP_LIST;
+        e->current = EMAIL_POP_OP_LIST;
         email_write(e, "LIST\r\n", 6);
      }
-   e->ops = eina_list_append(e->ops, (uintptr_t*)EMAIL_OP_LIST);
+   e->ops = eina_list_append(e->ops, (uintptr_t*)EMAIL_POP_OP_LIST);
    return EINA_TRUE;
 }
 
 Eina_Bool
-email_rset(Email *e, Email_Cb cb)
+email_pop3_rset(Email *e, Email_Cb cb)
 {
    EINA_SAFETY_ON_NULL_RETURN_VAL(e, EINA_FALSE);
    EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, EINA_FALSE);
@@ -41,16 +41,16 @@ email_rset(Email *e, Email_Cb cb)
    e->cbs = eina_list_append(e->cbs, cb);
    if (!e->current)
      {
-        e->current = EMAIL_OP_RSET;
+        e->current = EMAIL_POP_OP_RSET;
         email_write(e, EMAIL_POP3_RSET, sizeof(EMAIL_POP3_RSET) - 1);
      }
    else
-     e->ops = eina_list_append(e->ops, (uintptr_t*)EMAIL_OP_RSET);
+     e->ops = eina_list_append(e->ops, (uintptr_t*)EMAIL_POP_OP_RSET);
    return EINA_TRUE;
 }
 
 Eina_Bool
-email_delete(Email *e, unsigned int id, Email_Cb cb)
+email_pop3_delete(Email *e, unsigned int id, Email_Cb cb)
 {
    char buf[64];
    EINA_SAFETY_ON_NULL_RETURN_VAL(e, EINA_FALSE);
@@ -59,20 +59,20 @@ email_delete(Email *e, unsigned int id, Email_Cb cb)
    e->cbs = eina_list_append(e->cbs, cb);
    if (!e->current)
      {
-        e->current = EMAIL_OP_DELE;
+        e->current = EMAIL_POP_OP_DELE;
         snprintf(buf, sizeof(buf), EMAIL_POP3_DELE, id);
         email_write(e, buf, strlen(buf));
      }
    else
      {
         e->op_ids = eina_list_append(e->op_ids, (uintptr_t*)(unsigned long)id);
-        e->ops = eina_list_append(e->ops, (uintptr_t*)EMAIL_OP_DELE);
+        e->ops = eina_list_append(e->ops, (uintptr_t*)EMAIL_POP_OP_DELE);
      }
    return EINA_TRUE;
 }
 
 Eina_Bool
-email_retrieve(Email *e, unsigned int id, Email_Retr_Cb cb)
+email_pop3_retrieve(Email *e, unsigned int id, Email_Retr_Cb cb)
 {
    char buf[64];
    EINA_SAFETY_ON_NULL_RETURN_VAL(e, EINA_FALSE);
@@ -81,14 +81,14 @@ email_retrieve(Email *e, unsigned int id, Email_Retr_Cb cb)
    e->cbs = eina_list_append(e->cbs, cb);
    if (!e->current)
      {
-        e->current = EMAIL_OP_RETR;
+        e->current = EMAIL_POP_OP_RETR;
         snprintf(buf, sizeof(buf), EMAIL_POP3_RETR, id);
         email_write(e, buf, strlen(buf));
      }
    else
      {
         e->op_ids = eina_list_append(e->op_ids, (uintptr_t*)(unsigned long)id);
-        e->ops = eina_list_append(e->ops, (uintptr_t*)EMAIL_OP_RETR);
+        e->ops = eina_list_append(e->ops, (uintptr_t*)EMAIL_POP_OP_RETR);
      }
    return EINA_TRUE;
 }
@@ -101,7 +101,7 @@ email_pop3_stat_read(Email *e, const unsigned char *recvbuf, size_t size)
    size_t len;
 
    cb = eina_list_data_get(e->cbs);
-   if ((!email_op_ok((const unsigned char *)recvbuf, size)) ||
+   if ((!email_op_pop_ok((const unsigned char *)recvbuf, size)) ||
        (sscanf((char*)recvbuf, "+OK %u %zu", &num, &len) != 2))
      {
         ERR("Error with STAT");
@@ -118,12 +118,12 @@ email_pop3_list_read(Email *e, Ecore_Con_Event_Server_Data *ev)
 {
    Email_List_Cb cb;
    Eina_List *list = NULL;
-   Email_List_Item *it;
+   Email_List_Item_Pop3 *it;
    const char *p, *n;
    const unsigned char *data;
    size_t size;
 
-   if ((!e->buf) && (!email_op_ok(ev->data, ev->size)))
+   if ((!e->buf) && (!email_op_pop_ok(ev->data, ev->size)))
      {
         ERR("Error with LIST");
         cb = eina_list_data_get(e->cbs);
@@ -143,9 +143,9 @@ email_pop3_list_read(Email *e, Ecore_Con_Event_Server_Data *ev)
      }
    for (n = (char*)memchr(data + 3, '\n', size - 3), size -= (n - (char*)data);
         n && (size > 1);
-        p = n, n = (char*)memchr(n, '\n', size - 1), size -= (n - (char*)data))
+        p = n, n = (char*)memchr(p, '\n', size - 1), size -= (p - (char*)data))
       {
-         it = calloc(1, sizeof(Email_List_Item));
+         it = calloc(1, sizeof(Email_List_Item_Pop3));
          if (sscanf(++n, "%u %zu", &it->id, &it->size) != 2)
            {
               free(it);
@@ -156,11 +156,15 @@ email_pop3_list_read(Email *e, Ecore_Con_Event_Server_Data *ev)
       }
    if (n[0] == '.')
      {
+        Eina_Bool tofree = EINA_TRUE;
         cb = eina_list_data_get(e->cbs);
         INF("LIST returned %u messages", eina_list_count(list));
-        if (cb) cb(e, list);
-        EINA_LIST_FREE(list, it)
-          free(it);
+        if (cb) tofree = !!cb(e, list);
+        if (tofree)
+          {
+             EINA_LIST_FREE(list, it)
+               free(it);
+          }
         if (e->buf)
           {
              eina_binbuf_free(e->buf);

@@ -8,7 +8,7 @@ email_pop3_retr_read(Email *e, Ecore_Con_Event_Server_Data *ev)
    unsigned char *data;
 
    cb = eina_list_data_get(e->cbs);
-   if ((!e->buf) && (!email_op_ok(ev->data, ev->size)))
+   if ((!e->buf) && (!email_op_pop_ok(ev->data, ev->size)))
      {
         ERR("Error with RETR");
         if (cb) cb(e, NULL);

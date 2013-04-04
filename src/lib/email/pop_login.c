@@ -10,7 +10,7 @@ email_login_pop(Email *e, Ecore_Con_Event_Server_Data *ev)
    switch (e->state)
      {
       case EMAIL_STATE_SSL:
-        if (!email_op_ok(ev->data, ev->size))
+        if (!email_op_pop_ok(ev->data, ev->size))
           {
              ERR("Could not create secure connection!");
              ecore_con_server_del(ev->server);
@@ -21,7 +21,7 @@ email_login_pop(Email *e, Ecore_Con_Event_Server_Data *ev)
         e->flags = ECORE_CON_USE_MIXED;
         return;
       case EMAIL_STATE_INIT:
-        if (!email_op_ok(ev->data, ev->size))
+        if (!email_op_pop_ok(ev->data, ev->size))
           {
              ERR("Not a POP3 server!");
              ecore_con_server_del(ev->server);
@@ -39,13 +39,13 @@ email_login_pop(Email *e, Ecore_Con_Event_Server_Data *ev)
                   start = memrchr(ev->data + 3, '<', end - (unsigned char*)ev->data);
                   if (start)
                     {
-                       e->features.pop_features.apop = EINA_TRUE;
-                       e->features.pop_features.apop_str = eina_binbuf_new();
-                       eina_binbuf_append_length(e->features.pop_features.apop_str, start, end - start + 1);
+                       e->features.pop.apop = EINA_TRUE;
+                       e->features.pop.apop_str = eina_binbuf_new();
+                       eina_binbuf_append_length(e->features.pop.apop_str, start, end - start + 1);
                     }
                }
           }
-        if (e->secure && (!e->flags))
+        if (e->upgrade && (!e->flags))
           {
              email_write(e, "STLS\r\n", sizeof("STLS\r\n") - 1);
              e->state++;
@@ -59,7 +59,7 @@ email_login_pop(Email *e, Ecore_Con_Event_Server_Data *ev)
              unsigned char digest[16];
              char md5buf[33];
 
-             if (!e->features.pop_features.apop)
+             if (!e->features.pop.apop)
                {
                   INF("Beginning AUTH PLAIN");
                   size = sizeof(char) * (sizeof("USER ") - 1 + sizeof("\r\n") - 1 + strlen(e->username)) + 1;
@@ -70,9 +70,9 @@ email_login_pop(Email *e, Ecore_Con_Event_Server_Data *ev)
                }
              INF("Beginning AUTH APOP");
              e->state++;
-             eina_binbuf_append_length(e->features.pop_features.apop_str, (unsigned char*)e->password, strlen(e->password));
+             eina_binbuf_append_length(e->features.pop.apop_str, (unsigned char*)e->password, strlen(e->password));
 
-             md5_buffer((char*)eina_binbuf_string_get(e->features.pop_features.apop_str), eina_binbuf_length_get(e->features.pop_features.apop_str), digest);
+             md5_buffer((char*)eina_binbuf_string_get(e->features.pop.apop_str), eina_binbuf_length_get(e->features.pop.apop_str), digest);
              email_md5_digest_to_str(digest, md5buf);
              size = sizeof(char) * (sizeof("APOP ") - 1 + sizeof("\r\n") - 1 + strlen(e->username)) + sizeof(md5buf);
              buf = alloca(size);
@@ -80,7 +80,7 @@ email_login_pop(Email *e, Ecore_Con_Event_Server_Data *ev)
              email_write(e, buf, size - 1);
              return;
           }
-        if (!email_op_ok(ev->data, ev->size))
+        if (!email_op_pop_ok(ev->data, ev->size))
           {
              ERR("Username invalid!");
              ecore_con_server_del(e->svr);
@@ -94,7 +94,7 @@ email_login_pop(Email *e, Ecore_Con_Event_Server_Data *ev)
         e->state++;
         return;
       case EMAIL_STATE_PASS:
-        if (!email_op_ok(ev->data, ev->size))
+        if (!email_op_pop_ok(ev->data, ev->size))
           {
              ERR("Credentials invalid!");
              ecore_con_server_del(e->svr);

@@ -4,12 +4,12 @@
 static void
 next_smtp(Email *e)
 {
-   e->smtp_state = 0;
-   e->internal_state = 0;
+   e->protocol.smtp.state = 0;
+   e->protocol.smtp.internal_state = 0;
 
    DBG("Next queued call");
    e->ops = eina_list_remove_list(e->ops, e->ops);
-   if (e->current == EMAIL_OP_SEND)
+   if (e->current == EMAIL_POP_OP_SEND)
      e->op_ids = eina_list_remove_list(e->ops, e->op_ids);
    if (!e->ops)
      {
@@ -21,7 +21,7 @@ next_smtp(Email *e)
    if (e->cbs) e->cbs = eina_list_remove_list(e->cbs, e->cbs);
    switch (e->current)
      {
-      case EMAIL_OP_SEND:
+      case EMAIL_POP_OP_SEND:
         if (!send_smtp(e))
           {
              Email_Send_Cb cb = eina_list_data_get(e->cbs);
@@ -29,7 +29,7 @@ next_smtp(Email *e)
              next_smtp(e);
           }
         break;
-      case EMAIL_OP_QUIT:
+      case EMAIL_POP_OP_QUIT:
         email_write(e, EMAIL_QUIT, sizeof(EMAIL_QUIT) - 1);
       default:
         break;
@@ -45,17 +45,17 @@ send_smtp(Email *e)
    Email_Contact *ec;
    Eina_Strbuf *bbuf;
 
-   e->current = EMAIL_OP_SEND;
+   e->current = EMAIL_POP_OP_SEND;
    msg = e->op_ids->data;
-   switch (e->smtp_state)
+   switch (e->protocol.smtp.state)
      {
       case EMAIL_SMTP_STATE_NONE:
-        e->smtp_state++;
+        e->protocol.smtp.state++;
       case EMAIL_SMTP_STATE_FROM:
         if ((!msg->from) && (!msg->sender))
           {
              char buf2[1024];
-             snprintf(buf2, sizeof(buf2), "%s@%s", e->username, e->features.smtp_features.domain);
+             snprintf(buf2, sizeof(buf2), "%s@%s", e->username, e->features.smtp.domain);
              msg->sender = email_contact_new(buf2);
           }
         ec = msg->sender;
@@ -63,15 +63,15 @@ send_smtp(Email *e)
         buf = alloca(size);
         snprintf(buf, size, EMAIL_SMTP_FROM, ec->address);
         email_write(e, buf, size - 1);
-        e->smtp_state++;
-        e->internal_state = 0;
+        e->protocol.smtp.state++;
+        e->protocol.smtp.internal_state = 0;
         break;
       case EMAIL_SMTP_STATE_TO:
-        ec = eina_list_nth(msg->recipients, e->internal_state++);
+        ec = eina_list_nth(msg->recipients, e->protocol.smtp.internal_state++);
         if (!ec)
           {
-             e->smtp_state++;
-             e->internal_state = 0;
+             e->protocol.smtp.state++;
+             e->protocol.smtp.internal_state = 0;
              return send_smtp(e);
           }
         size = sizeof(char) * (sizeof(EMAIL_SMTP_TO) + strlen(ec->address)) - 2;
@@ -81,12 +81,12 @@ send_smtp(Email *e)
         break;
       case EMAIL_SMTP_STATE_DATA:
         email_write(e, EMAIL_SMTP_DATA, sizeof(EMAIL_SMTP_DATA) - 1);
-        e->smtp_state++;
-        e->internal_state = 0;
+        e->protocol.smtp.state++;
+        e->protocol.smtp.internal_state = 0;
         break;
       default:
         bbuf = email_message_serialize(msg);
-        e->smtp_state++;
+        e->protocol.smtp.state++;
         if (bbuf)
           {
              email_write(e, eina_strbuf_string_get(bbuf), eina_strbuf_length_get(bbuf));
@@ -107,10 +107,11 @@ upgrade_smtp(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Upgrade *ev)
    if (e != ecore_con_server_data_get(ev->server)) return ECORE_CALLBACK_PASS_ON;
 
    e->state++;
-   size = sizeof(char) * (sizeof("EHLO \r\n") + strlen(e->features.smtp_features.domain));
+   e->secure = 1;
+   size = sizeof(char) * (sizeof("EHLO \r\n") + strlen(e->features.smtp.domain));
 
    buf = alloca(size);
-   snprintf(buf, size, "EHLO %s\r\n", e->features.smtp_features.domain);
+   snprintf(buf, size, "EHLO %s\r\n", e->features.smtp.domain);
    email_write(e, buf, size - 1);
    return ECORE_CALLBACK_RENEW;
 }
@@ -145,7 +146,7 @@ data_smtp(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
 
    cb = eina_list_data_get(e->cbs);
    qcb = eina_list_data_get(e->cbs);
-   if (e->current == EMAIL_OP_QUIT)
+   if (e->current == EMAIL_POP_OP_QUIT)
      {
         if ((ev->size < 3) || (memcmp(ev->data, "221", 3)))
           ERR("Could not QUIT properly!");
@@ -153,7 +154,7 @@ data_smtp(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
         ecore_con_server_del(e->svr);
         return ECORE_CALLBACK_RENEW;
      }
-   switch (e->smtp_state)
+   switch (e->protocol.smtp.state)
      {
       case EMAIL_SMTP_STATE_BODY:
         if ((ev->size < 3) || (memcmp(ev->data, "354", 3)))
@@ -174,7 +175,7 @@ data_smtp(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
              if (cb) cb(e->op_ids->data, EINA_FALSE);
              next_smtp(e);
           }
-        else if (e->smtp_state > EMAIL_SMTP_STATE_BODY)
+        else if (e->protocol.smtp.state > EMAIL_SMTP_STATE_BODY)
           {
              if (cb) cb(e->op_ids->data, EINA_TRUE);
              next_smtp(e);

@@ -32,31 +32,44 @@ mail_retr(Email *e, Eina_Binbuf *buf)
      }
 }
 
+static const char *const MBOX_FLAGS[] =
+{
+   [0] = "HASCHILDREN",
+   [1] = "HASNOCHILDREN",
+   [2] = "MARKED",
+   [3] = "NOINFERIORS",
+   [4] = "NOSELECT",
+   [5] = "UNMARKED",
+};
+
+static void
+mail_list_flags(Email_Imap_Mailbox_Flag flags)
+{
+   unsigned int x;
+   for (x = 0; x <= 5; x++)
+     if (flags & (1 << x))
+       printf(" %s", MBOX_FLAGS[x]);
+}
+
 static Eina_Bool
 mail_list(Email *e, Eina_List *list)
 {
-   Email_List_Item_Pop3 *it;
+   Email_List_Item_Imap4 *it;
    const Eina_List *l;
 
    EINA_LIST_FOREACH(list, l, it)
      {
-        printf("#%u, %zu octets\n", it->id, it->size);
-        email_pop3_retrieve(e, it->id, mail_retr);
-        count++;
+        printf("%s: (", it->name);
+        mail_list_flags(it->flags);
+        printf(" )\n");
      }
    return EINA_TRUE;
-}
-
-static void
-mail_stat(Email *e, unsigned int num __UNUSED__, size_t size __UNUSED__)
-{
-   email_pop3_list(e, mail_list);
 }
 
 static Eina_Bool
 con(void *d __UNUSED__, int type __UNUSED__, Email *e)
 {
-   email_pop3_stat(e, mail_stat);
+   email_imap4_list(e, NULL, "%", mail_list);
    return ECORE_CALLBACK_RENEW;
 }
 
@@ -77,7 +90,7 @@ main(int argc, char *argv[])
    eina_log_domain_level_set("ecore_con", EINA_LOG_LEVEL_DBG);
    pass = getpass_x("Password: ");
    e = email_new(argv[1], pass, NULL);
-   email_pop3_set(e);
+   email_imap4_set(e);
    ecore_event_handler_add(EMAIL_EVENT_CONNECTED, (Ecore_Event_Handler_Cb)con, NULL);
    email_connect(e, argv[2], EINA_TRUE);
    ecore_main_loop_begin();

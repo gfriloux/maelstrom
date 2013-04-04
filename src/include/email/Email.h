@@ -30,28 +30,21 @@ typedef struct Email_Message Email_Message;
 typedef struct Email_Contact Email_Contact;
 typedef struct Email_Attachment Email_Attachment;
 typedef void (*Email_Stat_Cb)(Email *, unsigned int, size_t);
-typedef void (*Email_List_Cb)(Email *, Eina_List */* Email_List_Item */);
+
+/* return EINA_TRUE if the list data should be automatically freed */
+typedef Eina_Bool (*Email_List_Cb)(Email *, Eina_List */* Email_List_Item */);
 typedef void (*Email_Retr_Cb)(Email *, Eina_Binbuf *);
 typedef void (*Email_Send_Cb)(Email_Message *, Eina_Bool);
 typedef void (*Email_Cb)(Email *);
 
-
-typedef struct
-{
-   unsigned int id;
-   size_t size;
-} Email_List_Item;
-
 typedef enum
 {
-   EMAIL_OP_STAT = 1,
-   EMAIL_OP_LIST,
-   EMAIL_OP_RSET,
-   EMAIL_OP_DELE,
-   EMAIL_OP_RETR,
-   EMAIL_OP_QUIT,
-   EMAIL_OP_SEND,
-} Email_Op;
+   EMAIL_TYPE_NONE,
+   EMAIL_TYPE_POP3,
+   EMAIL_TYPE_IMAP4,
+   EMAIL_TYPE_SMTP,
+   EMAIL_TYPE_LAST,
+} Email_Type;
 
 typedef enum
 {
@@ -60,6 +53,28 @@ typedef enum
    EMAIL_MESSAGE_CONTACT_TYPE_BCC
 } Email_Message_Contact_Type;
 
+typedef enum
+{
+   EMAIL_IMAP_MAILBOX_FLAG_HASCHILDREN = (1 << 0),
+   EMAIL_IMAP_MAILBOX_FLAG_HASNOCHILDREN = (1 << 1),
+   EMAIL_IMAP_MAILBOX_FLAG_MARKED = (1 << 2),
+   EMAIL_IMAP_MAILBOX_FLAG_NOINFERIORS = (1 << 3),
+   EMAIL_IMAP_MAILBOX_FLAG_NOSELECT = (1 << 4),
+   EMAIL_IMAP_MAILBOX_FLAG_UNMARKED = (1 << 5),
+} Email_Imap_Mailbox_Flag;
+
+typedef struct
+{
+   unsigned int id;
+   size_t size;
+} Email_List_Item_Pop3; //messages
+
+typedef struct
+{
+   Eina_Stringshare *name;
+   Email_Imap_Mailbox_Flag flags;
+} Email_List_Item_Imap4; //mailboxes
+
 EAPI extern int EMAIL_EVENT_CONNECTED;
 EAPI extern int EMAIL_EVENT_DISCONNECTED;
 
@@ -67,22 +82,25 @@ EAPI int email_init(void);
 EAPI Email *email_new(const char *username, const char *password, void *data);
 EAPI void email_free(Email *e);
 EAPI void email_data_set(Email *e, void *data);
-EAPI void *email_data_get(Email *e);
+EAPI void *email_data_get(const Email *e);
 EAPI void email_cert_add(Email *e, const char *file);
 
-EAPI const Eina_List */* Email_Op */email_queue_get(Email *e);
+EAPI const Eina_List */* Email_Pop_Op */email_queue_get(Email *e);
 EAPI Eina_Bool email_op_cancel(Email *e, unsigned int op_number);
 
-EAPI Eina_Bool email_connect_pop3(Email *e, Eina_Bool secure, const char *addr);
-EAPI Eina_Bool email_connect_smtp(Email *e, Eina_Bool secure, const char *addr, const char *from_domain);
+EAPI void email_pop3_set(Email *e);
+EAPI void email_imap4_set(Email *e);
+EAPI void email_smtp_set(Email *e, const char *from_domain);
+EAPI Eina_Bool email_connect(Email *e, const char *host, Eina_Bool secure);
 
 EAPI Eina_Bool email_quit(Email *e, Email_Cb cb);
-EAPI Eina_Bool email_stat(Email *e, Email_Stat_Cb cb);
-EAPI Eina_Bool email_list(Email *e, Email_List_Cb cb);
-EAPI Eina_Bool email_rset(Email *e, Email_Cb cb);
-EAPI Eina_Bool email_delete(Email *e, unsigned int id, Email_Cb cb);
-EAPI Eina_Bool email_retrieve(Email *e, unsigned int id, Email_Retr_Cb cb);
+EAPI Eina_Bool email_pop3_stat(Email *e, Email_Stat_Cb cb);
+EAPI Eina_Bool email_pop3_list(Email *e, Email_List_Cb cb);
+EAPI Eina_Bool email_pop3_rset(Email *e, Email_Cb cb);
+EAPI Eina_Bool email_pop3_delete(Email *e, unsigned int id, Email_Cb cb);
+EAPI Eina_Bool email_pop3_retrieve(Email *e, unsigned int id, Email_Retr_Cb cb);
 
+EAPI Eina_Bool email_imap4_list(Email *e, const char *reference, const char *mbox, Email_List_Cb cb);
 
 EAPI Email_Contact *email_contact_new(const char *address);
 EAPI Email_Contact *email_contact_ref(Email_Contact *ec);

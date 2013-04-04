@@ -67,9 +67,10 @@ main(int argc, char *argv[])
    eina_log_domain_level_set("ecore_con", EINA_LOG_LEVEL_DBG);
    pass = getpass_x("Password: ");
    e = email_new(argv[1], pass, NULL);
+   email_smtp_set(e, argv[3]);
    ecore_event_handler_add(EMAIL_EVENT_CONNECTED, (Ecore_Event_Handler_Cb)con, NULL);
    ecore_event_handler_add(EMAIL_EVENT_DISCONNECTED, (Ecore_Event_Handler_Cb)disc, NULL);
-   email_connect_smtp(e, EINA_FALSE, argv[2], argv[3]);
+   email_connect(e, argv[2], EINA_FALSE);
    ecore_main_loop_begin();
 
    return 0;
