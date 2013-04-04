@@ -5,25 +5,21 @@
 #include <Ecore.h>
 #include "Email.h"
 
-#ifndef __UNUSED__
-# define __UNUSED__
-#endif
-
 char *getpass_x(const char *prompt);
 
 static void
-_send(Email_Message *msg, Eina_Bool success)
+_send(Email_Operation *op EINA_UNUSED, Email_Message *msg, Eina_Bool success)
 {
    Email *e;
 
    e = email_message_email_get(msg);
    printf("Send %s!\n", success ? "successful" : "failed");
    email_message_free(msg);
-   email_quit(e, NULL);
+   email_quit(e, NULL, NULL);
 }
 
 static Eina_Bool
-disc(void *d __UNUSED__, int type __UNUSED__, Email *e __UNUSED__)
+disc(void *d EINA_UNUSED, int type EINA_UNUSED, Email *e EINA_UNUSED)
 {
    printf("Disconnected\n");
    ecore_main_loop_quit();
@@ -31,7 +27,7 @@ disc(void *d __UNUSED__, int type __UNUSED__, Email *e __UNUSED__)
 }
 
 static Eina_Bool
-con(void *d __UNUSED__, int type __UNUSED__, Email *e)
+con(void *d EINA_UNUSED, int type EINA_UNUSED, Email *e)
 {
    Email_Message *msg;
    Email_Contact *ec;
@@ -45,7 +41,7 @@ con(void *d __UNUSED__, int type __UNUSED__, Email *e)
    ec = email_contact_new(buf);
    email_message_contact_add(msg, ec, EMAIL_MESSAGE_CONTACT_TYPE_TO);
    email_message_content_set(msg, "test message!", sizeof("test message!") - 1);
-   email_message_send(e, msg, _send);
+   email_message_send(e, msg, _send, NULL);
    email_contact_free(ec);
    return ECORE_CALLBACK_RENEW;
 }

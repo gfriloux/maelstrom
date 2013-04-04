@@ -29,13 +29,16 @@ typedef struct Email Email;
 typedef struct Email_Message Email_Message;
 typedef struct Email_Contact Email_Contact;
 typedef struct Email_Attachment Email_Attachment;
-typedef void (*Email_Stat_Cb)(Email *, unsigned int, size_t);
+typedef struct Email_Operation Email_Operation;
 
 /* return EINA_TRUE if the list data should be automatically freed */
-typedef Eina_Bool (*Email_List_Cb)(Email *, Eina_List */* Email_List_Item */);
-typedef void (*Email_Retr_Cb)(Email *, Eina_Binbuf *);
-typedef void (*Email_Send_Cb)(Email_Message *, Eina_Bool);
-typedef void (*Email_Cb)(Email *);
+typedef Eina_Bool (*Email_List_Cb)(Email_Operation *, Eina_List */* Email_List_Item */);
+
+typedef void (*Email_Stat_Cb)(Email_Operation *, unsigned int, size_t);
+typedef void (*Email_Bool_Cb)(Email_Operation *, Eina_Bool);
+typedef void (*Email_Retr_Cb)(Email_Operation *, Eina_Binbuf *);
+typedef void (*Email_Send_Cb)(Email_Operation *, Email_Message *, Eina_Bool);
+typedef void (*Email_Cb)(Email_Operation *);
 
 typedef enum
 {
@@ -81,26 +84,31 @@ EAPI extern int EMAIL_EVENT_DISCONNECTED;
 EAPI int email_init(void);
 EAPI Email *email_new(const char *username, const char *password, void *data);
 EAPI void email_free(Email *e);
-EAPI void email_data_set(Email *e, void *data);
+EAPI void email_data_set(Email *e, const void *data);
 EAPI void *email_data_get(const Email *e);
 EAPI void email_cert_add(Email *e, const char *file);
 
-EAPI const Eina_List */* Email_Pop_Op */email_queue_get(Email *e);
-EAPI Eina_Bool email_op_cancel(Email *e, unsigned int op_number);
+EAPI Email *email_operation_email_get(const Email_Operation *op);
+EAPI void *email_operation_data_get(const Email_Operation *op);
+EAPI void email_operation_data_set(Email_Operation *op, const void *data);
+
+EAPI const Eina_List */* Email_Operation */email_queue_get(Email *e);
+EAPI Eina_Bool email_op_cancel(Email *e, Email_Operation *op);
 
 EAPI void email_pop3_set(Email *e);
 EAPI void email_imap4_set(Email *e);
 EAPI void email_smtp_set(Email *e, const char *from_domain);
 EAPI Eina_Bool email_connect(Email *e, const char *host, Eina_Bool secure);
 
-EAPI Eina_Bool email_quit(Email *e, Email_Cb cb);
-EAPI Eina_Bool email_pop3_stat(Email *e, Email_Stat_Cb cb);
-EAPI Eina_Bool email_pop3_list(Email *e, Email_List_Cb cb);
-EAPI Eina_Bool email_pop3_rset(Email *e, Email_Cb cb);
-EAPI Eina_Bool email_pop3_delete(Email *e, unsigned int id, Email_Cb cb);
-EAPI Eina_Bool email_pop3_retrieve(Email *e, unsigned int id, Email_Retr_Cb cb);
+EAPI Email_Operation *email_quit(Email *e, Email_Cb cb, const void *data);
+EAPI Email_Operation * email_pop3_stat(Email *e, Email_Stat_Cb cb, const void *data);
+EAPI Email_Operation * email_pop3_list(Email *e, Email_List_Cb cb, const void *data);
+EAPI Email_Operation * email_pop3_rset(Email *e, Email_Cb cb, const void *data);
+EAPI Email_Operation * email_pop3_delete(Email *e, unsigned int id, Email_Cb cb, const void *data);
+EAPI Email_Operation * email_pop3_retrieve(Email *e, unsigned int id, Email_Retr_Cb cb, const void *data);
 
-EAPI Eina_Bool email_imap4_list(Email *e, const char *reference, const char *mbox, Email_List_Cb cb);
+EAPI Email_Operation * email_imap4_list(Email *e, const char *reference, const char *mbox, Email_List_Cb cb, const void *data);
+EAPI Email_Operation *email_imap4_select(Email *e, const char *mbox, Email_Bool_Cb cb, const void *data);
 
 EAPI Email_Contact *email_contact_new(const char *address);
 EAPI Email_Contact *email_contact_ref(Email_Contact *ec);
@@ -121,7 +129,7 @@ EAPI const unsigned char * email_attachment_content_get(Email_Attachment *at, si
 
 EAPI Email_Message * email_message_new(void);
 EAPI void email_message_free(Email_Message *msg);
-EAPI Eina_Bool email_message_send(Email *e, Email_Message *msg, Email_Send_Cb cb);
+EAPI Email_Operation *email_message_send(Email *e, Email_Message *msg, Email_Send_Cb cb, const void *data);
 EAPI void email_message_contact_add(Email_Message *msg, Email_Contact *ec, Email_Message_Contact_Type type);
 EAPI void email_message_contact_del(Email_Message *msg, Email_Contact *ec);
 EAPI void email_message_contact_del_by_address(Email_Message *msg, const char *address);

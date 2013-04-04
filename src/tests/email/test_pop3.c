@@ -5,35 +5,31 @@
 #include <Ecore.h>
 #include "Email.h"
 
-#ifndef __UNUSED__
-# define __UNUSED__
-#endif
-
 char *getpass_x(const char *prompt);
 
 static int count = 0;
 
 static void
-mail_quit(Email *e __UNUSED__)
+mail_quit(Email_Operation *op EINA_UNUSED)
 {
    ecore_main_loop_quit();
 }
 
 static void
-mail_retr(Email *e, Eina_Binbuf *buf)
+mail_retr(Email_Operation *op, Eina_Binbuf *buf)
 {
    printf("Received message (%zu bytes): \n%*s\n",
      eina_binbuf_length_get(buf), (int)eina_binbuf_length_get(buf),
      (char*)eina_binbuf_string_get(buf));
    if (--count == 0)
      {
-        email_pop3_rset(e, NULL);
-        email_quit(e, (Email_Cb)mail_quit);
+        email_pop3_rset(email_operation_email_get(op), NULL, NULL);
+        email_quit(email_operation_email_get(op), mail_quit, NULL);
      }
 }
 
 static Eina_Bool
-mail_list(Email *e, Eina_List *list)
+mail_list(Email_Operation *op, Eina_List *list)
 {
    Email_List_Item_Pop3 *it;
    const Eina_List *l;
@@ -41,22 +37,22 @@ mail_list(Email *e, Eina_List *list)
    EINA_LIST_FOREACH(list, l, it)
      {
         printf("#%u, %zu octets\n", it->id, it->size);
-        email_pop3_retrieve(e, it->id, mail_retr);
+        email_pop3_retrieve(email_operation_email_get(op), it->id, mail_retr, NULL);
         count++;
      }
    return EINA_TRUE;
 }
 
 static void
-mail_stat(Email *e, unsigned int num __UNUSED__, size_t size __UNUSED__)
+mail_stat(Email_Operation *op, unsigned int num EINA_UNUSED, size_t size EINA_UNUSED)
 {
-   email_pop3_list(e, mail_list);
+   email_pop3_list(email_operation_email_get(op), mail_list, NULL);
 }
 
 static Eina_Bool
-con(void *d __UNUSED__, int type __UNUSED__, Email *e)
+con(void *d EINA_UNUSED, int type EINA_UNUSED, Email *e)
 {
-   email_pop3_stat(e, mail_stat);
+   email_pop3_stat(e, mail_stat, NULL);
    return ECORE_CALLBACK_RENEW;
 }
 

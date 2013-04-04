@@ -15,7 +15,7 @@ email_login_imap(Email *e, const unsigned char *data, size_t size, size_t *offse
         if (e->upgrade && (!e->secure))
           {
              /* upgrade allowed, not using SSL yet */
-             email_imap_write(e, EMAIL_STARTTLS, sizeof(EMAIL_STARTTLS) - 1);
+             email_imap_write(e, NULL, EMAIL_STARTTLS, sizeof(EMAIL_STARTTLS) - 1);
              e->state++;
              return EMAIL_RETURN_DONE;
           }
@@ -23,7 +23,7 @@ email_login_imap(Email *e, const unsigned char *data, size_t size, size_t *offse
         if (!e->protocol.imap.caps)
           {
              e->current = EMAIL_IMAP_OP_CAPABILITY;
-             email_imap_write(e, "CAPABILITY\r\n", sizeof("CAPABILITY\r\n") - 1);
+             email_imap_write(e, NULL, "CAPABILITY\r\n", sizeof("CAPABILITY\r\n") - 1);
              return EMAIL_RETURN_DONE;
           }
       case EMAIL_STATE_USER:
@@ -52,13 +52,13 @@ email_login_imap(Email *e, const unsigned char *data, size_t size, size_t *offse
                }
              //called from imap_dispatch
              e->current = EMAIL_IMAP_OP_LOGIN;
-             email_imap_write(e, "AUTHENTICATE CRAM-MD5\r\n", sizeof("AUTHENTICATE CRAM-MD5\r\n") - 1);
+             email_imap_write(e, NULL, "AUTHENTICATE CRAM-MD5\r\n", sizeof("AUTHENTICATE CRAM-MD5\r\n") - 1);
              break;
           }
         else if (e->features.imap.AUTH_PLAIN)
           {
              e->current = EMAIL_IMAP_OP_LOGIN;
-             email_imap_write(e, "LOGIN ", 6);
+             email_imap_write(e, NULL, "LOGIN ", 6);
              ecore_con_server_send(e->svr, e->username, strlen(e->username));
              ecore_con_server_send(e->svr, " ", 1);
              ecore_con_server_send(e->svr, e->password, strlen(e->password));
@@ -67,6 +67,7 @@ email_login_imap(Email *e, const unsigned char *data, size_t size, size_t *offse
           }
         break;
       case EMAIL_STATE_PASS:
+        e->current = 0;
         switch (e->protocol.imap.status)
           {
            case EMAIL_IMAP_STATUS_OK: break;

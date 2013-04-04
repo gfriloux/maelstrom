@@ -1,62 +1,65 @@
 #include "email_private.h"
 
-Eina_Bool
-email_pop3_stat(Email *e, Email_Stat_Cb cb)
+Email_Operation *
+email_pop3_stat(Email *e, Email_Stat_Cb cb, const void *data)
 {
-   EINA_SAFETY_ON_NULL_RETURN_VAL(e, EINA_FALSE);
-   EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, EINA_FALSE);
+   Email_Operation *op;
 
-   e->cbs = eina_list_append(e->cbs, cb);
-   if (!e->ops)
+   EINA_SAFETY_ON_NULL_RETURN_VAL(e, NULL);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, NULL);
+   EINA_SAFETY_ON_NULL_RETURN_VAL(cb, NULL);
+
+   op = email_op_new(e, EMAIL_POP_OP_STAT, cb, data);
+   if (!e->current)
      {
         e->current = EMAIL_POP_OP_STAT;
         email_write(e, "STAT\r\n", 6);
      }
-   e->ops = eina_list_append(e->ops, (uintptr_t*)EMAIL_POP_OP_STAT);
-   return EINA_TRUE;
+   return op;
 }
 
-Eina_Bool
-email_pop3_list(Email *e, Email_List_Cb cb)
+Email_Operation *
+email_pop3_list(Email *e, Email_List_Cb cb, const void *data)
 {
-   EINA_SAFETY_ON_NULL_RETURN_VAL(e, EINA_FALSE);
-   EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, EINA_FALSE);
+   Email_Operation *op;
+   EINA_SAFETY_ON_NULL_RETURN_VAL(e, NULL);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, NULL);
+   EINA_SAFETY_ON_NULL_RETURN_VAL(cb, NULL);
 
-   e->cbs = eina_list_append(e->cbs, cb);
-   if (!e->ops)
+   op = email_op_new(e, EMAIL_POP_OP_LIST, cb, data);
+   if (!e->current)
      {
         e->current = EMAIL_POP_OP_LIST;
         email_write(e, "LIST\r\n", 6);
      }
-   e->ops = eina_list_append(e->ops, (uintptr_t*)EMAIL_POP_OP_LIST);
-   return EINA_TRUE;
+   return op;
 }
 
-Eina_Bool
-email_pop3_rset(Email *e, Email_Cb cb)
+Email_Operation *
+email_pop3_rset(Email *e, Email_Cb cb, const void *data)
 {
-   EINA_SAFETY_ON_NULL_RETURN_VAL(e, EINA_FALSE);
-   EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, EINA_FALSE);
+   Email_Operation *op;
+   EINA_SAFETY_ON_NULL_RETURN_VAL(e, NULL);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, NULL);
 
-   e->cbs = eina_list_append(e->cbs, cb);
+   op = email_op_new(e, EMAIL_POP_OP_RSET, cb, data);
    if (!e->current)
      {
         e->current = EMAIL_POP_OP_RSET;
         email_write(e, EMAIL_POP3_RSET, sizeof(EMAIL_POP3_RSET) - 1);
      }
-   else
-     e->ops = eina_list_append(e->ops, (uintptr_t*)EMAIL_POP_OP_RSET);
-   return EINA_TRUE;
+   return op;
 }
 
-Eina_Bool
-email_pop3_delete(Email *e, unsigned int id, Email_Cb cb)
+Email_Operation *
+email_pop3_delete(Email *e, unsigned int id, Email_Cb cb, const void *data)
 {
    char buf[64];
-   EINA_SAFETY_ON_NULL_RETURN_VAL(e, EINA_FALSE);
-   EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, EINA_FALSE);
+   Email_Operation *op;
+   EINA_SAFETY_ON_NULL_RETURN_VAL(e, NULL);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, NULL);
 
-   e->cbs = eina_list_append(e->cbs, cb);
+   op = email_op_new(e, EMAIL_POP_OP_DELE, cb, data);
    if (!e->current)
      {
         e->current = EMAIL_POP_OP_DELE;
@@ -64,21 +67,20 @@ email_pop3_delete(Email *e, unsigned int id, Email_Cb cb)
         email_write(e, buf, strlen(buf));
      }
    else
-     {
-        e->op_ids = eina_list_append(e->op_ids, (uintptr_t*)(unsigned long)id);
-        e->ops = eina_list_append(e->ops, (uintptr_t*)EMAIL_POP_OP_DELE);
-     }
-   return EINA_TRUE;
+     op->opdata = (uintptr_t*)(unsigned long)id;
+   return op;
 }
 
-Eina_Bool
-email_pop3_retrieve(Email *e, unsigned int id, Email_Retr_Cb cb)
+Email_Operation *
+email_pop3_retrieve(Email *e, unsigned int id, Email_Retr_Cb cb, const void *data)
 {
    char buf[64];
-   EINA_SAFETY_ON_NULL_RETURN_VAL(e, EINA_FALSE);
-   EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, EINA_FALSE);
+   Email_Operation *op;
+   EINA_SAFETY_ON_NULL_RETURN_VAL(e, NULL);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, NULL);
+   EINA_SAFETY_ON_NULL_RETURN_VAL(cb, NULL);
 
-   e->cbs = eina_list_append(e->cbs, cb);
+   op = email_op_new(e, EMAIL_POP_OP_RETR, cb, data);
    if (!e->current)
      {
         e->current = EMAIL_POP_OP_RETR;
@@ -86,30 +88,29 @@ email_pop3_retrieve(Email *e, unsigned int id, Email_Retr_Cb cb)
         email_write(e, buf, strlen(buf));
      }
    else
-     {
-        e->op_ids = eina_list_append(e->op_ids, (uintptr_t*)(unsigned long)id);
-        e->ops = eina_list_append(e->ops, (uintptr_t*)EMAIL_POP_OP_RETR);
-     }
-   return EINA_TRUE;
+     op->opdata = (uintptr_t*)(unsigned long)id;
+   return op;
 }
 
 Eina_Bool
 email_pop3_stat_read(Email *e, const unsigned char *recvbuf, size_t size)
 {
    Email_Stat_Cb cb;
+   Email_Operation *op;
    int num;
    size_t len;
 
-   cb = eina_list_data_get(e->cbs);
+   op = eina_list_data_get(e->ops);
+   cb = op->cb;
    if ((!email_op_pop_ok((const unsigned char *)recvbuf, size)) ||
        (sscanf((char*)recvbuf, "+OK %u %zu", &num, &len) != 2))
      {
         ERR("Error with STAT");
-        if (cb) cb(e, 0, 0);
+        if (cb && (!op->deleted)) cb(op, 0, 0);
         return EINA_TRUE;
      }
    INF("STAT returned %u messages (%zu octets)", num, len);
-   if (cb) cb(e, num, len);
+   if (cb && (!op->deleted)) cb(op, num, len);
    return EINA_TRUE;
 }
 
@@ -117,17 +118,19 @@ Eina_Bool
 email_pop3_list_read(Email *e, Ecore_Con_Event_Server_Data *ev)
 {
    Email_List_Cb cb;
+   Email_Operation *op;
    Eina_List *list = NULL;
    Email_List_Item_Pop3 *it;
    const char *p, *n;
    const unsigned char *data;
    size_t size;
 
+   op = eina_list_data_get(e->ops);
+   cb = op->cb;
    if ((!e->buf) && (!email_op_pop_ok(ev->data, ev->size)))
      {
         ERR("Error with LIST");
-        cb = eina_list_data_get(e->cbs);
-        if (cb) cb(e, NULL);
+        if (cb && (!op->deleted)) cb(op, NULL);
         return EINA_TRUE;
      }
    if (e->buf)
@@ -157,9 +160,8 @@ email_pop3_list_read(Email *e, Ecore_Con_Event_Server_Data *ev)
    if (n[0] == '.')
      {
         Eina_Bool tofree = EINA_TRUE;
-        cb = eina_list_data_get(e->cbs);
         INF("LIST returned %u messages", eina_list_count(list));
-        if (cb) tofree = !!cb(e, list);
+        if (cb && (!op->deleted)) tofree = !!cb(op, list);
         if (tofree)
           {
              EINA_LIST_FREE(list, it)

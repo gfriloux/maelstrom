@@ -129,8 +129,10 @@ void
 email_message_free(Email_Message *msg)
 {
    Email_Contact *ec;
-   if (!msg) return;
 
+   if (!msg) return;
+   msg->deleted = 1;
+   if (msg->sending) return;
    free(msg->content);
    free(msg->subject);
    EINA_LIST_FREE(msg->from, ec)
@@ -142,20 +144,22 @@ email_message_free(Email_Message *msg)
    free(msg);
 }
 
-Eina_Bool
-email_message_send(Email *e, Email_Message *msg, Email_Send_Cb cb)
+Email_Operation *
+email_message_send(Email *e, Email_Message *msg, Email_Send_Cb cb, const void *data)
 {
-   EINA_SAFETY_ON_NULL_RETURN_VAL(e, EINA_FALSE);
-   EINA_SAFETY_ON_NULL_RETURN_VAL(msg, EINA_FALSE);
-   EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, EINA_FALSE);
-   if (!msg->recipients) return EINA_FALSE;
+   Email_Operation *op;
+
+   EINA_SAFETY_ON_NULL_RETURN_VAL(e, NULL);
+   EINA_SAFETY_ON_NULL_RETURN_VAL(msg, NULL);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, NULL);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(msg->deleted, NULL);
+   if (!msg->recipients) return NULL;
 
    msg->owner = e;
-   e->op_ids = eina_list_append(e->op_ids, msg);
-   e->cbs = eina_list_append(e->cbs, cb);
-   e->ops = eina_list_append(e->ops, (uintptr_t*)EMAIL_POP_OP_SEND);
+   op = email_op_new(e, EMAIL_SMTP_OP_SEND, cb, data);
+   op->opdata = msg;
    if (!e->current) send_smtp(e);
-   return EINA_TRUE;
+   return op;
 }
 
 void

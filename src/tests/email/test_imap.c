@@ -5,31 +5,18 @@
 #include <Ecore.h>
 #include "Email.h"
 
-#ifndef __UNUSED__
-# define __UNUSED__
-#endif
-
 char *getpass_x(const char *prompt);
 
-static int count = 0;
-
 static void
-mail_quit(Email *e __UNUSED__)
+mail_quit(Email *e EINA_UNUSED)
 {
    ecore_main_loop_quit();
 }
 
 static void
-mail_retr(Email *e, Eina_Binbuf *buf)
+mail_select(Email_Operation *op, Eina_Bool success)
 {
-   printf("Received message (%zu bytes): \n%*s\n",
-     eina_binbuf_length_get(buf), (int)eina_binbuf_length_get(buf),
-     (char*)eina_binbuf_string_get(buf));
-   if (--count == 0)
-     {
-        email_pop3_rset(e, NULL);
-        email_quit(e, (Email_Cb)mail_quit);
-     }
+   printf("SELECT INBOX: %s\n", success ? "SUCCESS!" : "FAIL!");
 }
 
 static const char *const MBOX_FLAGS[] =
@@ -52,7 +39,7 @@ mail_list_flags(Email_Imap_Mailbox_Flag flags)
 }
 
 static Eina_Bool
-mail_list(Email *e, Eina_List *list)
+mail_list(Email_Operation *op, Eina_List *list)
 {
    Email_List_Item_Imap4 *it;
    const Eina_List *l;
@@ -63,13 +50,14 @@ mail_list(Email *e, Eina_List *list)
         mail_list_flags(it->flags);
         printf(" )\n");
      }
+   email_imap4_select(email_operation_email_get(op), "INBOX", mail_select, NULL);
    return EINA_TRUE;
 }
 
 static Eina_Bool
-con(void *d __UNUSED__, int type __UNUSED__, Email *e)
+con(void *d EINA_UNUSED, int type EINA_UNUSED, Email *e)
 {
-   email_imap4_list(e, NULL, "%", mail_list);
+   email_imap4_list(e, NULL, "%", mail_list, NULL);
    return ECORE_CALLBACK_RENEW;
 }
 

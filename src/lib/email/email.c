@@ -11,6 +11,7 @@ _struct_reset(Email *e)
 {
    e->svr = NULL;
    e->state = 0;
+   e->opcount = 0;
    if (email_is_smtp(e))
      {
         eina_stringshare_del(e->features.smtp.domain);
@@ -59,6 +60,50 @@ void
 email_fake_free(void *d EINA_UNUSED, void *e EINA_UNUSED)
 {}
 
+Email_Operation *
+email_op_new(Email *e, unsigned int type, void *cb, const void *data)
+{
+   Email_Operation *op;
+
+   op = calloc(1, sizeof(Email_Operation));
+   op->e = e;
+   op->opnum = e->opcount++;
+   op->optype = type;
+   op->userdata = (void*)data;
+   op->cb = cb;
+   e->ops = eina_list_append(e->ops, op);
+   return op;
+}
+
+void
+email_op_free(Email_Operation *op)
+{
+   free(op);
+}
+
+Email_Operation *
+email_op_pop(Email *e)
+{
+   Email_Operation *op;
+
+   op = eina_list_data_get(e->ops);
+   e->ops = eina_list_remove_list(e->ops, e->ops);
+   email_op_free(op);
+   if (!e->ops)
+     {
+        e->current = 0;
+        DBG("No queued calls");
+        return NULL;
+     }
+
+   DBG("Next queued call");
+   op = eina_list_data_get(e->ops);
+   e->current = op->optype;
+   return op;
+}
+
+///////////////////////////////////////////////////////
+
 int
 email_init(void)
 {
@@ -100,6 +145,7 @@ email_new(const char *username, const char *password, void *data)
    if (password) e->password = strdup(password);
    e->data = data;
    e->upgrade = 1;
+   e->opcount = 1;
    return e;
 }
 
@@ -108,6 +154,7 @@ email_free(Email *e)
 {
    char *str;
    void *it;
+   Email_Operation *op;
 
    if (!e) return;
 
@@ -123,9 +170,8 @@ email_free(Email *e)
    if (e->buf) eina_binbuf_free(e->buf);
    EINA_LIST_FREE(e->certs, str)
      free(str);
-   eina_list_free(e->ops);
-   eina_list_free(e->op_ids);
-   eina_list_free(e->cbs);
+   EINA_LIST_FREE(e->ops, op)
+     email_op_free(op);
    switch (e->current)
      {
       case EMAIL_POP_OP_LIST:
@@ -205,7 +251,6 @@ email_connect(Email *e, const char *host, Eina_Bool secure)
         data_cb = (Ecore_Event_Handler_Cb)data_imap;
         error_cb = (Ecore_Event_Handler_Cb)error_imap;
         upgrade_cb = (Ecore_Event_Handler_Cb)upgrade_imap;
-        e->protocol.imap.opcount = 1;
         e->protocol.imap.state = -1;
         break;
       case EMAIL_TYPE_SMTP:
@@ -233,20 +278,30 @@ error:
    return EINA_FALSE;
 }
 
-Eina_Bool
-email_quit(Email *e, Email_Cb cb)
+Email_Operation *
+email_quit(Email *e, Email_Cb cb, const void *data)
 {
+   Email_Operation *op;
+   unsigned int optype;
+
    EINA_SAFETY_ON_NULL_RETURN_VAL(e, EINA_FALSE);
    EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, EINA_FALSE);
 
+   if (email_is_imap(e))
+     optype = EMAIL_IMAP_OP_LOGOUT;
+   else if (email_is_pop(e))
+     optype = EMAIL_POP_OP_QUIT;
+   else return NULL;
+   op = email_op_new(e, optype, cb, data);
    if (!e->current)
      {
-        e->current = EMAIL_POP_OP_QUIT;
-        email_write(e, EMAIL_QUIT, sizeof(EMAIL_QUIT) - 1);
+        e->current = optype;
+        if (email_is_imap(e))
+          email_imap_write(e, op, "LOGOUT\r\n", sizeof("LOGOUT\r\n") - 1);
+        else
+          email_write(e, EMAIL_POP3_QUIT, sizeof(EMAIL_POP3_QUIT) - 1);
      }
-   e->ops = eina_list_append(e->ops, (uintptr_t*)EMAIL_POP_OP_QUIT);
-   e->cbs = eina_list_append(e->cbs, cb);
-   return EINA_TRUE;
+   return op;
 }
 
 void
@@ -257,10 +312,10 @@ email_cert_add(Email *e, const char *file)
 }
 
 void
-email_data_set(Email *e, void *data)
+email_data_set(Email *e, const void *data)
 {
    EINA_SAFETY_ON_NULL_RETURN(e);
-   e->data = data;
+   e->data = (void*)data;
 }
 
 void *
@@ -268,6 +323,27 @@ email_data_get(const Email *e)
 {
    EINA_SAFETY_ON_NULL_RETURN_VAL(e, NULL);
    return e->data;
+}
+
+Email *
+email_operation_email_get(const Email_Operation *op)
+{
+   EINA_SAFETY_ON_NULL_RETURN_VAL(op, NULL);
+   return op->e;
+}
+
+void *
+email_operation_data_get(const Email_Operation *op)
+{
+   EINA_SAFETY_ON_NULL_RETURN_VAL(op, NULL);
+   return op->userdata;
+}
+
+void
+email_operation_data_set(Email_Operation *op, const void *data)
+{
+   EINA_SAFETY_ON_NULL_RETURN(op);
+   op->userdata = (void*)data;
 }
 
 const Eina_List *
@@ -278,28 +354,21 @@ email_queue_get(Email *e)
 }
 
 Eina_Bool
-email_op_cancel(Email *e, unsigned int op_number)
+email_op_cancel(Email *e, Email_Operation *op)
 {
-   Eina_List *l, *ids, *op_l;
-   uintptr_t *op;
+   Eina_List *l;
 
    EINA_SAFETY_ON_NULL_RETURN_VAL(e, EINA_FALSE);
-   EINA_SAFETY_ON_TRUE_RETURN_VAL(op_number > eina_list_count(e->ops), EINA_FALSE);
-
-   op_l = eina_list_nth_list(e->ops, op_number - 1);
-   if (((uintptr_t)op_l->data != EMAIL_POP_OP_DELE) && ((uintptr_t)op_l->data != EMAIL_POP_OP_RETR))
-     /* no op id to remove, so this is easy */
-     goto out;
-   ids = e->op_ids;
-   EINA_LIST_FOREACH(e->ops, l, op)
+   EINA_SAFETY_ON_NULL_RETURN_VAL(op, EINA_FALSE);
+   if (eina_list_data_get(e->ops) == op)
      {
-        if (l == op_l) break;
-        if (((uintptr_t)op == EMAIL_POP_OP_DELE) || ((uintptr_t)op == EMAIL_POP_OP_RETR))
-          ids = ids->next;
+        /* need to leave in list or else we don't know what we're parsing :( */
+        op->deleted = 1;
+        return EINA_TRUE;
      }
-   e->op_ids = eina_list_remove_list(e->op_ids, l);
-out:
-   e->ops = eina_list_remove_list(e->ops, op_l);
-   e->cbs = eina_list_remove_list(e->cbs, eina_list_nth_list(e->cbs, op_number - 1));
+   l = eina_list_data_find_list(e->ops, op);
+   if (!l) return EINA_FALSE;
+   e->ops = eina_list_remove_list(e->ops, l);
+   email_op_free(op);
    return EINA_TRUE;
 }

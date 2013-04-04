@@ -225,6 +225,17 @@ static int MAILBOX_FLAG_PREFIXES[] =
    ['z'] = 0,
 };
 
+static Eina_List *
+imap_op_find(Email *e, unsigned int opnum)
+{
+   Email_Operation *op;
+   Eina_List *l;
+
+   EINA_LIST_FOREACH(e->ops, l, op)
+     if (op->opnum == opnum) return l;
+   return NULL;
+}
+
 /*
  * -1 invalid
  * 0 need more data
@@ -271,6 +282,25 @@ imap_dispatch_reset(Email *e)
    e->protocol.imap.state = e->protocol.imap.status = 0;
 }
 
+
+static void
+next_imap(Email *e)
+{
+   Email_Operation *op;
+
+   op = email_op_pop(e);
+   if (!op) return;
+   switch (e->current)
+     {
+      case EMAIL_IMAP_OP_LIST:
+      case EMAIL_IMAP_OP_SELECT:
+        email_imap_write(e, op, op->opdata, 0);
+        break;
+      default:
+        break;
+     }
+}
+
 static void
 imap_dispatch(Email *e)
 {
@@ -281,14 +311,16 @@ imap_dispatch(Email *e)
       case EMAIL_IMAP_OP_CAPABILITY: //only called during login
       case EMAIL_IMAP_OP_LOGIN:
         email_login_imap(e, NULL, 0, NULL);
-        break;
+        return;
       case EMAIL_IMAP_OP_LIST:
       {
         Email_List_Cb cb;
+        Email_Operation *op;
 
-        cb = eina_list_data_get(e->cbs);
-        INF("LIST returned %u mboxes", eina_list_count(e->ev));
-        if (cb) tofree = !!cb(e, e->ev);
+        op = eina_list_data_get(e->ops);
+        cb = op->cb;
+        INF("LIST returned %u mboxes", eina_list_count(op->opdata));
+        if (cb && (!op->deleted)) tofree = !!cb(op, e->ev);
         if (tofree)
           {
              Email_List_Item_Imap4 *it;
@@ -303,6 +335,7 @@ imap_dispatch(Email *e)
       }
       default: break;
      }
+   next_imap(e);
 }
 
 static inline Eina_Bool
@@ -666,12 +699,16 @@ imap_parse_resp_cond(Email *e, const unsigned char *data, size_t size, size_t *o
                 case -1: return EMAIL_RETURN_ERROR; //ERROR
                 case 0: return EMAIL_RETURN_EAGAIN; //EAGAIN
                 case 2:
-                  if (opcode != e->protocol.imap.current)
-                  /* FIXME: FFFFFFFFFUUUUUUUUUUUUUUUUUUUUUUUUUUU WHAT THE FUUUUUUCK */
+                  if (e->protocol.imap.current != opcode)
                     {
-                       return EMAIL_RETURN_ERROR;
+                       Eina_List *l;
+
+                       l = imap_op_find(e, opcode);
+                       if (l)
+                         e->ops = eina_list_promote_list(e->ops, l);
+                       else
+                       {/* FFFFFFFFFFFFFFFFFFUUUUUUUUUUUUUUUUUUUUUUUUUUUU WHAT THE FUCK */}
                     }
-                  
                 case 1:
                   if (size < 6) return EMAIL_RETURN_EAGAIN;
                   e->protocol.imap.resp = 1;
@@ -828,8 +865,15 @@ data_imap(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
           return ECORE_CALLBACK_RENEW;
         case 2:
           if (e->protocol.imap.current != opcode)
-            /* FIXME: FFFFFFFFFUUUUUUUUUUUUUUUUUUUUUUUUUUU WHAT THE FUUUUUUCK */
-            {break;}
+            {
+               Eina_List *l;
+
+               l = imap_op_find(e, opcode);
+               if (l)
+                 e->ops = eina_list_promote_list(e->ops, l);
+               else
+               {/* FFFFFFFFFFFFFFFFFFUUUUUUUUUUUUUUUUUUUUUUUUUUUU WHAT THE FUCK */}
+            }
         case 1:
           do
           {
@@ -877,30 +921,6 @@ data_imap(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
         return ECORE_CALLBACK_RENEW;
      }
 
-   switch (e->current)
-     {
-      case EMAIL_POP_OP_QUIT:
-      {
-         Email_Cb cb;
-
-         cb = eina_list_data_get(e->cbs);
-         if (!email_op_pop_ok(ev->data, ev->size))
-           {
-              if (e->current == EMAIL_POP_OP_DELE) ERR("Error with DELE");
-              else ERR("Error with QUIT");
-           }
-         else
-           {
-              if (e->current == EMAIL_POP_OP_DELE) INF("DELE successful");
-              else INF("QUIT");
-           }
-         if (cb) cb(e);
-         if (e->current == EMAIL_POP_OP_QUIT) ecore_con_server_del(e->svr);
-         break;
-      }
-      default:
-        break;
-     }
    return ECORE_CALLBACK_RENEW;
 }
 

@@ -4,14 +4,16 @@ Eina_Bool
 email_pop3_retr_read(Email *e, Ecore_Con_Event_Server_Data *ev)
 {
    Email_Retr_Cb cb;
+   Email_Operation *op;
    size_t size;
    unsigned char *data;
 
-   cb = eina_list_data_get(e->cbs);
+   op = eina_list_data_get(e->ops);
+   cb = op->cb;
    if ((!e->buf) && (!email_op_pop_ok(ev->data, ev->size)))
      {
         ERR("Error with RETR");
-        if (cb) cb(e, NULL);
+        if (cb) cb(op, NULL);
         return EINA_TRUE;
      }
    if (e->buf)
@@ -37,7 +39,7 @@ email_pop3_retr_read(Email *e, Ecore_Con_Event_Server_Data *ev)
      }
 
    INF("Message retrieved: %zu bytes", eina_binbuf_length_get(e->buf));
-   if (cb) cb(e, e->buf);
+   if (cb) cb(op, e->buf);
    if (e->buf) eina_binbuf_free(e->buf);
    e->buf = NULL;
    return EINA_TRUE;

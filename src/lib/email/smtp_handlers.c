@@ -4,33 +4,33 @@
 static void
 next_smtp(Email *e)
 {
+   Email_Operation *op;
+
    e->protocol.smtp.state = 0;
    e->protocol.smtp.internal_state = 0;
 
-   DBG("Next queued call");
-   e->ops = eina_list_remove_list(e->ops, e->ops);
-   if (e->current == EMAIL_POP_OP_SEND)
-     e->op_ids = eina_list_remove_list(e->ops, e->op_ids);
-   if (!e->ops)
+   op = eina_list_data_get(e->ops);
+   if (op->optype == EMAIL_SMTP_OP_SEND)
      {
-        DBG("No queued calls");
-        e->current = 0;
-        return;
+        Email_Message *msg = op->opdata;
+
+        msg->sending = 0;
+        if (msg->deleted) email_message_free(msg);
+        op = email_op_pop(e);
      }
-   e->current = (uintptr_t)eina_list_data_get(e->ops);
-   if (e->cbs) e->cbs = eina_list_remove_list(e->cbs, e->cbs);
+   if (!op) return;
    switch (e->current)
      {
-      case EMAIL_POP_OP_SEND:
+      case EMAIL_SMTP_OP_SEND:
         if (!send_smtp(e))
           {
-             Email_Send_Cb cb = eina_list_data_get(e->cbs);
-             if (cb) cb(e->op_ids->data, EINA_FALSE);
+             Email_Send_Cb cb = op->cb;
+             if (cb && (!op->deleted)) cb(op, op->opdata, EINA_FALSE);
              next_smtp(e);
           }
         break;
       case EMAIL_POP_OP_QUIT:
-        email_write(e, EMAIL_QUIT, sizeof(EMAIL_QUIT) - 1);
+        email_write(e, EMAIL_POP3_QUIT, sizeof(EMAIL_POP3_QUIT) - 1);
       default:
         break;
      }
@@ -42,11 +42,14 @@ send_smtp(Email *e)
    char *buf;
    size_t size;
    Email_Message *msg;
+   Email_Operation *op;
    Email_Contact *ec;
    Eina_Strbuf *bbuf;
 
-   e->current = EMAIL_POP_OP_SEND;
-   msg = e->op_ids->data;
+   e->current = EMAIL_SMTP_OP_SEND;
+   op = eina_list_data_get(e->ops);
+   msg = op->opdata;
+   msg->sending = 1;
    switch (e->protocol.smtp.state)
      {
       case EMAIL_SMTP_STATE_NONE:
@@ -120,6 +123,7 @@ Eina_Bool
 data_smtp(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
 {
    char *recvbuf;
+   Email_Operation *op;
    Email_Send_Cb cb;
    Email_Cb qcb;
 
@@ -144,13 +148,14 @@ data_smtp(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
      }
    if (!e->current) return ECORE_CALLBACK_RENEW;
 
-   cb = eina_list_data_get(e->cbs);
-   qcb = eina_list_data_get(e->cbs);
+   op = eina_list_data_get(e->ops);
+   cb = op->cb;
+   qcb = op->cb;
    if (e->current == EMAIL_POP_OP_QUIT)
      {
         if ((ev->size < 3) || (memcmp(ev->data, "221", 3)))
           ERR("Could not QUIT properly!");
-        if (qcb) qcb(e);
+        if (qcb) qcb(op);
         ecore_con_server_del(e->svr);
         return ECORE_CALLBACK_RENEW;
      }
@@ -159,32 +164,32 @@ data_smtp(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
       case EMAIL_SMTP_STATE_BODY:
         if ((ev->size < 3) || (memcmp(ev->data, "354", 3)))
           {
-             if (cb) cb(e->op_ids->data, EINA_FALSE);
+             if (cb && (!op->deleted)) cb(op, op->opdata, EINA_FALSE);
              next_smtp(e);
              return ECORE_CALLBACK_RENEW;
           }
         if (!send_smtp(e))
           {
-             if (cb) cb(e->op_ids->data, EINA_FALSE);
+             if (cb && (!op->deleted)) cb(op, op->opdata, EINA_FALSE);
              next_smtp(e);
           }
         break;
       default:
         if ((ev->size < 3) || (memcmp(ev->data, "250", 3)))
           {
-             if (cb) cb(e->op_ids->data, EINA_FALSE);
+             if (cb && (!op->deleted)) cb(op, op->opdata, EINA_FALSE);
              next_smtp(e);
           }
         else if (e->protocol.smtp.state > EMAIL_SMTP_STATE_BODY)
           {
-             if (cb) cb(e->op_ids->data, EINA_TRUE);
+             if (cb && (!op->deleted)) cb(op, op->opdata, EINA_TRUE);
              next_smtp(e);
           }
         else
           {
              if (!send_smtp(e))
                {
-                  if (cb) cb(e->op_ids->data, EINA_FALSE);
+                  if (cb && (!op->deleted)) cb(op, op->opdata, EINA_FALSE);
                   next_smtp(e);
                }
           }

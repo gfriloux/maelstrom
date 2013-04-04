@@ -4,19 +4,11 @@ static void
 next_pop(Email *e)
 {
    char buf[64];
+   Email_Operation *op;
 
    if (e->buf) return;
-   e->ops = eina_list_remove_list(e->ops, e->ops);
-   if (!e->ops)
-     {
-        e->current = 0;
-        DBG("No queued calls");
-        return;
-     }
-
-   DBG("Next queued call");
-   e->current = (uintptr_t)e->ops->data;
-   if (e->cbs) e->cbs = eina_list_remove_list(e->ops, e->cbs);
+   op = email_op_pop(e);
+   if (!op) return;
    switch (e->current)
      {
       case EMAIL_POP_OP_STAT:
@@ -29,17 +21,17 @@ next_pop(Email *e)
         email_write(e, EMAIL_POP3_RSET, sizeof(EMAIL_POP3_RSET) - 1);
         break;
       case EMAIL_POP_OP_DELE:
-        snprintf(buf, sizeof(buf), EMAIL_POP3_DELE, (unsigned int)(uintptr_t)e->op_ids->data);
-        e->op_ids = eina_list_remove_list(e->op_ids, e->op_ids);
+        snprintf(buf, sizeof(buf), EMAIL_POP3_DELE, (unsigned int)(uintptr_t)op->opdata);
+        op->opdata = NULL;
         email_write(e, buf, strlen(buf));
         break;
       case EMAIL_POP_OP_RETR:
-        snprintf(buf, sizeof(buf), EMAIL_POP3_RETR, (unsigned int)(uintptr_t)e->op_ids->data);
-        e->op_ids = eina_list_remove_list(e->op_ids, e->op_ids);
+        snprintf(buf, sizeof(buf), EMAIL_POP3_RETR, (unsigned int)(uintptr_t)op->opdata);
+        op->opdata = NULL;
         email_write(e, buf, strlen(buf));
         break;
       case EMAIL_POP_OP_QUIT:
-        email_write(e, EMAIL_QUIT, sizeof(EMAIL_QUIT) - 1);
+        email_write(e, EMAIL_POP3_QUIT, sizeof(EMAIL_POP3_QUIT) - 1);
         break;
       default:
         break;
@@ -99,8 +91,9 @@ data_pop(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
       case EMAIL_POP_OP_QUIT:
       {
          Email_Cb cb;
+         Email_Operation *op;
 
-         cb = eina_list_data_get(e->cbs);
+         op = eina_list_data_get(e->ops);
          if (!email_op_pop_ok(ev->data, ev->size))
            {
               if (e->current == EMAIL_POP_OP_DELE) ERR("Error with DELE");
@@ -111,7 +104,8 @@ data_pop(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
               if (e->current == EMAIL_POP_OP_DELE) INF("DELE successful");
               else INF("QUIT");
            }
-         if (cb) cb(e);
+         cb = op->cb;
+         if (cb && (!op->deleted)) cb(op);
          if (e->current == EMAIL_POP_OP_QUIT) ecore_con_server_del(e->svr);
          break;
       }

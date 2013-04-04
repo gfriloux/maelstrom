@@ -48,7 +48,7 @@ extern Eina_Hash *_email_contacts_hash;
 #define EMAIL_POP3_DELE "DELE %"PRIu32"\r\n"
 #define EMAIL_POP3_RETR "RETR %"PRIu32"\r\n"
 
-#define EMAIL_QUIT "QUIT\r\n"
+#define EMAIL_POP3_QUIT "QUIT\r\n"
 #define EMAIL_STARTTLS "STARTTLS\r\n"
 
 #define EMAIL_SMTP_FROM "MAIL FROM: <%s>\r\n"
@@ -103,14 +103,20 @@ typedef enum
    EMAIL_POP_OP_DELE,
    EMAIL_POP_OP_RETR,
    EMAIL_POP_OP_QUIT,
-   EMAIL_POP_OP_SEND,
 } Email_Pop_Op;
+
+typedef enum
+{
+   EMAIL_SMTP_OP_SEND = 1,
+} Email_Smtp_Op;
 
 typedef enum
 {
    EMAIL_IMAP_OP_CAPABILITY = 1,
    EMAIL_IMAP_OP_LOGIN,
    EMAIL_IMAP_OP_LIST,
+   EMAIL_IMAP_OP_SELECT,
+   EMAIL_IMAP_OP_LOGOUT,
 } Email_Imap_Op;
 
 /* for simple flag parsing */
@@ -137,6 +143,8 @@ struct Email_Message
 
    Eina_Hash *headers;
    Eina_List *attachments;
+   Eina_Bool sending : 1; //wait until after send to delete
+   Eina_Bool deleted : 1; //user deleted message
 };
 
 struct Email_Attachment
@@ -156,6 +164,17 @@ struct Email_Contact
    Email_Message_Contact_Type type;
 };
 
+struct Email_Operation
+{
+   Email *e;
+   unsigned int opnum;
+   unsigned int optype;
+   void *opdata;
+   void *userdata;
+   void *cb;
+   Eina_Bool deleted : 1;
+};
+
 struct Email
 {
    Ecore_Con_Server *svr;
@@ -172,11 +191,11 @@ struct Email
 
    unsigned int current;
    Eina_List *ops;
-   Eina_List *op_ids;
-   Eina_List *cbs;
    void *ev;
 
    Ecore_Event_Handler *h_data, *h_del, *h_error, *h_upgrade;
+
+   unsigned int opcount; //current max operation number
 
    union
    {
@@ -187,7 +206,6 @@ struct Email
       } smtp;
       struct
       {
-         unsigned int opcount; //current max operation number
          unsigned int current; //current operation number
          int state; //for various parsers to save their states; < 0 when we're parsing a resp line
          Email_Imap_Status status; //status of current op
@@ -284,14 +302,23 @@ imap_offset_update(size_t *offset, size_t new)
 }
 
 static inline void
-email_imap_write(Email *e, const void *data, size_t size)
+email_imap_write(Email *e, Email_Operation *op, const char *data, size_t size)
 {
    char buf[64];
 
-   e->protocol.imap.current = e->protocol.imap.opcount++;
-   snprintf(buf, sizeof(buf), "%u ", e->protocol.imap.current);
+   if (!op)
+     {
+        snprintf(buf, sizeof(buf), "%u ", e->opcount++);
+        email_write(e, buf, strlen(buf));
+        email_write(e, data, size ?: strlen(data));
+        return;
+     }
+   snprintf(buf, sizeof(buf), "%u ", op->opnum);
    email_write(e, buf, strlen(buf));
-   email_write(e, data, size);
+   if (op->opdata)
+     email_write(e, op->opdata, strlen(op->opdata));
+   else
+     email_write(e, data, size ?: strlen(data));
 }
 
 extern Eina_Hash *_email_contacts_hash;
@@ -323,6 +350,10 @@ void email_login_smtp(Email *e, Ecore_Con_Event_Server_Data *ev);
 int email_login_imap(Email *e, const unsigned char *data, size_t size, size_t *offset);
 
 void email_fake_free(void *d, void *e);
+Email_Operation *email_op_new(Email *e, unsigned int type, void *cb, const void *data);
+void email_op_free(Email_Operation *op);
+Email_Operation *email_op_pop(Email *e);
+
 char *email_base64_encode(const char *string, double len, int *);
 unsigned char *email_base64_decode(const char *string, int len, int *);
 void email_md5_digest_to_str(unsigned char *digest, char *ret);
