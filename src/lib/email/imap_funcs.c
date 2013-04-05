@@ -21,6 +21,7 @@ email_imap4_list(Email *e, const char *reference, const char *mbox, Email_List_C
      {
         e->current = EMAIL_IMAP_OP_LIST;
         email_imap_write(e, op, buf, 0);
+        e->protocol.imap.current = op->opnum;
      }
    else
      op->opdata = strdup(buf);
@@ -44,6 +45,7 @@ email_imap4_select(Email *e, const char *mbox, Email_Imap4_Mailbox_Info_Cb cb, c
      {
         e->current = EMAIL_IMAP_OP_SELECT;
         email_imap_write(e, op, buf, 0);
+        e->protocol.imap.current = op->opnum;
      }
    else
      op->opdata = strdup(buf);
@@ -67,6 +69,7 @@ email_imap4_examine(Email *e, const char *mbox, Email_Imap4_Mailbox_Info_Cb cb, 
      {
         e->current = EMAIL_IMAP_OP_EXAMINE;
         email_imap_write(e, op, buf, 0);
+        e->protocol.imap.current = op->opnum;
      }
    else
      op->opdata = strdup(buf);

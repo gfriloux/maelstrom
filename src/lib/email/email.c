@@ -99,6 +99,8 @@ email_op_pop(Email *e)
    DBG("Next queued call");
    op = eina_list_data_get(e->ops);
    e->current = op->optype;
+   if (email_is_imap(e))
+     e->protocol.imap.current = op->opnum;
    return op;
 }
 
