@@ -58,13 +58,13 @@ mail_rights(Email_Imap_Mailbox_Rights flags)
 }
 
 static Eina_Bool
-mail_select(Email_Operation *op, Email_Imap4_Mailbox_Info *info)
+mailinfo_print(void *d EINA_UNUSED, int type, Email_Imap4_Mailbox_Info *info)
 {
    const char *acc = "READ-WRITE";
 
    if (info->access == EMAIL_IMAP_MAILBOX_ACCESS_READONLY)
      acc = "READ-ONLY";
-   printf("SELECT INBOX: %s\n", acc);
+   if (type) printf("INBOX INFO: %s\n", acc);
 
    printf("\tMESSAGES: %u\n", info->exists);
    printf("\tMESSAGES (RECENT): %u\n", info->recent);
@@ -84,7 +84,20 @@ mail_select(Email_Operation *op, Email_Imap4_Mailbox_Info *info)
 
    if (info->uidvalidity) printf("\tUIDVALIDITY: %llu\n", info->uidvalidity);
    if (info->uidnext) printf("\tUIDNEXT: %llu\n", info->uidnext);
-   email_quit(email_operation_email_get(op), mail_quit, NULL);
+   return ECORE_CALLBACK_RENEW;
+}
+
+static Eina_Bool
+mail_select(Email_Operation *op EINA_UNUSED, Email_Imap4_Mailbox_Info *info)
+{
+   const char *acc = "READ-WRITE";
+
+   if (info->access == EMAIL_IMAP_MAILBOX_ACCESS_READONLY)
+     acc = "READ-ONLY";
+   printf("SELECT INBOX: %s\n", acc);
+   mailinfo_print(NULL, 0, info);
+   email_imap4_noop(info->e);
+   email_quit(info->e, mail_quit, NULL);
    return EINA_TRUE;
 }
 
@@ -149,6 +162,7 @@ main(int argc, char *argv[])
    e = email_new(argv[1], pass, NULL);
    email_imap4_set(e);
    ecore_event_handler_add(EMAIL_EVENT_CONNECTED, (Ecore_Event_Handler_Cb)con, NULL);
+   ecore_event_handler_add(EMAIL_EVENT_MAILBOX_STATUS, (Ecore_Event_Handler_Cb)mailinfo_print, NULL);
    email_connect(e, argv[2], EINA_TRUE);
    ecore_main_loop_begin();
 

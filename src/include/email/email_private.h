@@ -49,14 +49,15 @@ extern Eina_Hash *_email_contacts_hash;
 #define EMAIL_POP3_RETR "RETR %"PRIu32"\r\n"
 
 #define EMAIL_POP3_QUIT "QUIT\r\n"
-#define EMAIL_STARTTLS "STARTTLS\r\n"
 
 #define EMAIL_IMAP4_LOGOUT "LOGOUT\r\n"
+#define EMAIL_IMAP4_NOOP "NOOP\r\n"
 
 #define EMAIL_SMTP_FROM "MAIL FROM: <%s>\r\n"
 #define EMAIL_SMTP_TO "RCPT TO: <%s>\r\n"
 #define EMAIL_SMTP_DATA "DATA\r\n"
 
+#define EMAIL_STARTTLS "STARTTLS\r\n"
 #define CRLF "\r\n"
 #define CRLFLEN 2
 
@@ -119,6 +120,7 @@ typedef enum
    EMAIL_IMAP_OP_LIST,
    EMAIL_IMAP_OP_SELECT,
    EMAIL_IMAP_OP_EXAMINE,
+   EMAIL_IMAP_OP_NOOP,
    EMAIL_IMAP_OP_LOGOUT,
 } Email_Imap_Op;
 

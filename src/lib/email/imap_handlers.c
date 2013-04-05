@@ -428,6 +428,9 @@ next_imap(Email *e)
       case EMAIL_IMAP_OP_EXAMINE:
         email_imap_write(e, op, op->opdata, 0);
         break;
+      case EMAIL_IMAP_OP_NOOP:
+        email_imap_write(e, op, EMAIL_IMAP4_NOOP, sizeof(EMAIL_IMAP4_NOOP));
+        break;
       case EMAIL_IMAP_OP_LOGOUT:
         email_imap_write(e, op, EMAIL_IMAP4_LOGOUT, sizeof(EMAIL_IMAP4_LOGOUT));
         break;
@@ -489,6 +492,8 @@ imap_dispatch(Email *e)
          op = eina_list_data_get(e->ops);
          cb = op->cb;
          if (cb && (!op->deleted)) cb(op);
+         if (e->svr) ecore_con_server_del(e->svr);
+         e->svr = NULL;
          break;
       }
       default: break;
@@ -697,9 +702,9 @@ imap_parse_list(Email *e, const unsigned char *data, size_t size, size_t *offset
 
    while (1)
      {
+        Email_List_Item_Imap4 *it;
         switch (e->protocol.imap.state)
           {
-             Email_List_Item_Imap4 *it;
              default:
                /* state <= 0 means we have rejected any attempts to parse */
                if (size < sizeof("LIST ") + 4) return EMAIL_RETURN_EAGAIN;
@@ -992,12 +997,12 @@ imap_parse_resp_cond(Email *e, const unsigned char *data, size_t size, size_t *o
 */
    while (1)
      {
+        int type;
+        const unsigned char *pp = data;
+        size_t len = size;
+
         switch (e->protocol.imap.state)
           {
-           int type;
-           const unsigned char *pp = data;
-           size_t len = size;
-
            case -1: //just starting
              if (*offset)
                {
@@ -1128,10 +1133,12 @@ imap_data_handle(Email *e, const unsigned char *data, size_t size, size_t *offse
           return imap_parse_list(e, data, size, offset);
         case EMAIL_IMAP_OP_SELECT:
         case EMAIL_IMAP_OP_EXAMINE:
+        case EMAIL_IMAP_OP_NOOP:
           e->protocol.imap.state = -1;
           return EMAIL_RETURN_DONE;
         case EMAIL_IMAP_OP_LOGOUT: //going to assume our users aren't idiots here...
-          e->need_crlf = 1;
+          imap_offset_update(offset, size);
+          imap_dispatch(e);
           return EMAIL_RETURN_DONE;
         default:
           if (e->protocol.imap.state < EMAIL_STATE_CONNECTED)

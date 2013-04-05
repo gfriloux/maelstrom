@@ -161,6 +161,8 @@ EAPI Email_Operation * email_pop3_retrieve(Email *e, unsigned int id, Email_Retr
 
 EAPI Email_Operation * email_imap4_list(Email *e, const char *reference, const char *mbox, Email_List_Cb cb, const void *data);
 EAPI Email_Operation *email_imap4_select(Email *e, const char *mbox, Email_Imap4_Mailbox_Info_Cb cb, const void *data);
+EAPI Email_Operation *email_imap4_examine(Email *e, const char *mbox, Email_Imap4_Mailbox_Info_Cb cb, const void *data);
+EAPI Email_Operation *email_imap4_noop(Email *e);
 
 EAPI Email_Contact *email_contact_new(const char *address);
 EAPI Email_Contact *email_contact_ref(Email_Contact *ec);
