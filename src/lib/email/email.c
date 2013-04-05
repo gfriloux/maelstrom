@@ -5,16 +5,21 @@ static int email_init_count = 0;
 int email_log_dom = -1;
 EAPI int EMAIL_EVENT_CONNECTED = 0;
 EAPI int EMAIL_EVENT_DISCONNECTED = 0;
+EAPI int EMAIL_EVENT_MAILBOX_STATUS = 0;
 
 static void
 _struct_reset(Email *e)
 {
    e->svr = NULL;
    e->state = 0;
-   e->opcount = 0;
+   e->opcount = 1;
    if (email_is_smtp(e))
      {
         eina_stringshare_del(e->features.smtp.domain);
+     }
+   else if (email_is_imap(e))
+     {
+        free(e->protocol.imap.mbox);
      }
    memset(&e->protocol, 0, sizeof(e->protocol));
    memset(&e->features, 0, sizeof(e->features));
@@ -119,6 +124,7 @@ email_init(void)
    email_log_dom = eina_log_domain_register("email", EINA_COLOR_YELLOW);
    EMAIL_EVENT_CONNECTED = ecore_event_type_new();
    EMAIL_EVENT_DISCONNECTED = ecore_event_type_new();
+   EMAIL_EVENT_MAILBOX_STATUS = ecore_event_type_new();
    return email_init_count;
 }
 

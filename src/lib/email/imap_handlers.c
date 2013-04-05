@@ -72,6 +72,7 @@ typedef enum
    RESP_CODE_ALERT,
    RESP_CODE_BADCHARSET,
    RESP_CODE_CAPABILITY,
+   RESP_CODE_MYRIGHTS,
    RESP_CODE_PARSE,
    RESP_CODE_PERMANENTFLAGS,
    RESP_CODE_READ_ONLY,
@@ -88,15 +89,16 @@ static const Imap_String const RESP_CODES[] =
    [RESP_CODE_UNSUPPORTED] = {"", 0},
    [RESP_CODE_ALERT] = CS("ALERT"),
    [RESP_CODE_BADCHARSET] = CS("BADCHARSET"),
-   [RESP_CODE_CAPABILITY] = CS("CAPABILITY"),
+   [RESP_CODE_CAPABILITY] = CS("CAPABILITY "),
+   [RESP_CODE_MYRIGHTS] = CS("MYRIGHTS \""),
    [RESP_CODE_PARSE] = CS("PARSE"),
-   [RESP_CODE_PERMANENTFLAGS] = CS("PERMANENTFLAGS"),
+   [RESP_CODE_PERMANENTFLAGS] = CS("PERMANENTFLAGS ("),
    [RESP_CODE_READ_ONLY] = CS("READ-ONLY"),
    [RESP_CODE_READ_WRITE] = CS("READ-WRITE"),
    [RESP_CODE_TRYCREATE] = CS("TRYCREATE"),
-   [RESP_CODE_UIDNEXT] = CS("UIDNEXT"),
-   [RESP_CODE_UIDVALIDITY] = CS("UIDVALIDITY"),
-   [RESP_CODE_UNSEEN] = CS("UNSEEN"),
+   [RESP_CODE_UIDNEXT] = CS("UIDNEXT "),
+   [RESP_CODE_UIDVALIDITY] = CS("UIDVALIDITY "),
+   [RESP_CODE_UNSEEN] = CS("UNSEEN "),
    [RESP_CODE_LAST] = CS(""),
 };
 
@@ -220,7 +222,7 @@ static int RESP_PREFIXES[128] =
    ['j'] = 0,
    ['k'] = 0,
    ['l'] = 0,
-   ['m'] = 0,
+   ['m'] = RESP_CODE_MYRIGHTS,
    ['n'] = 0,
    ['o'] = 0,
    ['p'] = RESP_CODE_PARSE,
@@ -386,18 +388,37 @@ imap_op_ok(const unsigned char *data, size_t size, unsigned int *opcode, size_t 
    return 0;
 }
 
+static inline Email_Imap4_Mailbox_Info *
+imap_mbox_info_get(Email *e)
+{
+   if (!e->protocol.imap.mbox)
+     {
+        e->protocol.imap.mbox = calloc(1, sizeof(Email_Imap4_Mailbox_Info));
+        e->protocol.imap.mbox->e = e;
+     }
+   return e->protocol.imap.mbox;
+}
+
 static void
 imap_dispatch_reset(Email *e)
 {
    e->protocol.imap.state = e->protocol.imap.status = 0;
 }
 
+void
+imap_mbox_status_event(Email *e)
+{
+   ecore_event_add(EMAIL_EVENT_MAILBOX_STATUS, e->protocol.imap.mbox, NULL, NULL);
+   e->protocol.imap.mbox = NULL;
+}
 
 static void
 next_imap(Email *e)
 {
    Email_Operation *op;
 
+   if (e->protocol.imap.mbox)
+     imap_mbox_status_event(e);
    op = email_op_pop(e);
    if (!op) return;
    switch (e->current)
@@ -455,8 +476,9 @@ imap_dispatch(Email *e)
 
          op = eina_list_data_get(e->ops);
          cb = op->cb;
-         if (cb && (!op->deleted)) tofree = !!cb(op, e->ev);
-         if (tofree) free(e->ev);
+         if (cb && (!op->deleted)) tofree = !!cb(op, e->protocol.imap.mbox);
+         if (tofree) free(e->protocol.imap.mbox);
+         e->protocol.imap.mbox = NULL;
          break;
       }
       case EMAIL_IMAP_OP_LOGOUT:
@@ -500,12 +522,13 @@ imap_parse_num(const unsigned char *data, size_t size, size_t *length)
    char buf[256];
    unsigned long long x;
 
+   *length = 0;
    for (x = 0; (x <= sizeof(buf)) && (x < size); x++)
      {
         if (x == sizeof(buf))
           {
              ERR("NUMBER TOO BIG! THE SEVER IS A LIE!");
-             goto error;
+             return 0;
           }
         if (isdigit(data[x]))
           buf[x] = data[x];
@@ -513,19 +536,20 @@ imap_parse_num(const unsigned char *data, size_t size, size_t *length)
           {
              char *b;
 
-             if ((data[x] != ' ') && (data[x] != '\r') && (data[x] != ']')) goto error;
+             if ((data[x] != ' ') && (data[x] != '\r') && (data[x] != ']')) return 0;
              buf[x] = 0;
              errno = 0;
              *length = x;
              x = strtoul(buf, &b, 10);
-             if (errno) goto error;
+             if (errno)
+               {
+                  *length = 0;
+                  return 0;
+               }
              break;
           }
      }
    return x;
-error:
-   *length = 0;
-   return 0;
 }
 
 static void
@@ -562,17 +586,13 @@ imap_mailbox_attribute_set(Email *e, Mailbox_Attributes flag)
 static void
 imap_mailbox_flag_set(Email *e, Mailbox_Flags flag)
 {
-   Email_Imap4_Mailbox_Info *mbox = e->ev;
-
-   mbox->flags |= 1 << (flag - 1);
+   imap_mbox_info_get(e)->flags |= 1 << (flag - 1);
 }
 
 static void
 imap_mailbox_permanentflag_set(Email *e, Mailbox_Flags flag)
 {
-   Email_Imap4_Mailbox_Info *mbox = e->ev;
-
-   mbox->permanentflags |= 1 << (flag - 1);
+   imap_mbox_info_get(e)->permanentflags |= 1 << (flag - 1);
 }
 
 /* utility for shortening flag mapper lines */
@@ -630,52 +650,26 @@ imap_parse_caps(Email *e, const unsigned char *data, size_t size, size_t *offset
 eg.
 * CAPABILITY IMAP4 IMAP4rev1 LOGINDISABLED STARTTLS UIDPLUS CHILDREN IDLE NAMESPACE LITERAL+
  */
-   const unsigned char *pp, *p = NULL;
+   const unsigned char *pp, *p = data;
 
    while (1)
      {
-        switch (e->protocol.imap.state)
-          {
-             default:
-               /* state <= 0 means we have rejected any attempts to parse */
-               if (size < sizeof("CAPABILITY ")) return EMAIL_RETURN_EAGAIN;
-               p = data; //verified already
-               if (strncasecmp((char*)p, "CAPABILITY ", sizeof("CAPABILITY ") - 1)) return EMAIL_RETURN_ERROR;
-               p += sizeof("CAPABILITY ") - 1;
-               e->protocol.imap.state = 1;
-             case 1:
-               /* actively parsing CAPS now */
-               if (!p) p = data;
-               if (!IMAP_FLAG_MAPPER(0, imap_cap_set, CAP_PREFIXES, CAPS, CAP_LAST)) goto out;
-               /* cap could not be matched or end of caps */
-               for (pp = p; DIFF(pp - data) < size - 1; pp++)
-                 if (imap_atom_special(pp[0])) break;
-               if (DIFF(pp - data) + 1 == size) goto out;
-               p = pp;
-               if (p[0] == ' ') // more caps a-comin
-                 p++;
-               if (isalnum(p[0])) continue; //another cap
-               if (p[0] == ']') p++;
-               e->protocol.imap.state = 0;
-               e->need_crlf = 1;
-               if (e->protocol.imap.resp)
-                 {
-                    /* part of respcode */
-                    e->protocol.imap.caps = 1;
-                    e->current = 0;
-                 }
-               imap_offset_update(offset, p - data);
-               return EMAIL_RETURN_DONE;
-             case 3:
-               if (!p) p = data;
-               e->protocol.imap.state = 0;
-               /* more caps */
-               if (p[0] == '*') continue;
-               /* caps done! */
-               e->protocol.imap.caps = 1;
-               imap_offset_update(offset, p - data);
-               return EMAIL_RETURN_DONE;
-          }
+        /* actively parsing CAPS now */
+        if (!IMAP_FLAG_MAPPER(0, imap_cap_set, CAP_PREFIXES, CAPS, CAP_LAST)) goto out;
+        /* cap could not be matched or end of caps */
+        for (pp = p; DIFF(pp - data) < size - 1; pp++)
+          if (imap_atom_special(pp[0])) break;
+        if (DIFF(pp - data) + 1 == size) break;
+        p = pp;
+        if (p[0] == ' ') // more caps a-comin
+          p++;
+        if (isalnum(p[0])) continue; //another cap
+        if (p[0] == ']') p++;
+        e->protocol.imap.state = 0;
+        e->need_crlf = 1;
+        e->protocol.imap.caps = 1;
+        imap_offset_update(offset, p - data);
+        return EMAIL_RETURN_DONE;
      }
 out:
    imap_offset_update(offset, p - data);
@@ -772,7 +766,7 @@ imap_parse_list(Email *e, const unsigned char *data, size_t size, size_t *offset
                  it->name = eina_stringshare_add("INBOX"); //ensure caps here for easier use
                DBG("MBOX: %s", it->name);
                e->need_crlf = 1;
-               e->protocol.imap.state = 0;
+               imap_dispatch_reset(e);
                imap_offset_update(offset, pp - data);
                return EMAIL_RETURN_DONE;
           }
@@ -802,7 +796,7 @@ imap_parse_mailbox_flags(Email *e, Email_Flag_Set_Cb cb, const unsigned char *da
         if (p[0] != ')') return EMAIL_RETURN_ERROR;
         p++;
         e->need_crlf = 1;
-        e->protocol.imap.state = 0;
+        imap_dispatch_reset(e);
         ret = EMAIL_RETURN_DONE;
         break;
      }
@@ -816,8 +810,6 @@ imap_parse_mailbox_rights(Email *e, const unsigned char *data, size_t size, size
 {
    const unsigned char *p = data;
    int ret = EMAIL_RETURN_EAGAIN;
-   //FIXME: this is also a command return, need to fix for those events too
-   Email_Imap4_Mailbox_Info *mbox = e->ev;
    Mailbox_Rights flag;
 
    for (; DIFF(p - data) < size; p++)
@@ -825,7 +817,7 @@ imap_parse_mailbox_rights(Email *e, const unsigned char *data, size_t size, size
         if (p[0] == '"')
           {
              e->need_crlf = 1;
-             e->protocol.imap.state = 0;
+             imap_dispatch_reset(e);
              ret = EMAIL_RETURN_DONE;
              break;
           }
@@ -835,11 +827,11 @@ imap_parse_mailbox_rights(Email *e, const unsigned char *data, size_t size, size
           {
              if (flag == MAILBOX_RIGHT_OBSOLETE_DELETE)
                {
-                  mbox->rights |= 1 << (MAILBOX_RIGHT_DELETE_MBOX - 1);
-                  mbox->rights |= 1 << (MAILBOX_RIGHT_DELETE_MSG - 1);
+                  imap_mbox_info_get(e)->rights |= 1 << (MAILBOX_RIGHT_DELETE_MBOX - 1);
+                  imap_mbox_info_get(e)->rights |= 1 << (MAILBOX_RIGHT_DELETE_MSG - 1);
                }
              else
-               mbox->rights |= 1 << (flag - 1);
+               imap_mbox_info_get(e)->rights |= 1 << (flag - 1);
           }
         else
           ERR("UNKNOWN MAILBOX RIGHT FLAG: %c", p[0]);
@@ -849,98 +841,11 @@ imap_parse_mailbox_rights(Email *e, const unsigned char *data, size_t size, size
 }
 
 int
-imap_parse_select_examine_oks(Email *e, const unsigned char *data, size_t size, size_t *offset)
-{
-   const unsigned char *p = data;
-   Email_Imap4_Mailbox_Info *ev = e->ev;
-   size_t len;
-
-// PERMANENTFLAGS, UIDVALIDITY, UIDNEXT, UNSEEN, MYRIGHTS
-   while (1)
-     {
-        switch (e->protocol.imap.state)
-          {
-           case 10:
-             p++;
-             if (size < DIFF(p - data) + 8) return EMAIL_RETURN_EAGAIN;
-             switch (p[0])
-               {
-                case 'u':
-                case 'U': // UIDVALIDITY, UIDNEXT, UNSEEN
-                  if (!memchr(p, '\r', size)) return EMAIL_RETURN_EAGAIN; //slowest fucking server in history
-                  switch (p[3])
-                    {
-                     case 'v':
-                     case 'V': // UIDVALIDITY
-                       if (size < DIFF(p - data) + 13) return EMAIL_RETURN_EAGAIN;
-                       if (strncasecmp((char*)p, "UIDVALIDITY ", sizeof("UIDVALIDITY ") - 1)) goto error;
-                       p += sizeof("UIDVALIDITY ") - 1;
-                       ev->uidvalidity = imap_parse_num(p, size - (p - data), &len);
-                       if (!len) goto error;
-                       p += len;
-                       break;
-                     case 'n':
-                     case 'N': // UIDNEXT
-                       if (size < DIFF(p - data) + 9) return EMAIL_RETURN_EAGAIN;
-                       if (strncasecmp((char*)p, "UIDNEXT ", sizeof("UIDNEXT ") - 1)) goto error;
-                       p += sizeof("UIDNEXT ") - 1;
-                       ev->uidnext = imap_parse_num(p, size - (p - data), &len);
-                       if (!len) goto error;
-                       p += len;
-                       break;
-                     case 'e':
-                     case 'E': // UNSEEN
-                       if (strncasecmp((char*)p, "UNSEEN ", sizeof("UNSEEN ") - 1)) goto error;
-                       p += sizeof("UNSEEN ") - 1;
-                       ev->unseen = imap_parse_num(p, size - (p - data), &len);
-                       if (!len) goto error;
-                       p += len;
-                       break;
-                     default: goto error;
-                    }
-                  e->need_crlf = 1;
-                  e->protocol.imap.state = 0;
-                  imap_offset_update(offset, p - data);
-                  return EMAIL_RETURN_DONE;
-                case 'p':
-                case 'P': // PERMANENTFLAGS
-                  if (size < DIFF(p - data) + 18) return EMAIL_RETURN_EAGAIN;
-                  if (strncasecmp((char*)p, "PERMANENTFLAGS (", sizeof("PERMANENTFLAGS (") - 1)) goto error;
-                  p += sizeof("PERMANENTFLAGS (") - 1;
-                  e->protocol.imap.state++;
-                  continue;
-                case 'm':
-                case 'M': // MYRIGHTS
-                  if (size < DIFF(p - data) + 16) return EMAIL_RETURN_EAGAIN;
-                  if (strncasecmp((char*)p, "MYRIGHTS \"", sizeof("MYRIGHTS \"") - 1)) goto error;
-                  p += sizeof("MYRIGHTS \"") - 1;
-                  e->protocol.imap.state = 12;
-                  continue;
-               default:
-                 ERR("UNKNOWN SELECT/EXAMINE OK RESPONSE! IGNORING FOR NOW");
-                 e->need_crlf = 1;
-                 e->protocol.imap.state = 0;
-                 return EMAIL_RETURN_DONE;
-               }
-           case 11: // PERMANENTFLAGS
-             return imap_parse_mailbox_flags(e, imap_mailbox_permanentflag_set, p, size - DIFF(p - data), offset);
-           case 12: // MYRIGHTS
-             return imap_parse_mailbox_rights(e, p, size - DIFF(p - data), offset);
-          }
-     }
-error:
-   free(e->ev);
-   e->ev = NULL;
-   return EMAIL_RETURN_ERROR;
-}
-
-int
-imap_parse_select_examine_nums(Email *e, const unsigned char *data, size_t size, size_t *offset)
+imap_parse_respcode_nums(Email *e, const unsigned char *data, size_t size, size_t *offset)
 {
    const unsigned char *pp, *p = data;
    unsigned int x;
    size_t len;
-   Email_Imap4_Mailbox_Info *ev = e->ev;
 
    /* this gets too troublesome to parse if the whole line isn't received yet */
    pp = memchr(p, '\r', size);
@@ -950,82 +855,20 @@ imap_parse_select_examine_nums(Email *e, const unsigned char *data, size_t size,
    p += len;
    if (p[0] != ' ') return EMAIL_RETURN_ERROR;
    p++;
-   if (!strncasecmp((char*)p, "EXISTS", 6))
-     ev->exists = x;
-   else if (!strncasecmp((char*)p, "RECENT", 6))
-     ev->recent = x;
+   if (!strncasecmp((char*)p, "EXISTS", sizeof("EXISTS") - 1))
+     imap_mbox_info_get(e)->exists = x;
+   else if (!strncasecmp((char*)p, "RECENT", sizeof("RECENT") - 1))
+     imap_mbox_info_get(e)->recent = x;
+   else if (!strncasecmp((char*)p, "EXPUNGE", sizeof("EXPUNGE") - 1))
+     imap_mbox_info_get(e)->expunge = x;
+   else if (!strncasecmp((char*)p, "FETCH", sizeof("FETCH") - 1))
+     imap_mbox_info_get(e)->fetch = x;
    else goto error;
    e->need_crlf = 1;
-   e->protocol.imap.state = 0;
+   imap_dispatch_reset(e);
    imap_offset_update(offset, pp - data);
    return EMAIL_RETURN_DONE;
 
-error:
-   free(e->ev);
-   e->ev = NULL;
-   return EMAIL_RETURN_ERROR;
-}
-
-int
-imap_parse_select_examine(Email *e, const unsigned char *data, size_t size, size_t *offset)
-{
-/*
-
-* FLAGS (\Draft \Answered \Flagged \Deleted \Seen \Recent)
-* OK [PERMANENTFLAGS (\* \Draft \Answered \Flagged \Deleted \Seen)] Limited
-* 1 EXISTS
-* 0 RECENT
-* OK [UIDVALIDITY 1364379428] Ok
-* OK [MYRIGHTS "acdilrsw"] ACL
-2 OK [READ-WRITE] Ok
-
-*/
-   const unsigned char *p = data;
-   Email_Imap4_Mailbox_Info *ev = e->ev;
-
-   while (1)
-     {
-        switch (e->protocol.imap.state)
-          {
-           case 0:
-             /* state 0 means we have rejected any attempts to parse */
-             if (size < 4) return EMAIL_RETURN_EAGAIN;
-             if (!ev) ev = e->ev = calloc(1, sizeof(Email_Imap4_Mailbox_Info));
-             switch (p[0])
-               {
-                case 'O':
-                case 'o': // OK
-                  if (((p[1] == 'K') || (p[1] == 'k')) && (p[2] == ' '))
-                    {
-                       p += 3;
-                       e->protocol.imap.state = 10;
-                       continue;
-                    }
-                  goto error;
-                case 'f':
-                case 'F': // FLAGS
-                  if (size < sizeof("FLAGS (") - 1) return EMAIL_RETURN_EAGAIN;
-                  if (strncasecmp((char*)p, "FLAGS (", sizeof("FLAGS (") - 1)) goto error;
-                  p += sizeof("FLAGS (") - 1;
-                  e->protocol.imap.state = 20;
-                  continue;
-                default: // EXISTS or RECENT
-                  if (!isdigit(p[0]))
-                    {
-                       ERR("INVALID SELECT RETURN! FIXME?");
-                       goto error;
-                    }
-                  return imap_parse_select_examine_nums(e, data, size, offset);
-               }
-           case 10: // PERMANENTFLAGS, UIDVALIDITY, UIDNEXT, UNSEEN, MYRIGHTS
-           case 11:
-           case 12:
-             return imap_parse_select_examine_oks(e, p, size - DIFF(p - data), offset);
-           case 20: // FLAGS
-             return imap_parse_mailbox_flags(e, imap_mailbox_flag_set, p, size - DIFF(p - data), offset);
-          }
-     }
-   return EMAIL_RETURN_ERROR;
 error:
    free(e->ev);
    e->ev = NULL;
@@ -1039,24 +882,21 @@ imap_parse_spontaneous(Email *e, const unsigned char *data, size_t size, size_t 
 }
 
 int
-imap_parse_respcode(Email *e, const unsigned char *data, size_t size, size_t *offset)
+imap_parse_respcode_bracket(Email *e, const unsigned char *data, size_t size, size_t *offset)
 {
-   const unsigned char *p;
+   const unsigned char *p = data;
    Resp_Codes code;
    unsigned char c;
-   Email_Imap4_Mailbox_Info *mbox;
 /*
 
 [CAPABILITY IMAP4rev1 UIDPLUS CHILDREN NAMESPACE THREAD=ORDEREDSUBJECT THREAD=REFERENCES SORT QUOTA IDLE AUTH=CRAM-MD5 AUTH=PLAIN ACL ACL2=UNION] Courier-IMAP ready. Copyright 1998-2011 Double Precision, Inc.  See COPYING for distribution information.\r\n
 
 */
-
-   p = data;
-   if (p[0] == '[') p++; //mandated by spec
+   if (p[0] == '[') p++;
    c = tolower(p[0]);
    for (code = RESP_PREFIXES[c]; code && (code < RESP_CODE_LAST) && (tolower(RESP_CODES[code].string[0]) == c); code++)
      {
-        unsigned int len = RESP_CODES[code].len;
+        size_t len = RESP_CODES[code].len;
 
         if (len + 1 + DIFF(p - data) > size)
           {
@@ -1065,7 +905,8 @@ imap_parse_respcode(Email *e, const unsigned char *data, size_t size, size_t *of
           }
         if (!strncasecmp((char*)p, RESP_CODES[code].string, len))
           {
-             imap_offset_update(offset, p - data);
+             p += len;
+             imap_offset_update(offset, DIFF(p - data));
              switch (code)
                {
 #define FIXME(CASE) \
@@ -1077,34 +918,63 @@ imap_parse_respcode(Email *e, const unsigned char *data, size_t size, size_t *of
                 case RESP_CODE_CAPABILITY:
                   return imap_parse_caps(e, p, size - DIFF(p - data), offset);
                 FIXME(PARSE);
-                //FIXME(PERMANENTFLAGS); part of select/examine
+                case RESP_CODE_MYRIGHTS:
+                  return imap_parse_mailbox_rights(e, p, size - DIFF(p - data), offset);
+                case RESP_CODE_PERMANENTFLAGS:
+                  return imap_parse_mailbox_flags(e, imap_mailbox_permanentflag_set, p, size - DIFF(p - data), offset);
                 case RESP_CODE_READ_ONLY:
-                  if ((e->current != EMAIL_IMAP_OP_SELECT) && (e->current != EMAIL_IMAP_OP_EXAMINE)) return EMAIL_RETURN_ERROR;
-                  mbox = e->ev;
-                  mbox->access = EMAIL_IMAP_MAILBOX_ACCESS_READONLY;
-                  imap_offset_update(offset, len);
-                  e->need_crlf = 1;
-                  return EMAIL_RETURN_DONE;
+                  imap_mbox_info_get(e)->access = EMAIL_IMAP_MAILBOX_ACCESS_READONLY;
+                  break;
                 case RESP_CODE_READ_WRITE:
-                  if (e->current != EMAIL_IMAP_OP_SELECT) return EMAIL_RETURN_ERROR;
-                  mbox = e->ev;
-                  mbox->access = EMAIL_IMAP_MAILBOX_ACCESS_READWRITE;
-                  imap_offset_update(offset, len);
-                  e->need_crlf = 1;
-                  return EMAIL_RETURN_DONE;
+                  imap_mbox_info_get(e)->access = EMAIL_IMAP_MAILBOX_ACCESS_READWRITE;
+                  break;
                 FIXME(TRYCREATE);
-                //FIXME(UIDNEXT); part of select/examine
-                //FIXME(UIDVALIDITY); part of select/examine
-                //FIXME(UNSEEN); part of select/examine
+                case RESP_CODE_UIDNEXT:
+                  imap_mbox_info_get(e)->uidnext = imap_parse_num(p, size - (p - data), &len);
+                  break;
+                case RESP_CODE_UIDVALIDITY:
+                  imap_mbox_info_get(e)->uidvalidity = imap_parse_num(p, size - (p - data), &len);
+                  break;
+                case RESP_CODE_UNSEEN:
+                  imap_mbox_info_get(e)->unseen = imap_parse_num(p, size - (p - data), &len);
+                  break;
                 default: break;
                }
-             p += len;
              break;
 #undef FIXME
           }
      }
    imap_offset_update(offset, p - data);
    if (code == RESP_CODE_LAST) return EMAIL_RETURN_EAGAIN;
+   e->need_crlf = 1;
+   imap_dispatch_reset(e);
+   return EMAIL_RETURN_DONE;
+}
+
+int
+imap_parse_respcode_mboxdata(Email *e, const unsigned char *data, size_t size, size_t *offset)
+{
+   const unsigned char *p = data;
+
+   /* FIXME: optimize */
+   if (!strncasecmp((char*)p, "FLAGS (", sizeof("FLAGS (") - 1))
+     {
+        p += sizeof("FLAGS (") - 1;
+        imap_offset_update(offset, DIFF(p - data));
+        return imap_parse_mailbox_flags(e, imap_mailbox_flag_set, p, size - DIFF(p - data), offset);
+     }
+   e->need_crlf = 1;
+   return EMAIL_RETURN_DONE;
+}
+
+int
+imap_parse_respcode(Email *e, const unsigned char *data, size_t size, size_t *offset)
+{
+   const unsigned char *p = data;
+
+   if (p[0] == '[') return imap_parse_respcode_bracket(e, data, size, offset);
+   if (isdigit(p[0])) return imap_parse_respcode_nums(e, data, size, offset);
+   if (isalpha(p[0])) return imap_parse_respcode_mboxdata(e, data, size, offset);
    e->need_crlf = 1;
    imap_dispatch_reset(e);
    return EMAIL_RETURN_DONE;
@@ -1163,13 +1033,13 @@ imap_parse_resp_cond(Email *e, const unsigned char *data, size_t size, size_t *o
                        else
                        {/* FFFFFFFFFFFFFFFFFFUUUUUUUUUUUUUUUUUUUUUUUUUUUU WHAT THE FUCK */}
                     }
+                  e->protocol.imap.resp = 1;
                 case 1:
                   if (size < 6) return EMAIL_RETURN_EAGAIN;
-                  e->protocol.imap.resp = 1;
                   for (x = EMAIL_IMAP_STATUS_OK; x < EMAIL_IMAP_STATUS_LAST; x++)
                     if (!strncasecmp((char*)p, imap_status[x], imap_status_len[x])) break;
-                  if (x == EMAIL_IMAP_STATUS_LAST) return EMAIL_RETURN_ERROR;
-                  e->protocol.imap.status = x;
+                  if (x != EMAIL_IMAP_STATUS_LAST) e->protocol.imap.status = x;
+                  else if (type == 2) return EMAIL_RETURN_ERROR;
                   if (type == 1)
                     e->protocol.imap.state = -4;
                   else
@@ -1177,8 +1047,11 @@ imap_parse_resp_cond(Email *e, const unsigned char *data, size_t size, size_t *o
                        e->protocol.imap.state--;
                        e->need_crlf = 1;
                     }
-                  p += imap_status_len[x] + 1;
-                  imap_offset_update(offset, p - data);
+                  if (e->protocol.imap.status)
+                    {
+                       p += imap_status_len[x] + 1;
+                       imap_offset_update(offset, p - data);
+                    }
                   if (type == 1) continue;
                }
            case -2: //got status code, maybe parsed CRLF
@@ -1236,6 +1109,8 @@ imap_parse_crlf(Email *e, const unsigned char *data, size_t size, size_t *offset
 int
 imap_data_handle(Email *e, const unsigned char *data, size_t size, size_t *offset)
 {
+   const unsigned char *p = data;
+
    if (e->need_crlf)
      return imap_parse_crlf(e, data, size, offset);
    if (e->protocol.imap.state < 0)
@@ -1244,18 +1119,23 @@ imap_data_handle(Email *e, const unsigned char *data, size_t size, size_t *offse
    switch (e->current)
      {
         case EMAIL_IMAP_OP_CAPABILITY:
-          return imap_parse_caps(e, data, size, offset);
+          p += sizeof("CAPABILITY ") - 1;
+          imap_offset_update(offset, DIFF(p - data));
+          return imap_parse_caps(e, p, size - DIFF(p - data), offset);
         case EMAIL_IMAP_OP_LOGIN:
           return email_login_imap(e, data, size, offset);
         case EMAIL_IMAP_OP_LIST:
           return imap_parse_list(e, data, size, offset);
         case EMAIL_IMAP_OP_SELECT:
         case EMAIL_IMAP_OP_EXAMINE:
-          return imap_parse_select_examine(e, data, size, offset);
+          e->protocol.imap.state = -1;
+          return EMAIL_RETURN_DONE;
         case EMAIL_IMAP_OP_LOGOUT: //going to assume our users aren't idiots here...
           e->need_crlf = 1;
           return EMAIL_RETURN_DONE;
         default:
+          if (e->protocol.imap.state < EMAIL_STATE_CONNECTED)
+            return email_login_imap(e, data, size, offset);
           break;
      }
    return EMAIL_RETURN_EAGAIN;
@@ -1311,6 +1191,16 @@ data_imap(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
 
    if (e->buf)
      eina_binbuf_append_length(e->buf, ev->data, ev->size);
+   if (memcmp(ev->data + ev->size - 2, CRLF, CRLFLEN))
+     {
+        DBG("Deferring obviously incomplete response");
+        if (!e->buf)
+          {
+             e->buf = eina_binbuf_manage_new_length(ev->data, ev->size);
+             ev->data = NULL;
+          }
+       return ECORE_CALLBACK_RENEW;
+     }
    data = e->buf ? EBUF(e->buf) : ev->data;
    size = e->buf ? EBUFLEN(e->buf) : ((size_t)ev->size);
    switch (imap_op_ok(data, size, &opcode, &offset))

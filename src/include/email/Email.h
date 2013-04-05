@@ -114,11 +114,14 @@ typedef struct
 
 struct Email_Imap4_Mailbox_Info
 {
+   Email *e;
    Email_Imap_Mailbox_Flag flags;
    Email_Imap_Mailbox_Flag permanentflags;
    Email_Imap_Mailbox_Access access;
    Email_Imap_Mailbox_Rights rights;
    unsigned int exists;
+   unsigned int expunge;
+   unsigned int fetch;
    unsigned int recent;
    unsigned int unseen;
    unsigned long long uidvalidity;
@@ -127,6 +130,8 @@ struct Email_Imap4_Mailbox_Info
 
 EAPI extern int EMAIL_EVENT_CONNECTED;
 EAPI extern int EMAIL_EVENT_DISCONNECTED;
+
+EAPI extern int EMAIL_EVENT_MAILBOX_STATUS; /**< sends Email_Imap4_Mailbox_Info */
 
 EAPI int email_init(void);
 EAPI Email *email_new(const char *username, const char *password, void *data);

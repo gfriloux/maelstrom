@@ -75,3 +75,27 @@ email_imap4_examine(Email *e, const char *mbox, Email_Imap4_Mailbox_Info_Cb cb, 
      op->opdata = strdup(buf);
    return op;
 }
+
+Email_Operation *
+email_imap4_noop(Email *e, const char *mbox, Email_Imap4_Mailbox_Info_Cb cb, const void *data)
+{
+   char buf[4096];
+   Email_Operation *op;
+
+   EINA_SAFETY_ON_NULL_RETURN_VAL(e, NULL);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, NULL);
+   EINA_SAFETY_ON_NULL_RETURN_VAL(cb, NULL);
+   EINA_SAFETY_ON_NULL_RETURN_VAL(mbox, NULL);
+
+   op = email_op_new(e, EMAIL_IMAP_OP_EXAMINE, cb, data);
+   snprintf(buf, sizeof(buf), "EXAMINE %s" CRLF, mbox);
+   if (!e->current)
+     {
+        e->current = EMAIL_IMAP_OP_EXAMINE;
+        email_imap_write(e, op, buf, 0);
+        e->protocol.imap.current = op->opnum;
+     }
+   else
+     op->opdata = strdup(buf);
+   return op;
+}

@@ -212,6 +212,7 @@ struct Email
          unsigned int current; //current operation number
          int state; //for various parsers to save their states; < 0 when we're parsing a resp line
          Email_Imap_Status status; //status of current op
+         Email_Imap4_Mailbox_Info *mbox; //info can be updated with untagged data at any time
          Eina_Bool caps : 1; //whether capabilities have been parsed yet
          Eina_Bool resp : 1; //whether respcode for current line has been parsed yet
       } imap;

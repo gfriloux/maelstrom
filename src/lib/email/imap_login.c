@@ -4,6 +4,7 @@
 int
 email_login_imap(Email *e, const unsigned char *data, size_t size, size_t *offset)
 {
+   e->current = EMAIL_IMAP_OP_LOGIN;
    switch (e->state)
      {
       case EMAIL_STATE_SSL:
@@ -51,13 +52,11 @@ email_login_imap(Email *e, const unsigned char *data, size_t size, size_t *offse
                   break;
                }
              //called from imap_dispatch
-             e->current = EMAIL_IMAP_OP_LOGIN;
              email_imap_write(e, NULL, "AUTHENTICATE CRAM-MD5\r\n", sizeof("AUTHENTICATE CRAM-MD5\r\n") - 1);
              break;
           }
         else if (e->features.imap.AUTH_PLAIN)
           {
-             e->current = EMAIL_IMAP_OP_LOGIN;
              email_imap_write(e, NULL, "LOGIN ", 6);
              ecore_con_server_send(e->svr, e->username, strlen(e->username));
              ecore_con_server_send(e->svr, " ", 1);
