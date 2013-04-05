@@ -126,6 +126,7 @@ data_smtp(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
    Email_Operation *op;
    Email_Send_Cb cb;
    Email_Cb qcb;
+   Eina_Bool tofree = EINA_TRUE;
 
    if (e != ecore_con_server_data_get(ev->server))
      {
@@ -155,7 +156,7 @@ data_smtp(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
      {
         if ((ev->size < 3) || (memcmp(ev->data, "221", 3)))
           ERR("Could not QUIT properly!");
-        if (qcb) qcb(op);
+        if (qcb && (!op->deleted)) qcb(op);
         ecore_con_server_del(e->svr);
         return ECORE_CALLBACK_RENEW;
      }
@@ -164,32 +165,37 @@ data_smtp(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
       case EMAIL_SMTP_STATE_BODY:
         if ((ev->size < 3) || (memcmp(ev->data, "354", 3)))
           {
-             if (cb && (!op->deleted)) cb(op, op->opdata, EINA_FALSE);
+             if (cb && (!op->deleted)) tofree = !!cb(op, op->opdata, EINA_FALSE);
+             if (tofree) email_message_free(op->opdata);
              next_smtp(e);
              return ECORE_CALLBACK_RENEW;
           }
         if (!send_smtp(e))
           {
-             if (cb && (!op->deleted)) cb(op, op->opdata, EINA_FALSE);
+             if (cb && (!op->deleted)) tofree = !!cb(op, op->opdata, EINA_FALSE);
+             if (tofree) email_message_free(op->opdata);
              next_smtp(e);
           }
         break;
       default:
         if ((ev->size < 3) || (memcmp(ev->data, "250", 3)))
           {
-             if (cb && (!op->deleted)) cb(op, op->opdata, EINA_FALSE);
+             if (cb && (!op->deleted)) tofree = !!cb(op, op->opdata, EINA_FALSE);
+             if (tofree) email_message_free(op->opdata);
              next_smtp(e);
           }
         else if (e->protocol.smtp.state > EMAIL_SMTP_STATE_BODY)
           {
-             if (cb && (!op->deleted)) cb(op, op->opdata, EINA_TRUE);
+             if (cb && (!op->deleted)) tofree = !!cb(op, op->opdata, EINA_TRUE);
+             if (tofree) email_message_free(op->opdata);
              next_smtp(e);
           }
         else
           {
              if (!send_smtp(e))
                {
-                  if (cb && (!op->deleted)) cb(op, op->opdata, EINA_FALSE);
+             if (cb && (!op->deleted)) tofree = !!cb(op, op->opdata, EINA_FALSE);
+             if (tofree) email_message_free(op->opdata);
                   next_smtp(e);
                }
           }

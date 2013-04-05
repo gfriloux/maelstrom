@@ -8,34 +8,103 @@
 char *getpass_x(const char *prompt);
 
 static void
-mail_quit(Email *e EINA_UNUSED)
+mail_quit(Email_Operation *op EINA_UNUSED)
 {
    ecore_main_loop_quit();
 }
 
-static void
-mail_select(Email_Operation *op, Eina_Bool success)
-{
-   printf("SELECT INBOX: %s\n", success ? "SUCCESS!" : "FAIL!");
-}
-
 static const char *const MBOX_FLAGS[] =
 {
-   [0] = "HASCHILDREN",
-   [1] = "HASNOCHILDREN",
-   [2] = "MARKED",
-   [3] = "NOINFERIORS",
-   [4] = "NOSELECT",
-   [5] = "UNMARKED",
+   "ANSWERED",
+   "DELETED",
+   "DRAFT",
+   "FLAGGED",
+   "RECENT",
+   "SEEN",
+   "*",
 };
 
 static void
-mail_list_flags(Email_Imap_Mailbox_Flag flags)
+mail_flags(Email_Imap_Mailbox_Attribute flags)
 {
    unsigned int x;
-   for (x = 0; x <= 5; x++)
+   for (x = 0; x < 7; x++)
      if (flags & (1 << x))
        printf(" %s", MBOX_FLAGS[x]);
+}
+
+static const char *const MBOX_RIGHTS[] =
+{
+   "LOOKUP",
+   "READ",
+   "SEEN",
+   "WRITE",
+   "INSERT",
+   "POST",
+   "CREATE",
+   "DELETE_MBOX",
+   "DELETE_MSG",
+   "EXPUNGE",
+   "ADMIN",
+};
+
+static void
+mail_rights(Email_Imap_Mailbox_Rights flags)
+{
+   unsigned int x;
+   for (x = 0; x < 12; x++)
+     if (flags & (1 << x))
+       printf(" %s", MBOX_RIGHTS[x]);
+}
+
+static Eina_Bool
+mail_select(Email_Operation *op, Email_Imap4_Mailbox_Info *info)
+{
+   const char *acc = "READ-WRITE";
+
+   if (info->access == EMAIL_IMAP_MAILBOX_ACCESS_READONLY)
+     acc = "READ-ONLY";
+   printf("SELECT INBOX: %s\n", acc);
+
+   printf("\tMESSAGES: %u\n", info->exists);
+   printf("\tMESSAGES (RECENT): %u\n", info->recent);
+   printf("\tMESSAGES (UNSEEN): %u\n", info->unseen);
+
+   printf("\tFLAGS:");
+   mail_flags(info->flags);
+   fputc('\n', stdout);
+
+   printf("\tPERMANENTFLAGS:");
+   mail_flags(info->permanentflags);
+   fputc('\n', stdout);
+
+   printf("\tRIGHTS:");
+   mail_rights(info->rights);
+   fputc('\n', stdout);
+
+   if (info->uidvalidity) printf("\tUIDVALIDITY: %llu\n", info->uidvalidity);
+   if (info->uidnext) printf("\tUIDNEXT: %llu\n", info->uidnext);
+   email_quit(email_operation_email_get(op), mail_quit, NULL);
+   return EINA_TRUE;
+}
+
+static const char *const MBOX_ATTRS[] =
+{
+   "HASCHILDREN",
+   "HASNOCHILDREN",
+   "MARKED",
+   "NOINFERIORS",
+   "NOSELECT",
+   "UNMARKED",
+};
+
+static void
+mail_list_attrs(Email_Imap_Mailbox_Attribute flags)
+{
+   unsigned int x;
+   for (x = 0; x < 6; x++)
+     if (flags & (1 << x))
+       printf(" %s", MBOX_ATTRS[x]);
 }
 
 static Eina_Bool
@@ -47,7 +116,7 @@ mail_list(Email_Operation *op, Eina_List *list)
    EINA_LIST_FOREACH(list, l, it)
      {
         printf("%s: (", it->name);
-        mail_list_flags(it->flags);
+        mail_list_attrs(it->attributes);
         printf(" )\n");
      }
    email_imap4_select(email_operation_email_get(op), "INBOX", mail_select, NULL);

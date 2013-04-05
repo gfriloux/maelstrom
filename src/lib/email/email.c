@@ -297,7 +297,7 @@ email_quit(Email *e, Email_Cb cb, const void *data)
      {
         e->current = optype;
         if (email_is_imap(e))
-          email_imap_write(e, op, "LOGOUT\r\n", sizeof("LOGOUT\r\n") - 1);
+          email_imap_write(e, op, EMAIL_IMAP4_LOGOUT, sizeof(EMAIL_IMAP4_LOGOUT) - 1);
         else
           email_write(e, EMAIL_POP3_QUIT, sizeof(EMAIL_POP3_QUIT) - 1);
      }

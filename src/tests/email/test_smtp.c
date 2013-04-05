@@ -7,15 +7,15 @@
 
 char *getpass_x(const char *prompt);
 
-static void
+static Eina_Bool
 _send(Email_Operation *op EINA_UNUSED, Email_Message *msg, Eina_Bool success)
 {
    Email *e;
 
    e = email_message_email_get(msg);
    printf("Send %s!\n", success ? "successful" : "failed");
-   email_message_free(msg);
    email_quit(e, NULL, NULL);
+   return EINA_TRUE;
 }
 
 static Eina_Bool

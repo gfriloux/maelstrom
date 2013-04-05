@@ -15,7 +15,7 @@ mail_quit(Email_Operation *op EINA_UNUSED)
    ecore_main_loop_quit();
 }
 
-static void
+static Eina_Bool
 mail_retr(Email_Operation *op, Eina_Binbuf *buf)
 {
    printf("Received message (%zu bytes): \n%*s\n",
@@ -26,6 +26,7 @@ mail_retr(Email_Operation *op, Eina_Binbuf *buf)
         email_pop3_rset(email_operation_email_get(op), NULL, NULL);
         email_quit(email_operation_email_get(op), mail_quit, NULL);
      }
+   return EINA_TRUE;
 }
 
 static Eina_Bool
