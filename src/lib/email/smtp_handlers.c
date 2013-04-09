@@ -14,8 +14,12 @@ next_smtp(Email *e)
      {
         Email_Message *msg = op->opdata;
 
-        msg->sending = 0;
-        if (msg->deleted) email_message_free(msg);
+        msg->sending--;
+        if (!msg->sending)
+          {
+             msg->owner = NULL;
+             if (msg->deleted) email_message_free(msg);
+          }
         op = email_op_pop(e);
      }
    if (!op) return;
@@ -49,7 +53,7 @@ send_smtp(Email *e)
    e->current = EMAIL_SMTP_OP_SEND;
    op = eina_list_data_get(e->ops);
    msg = op->opdata;
-   msg->sending = 1;
+   msg->sending++;
    switch (e->protocol.smtp.state)
      {
       case EMAIL_SMTP_STATE_NONE:

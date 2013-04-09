@@ -76,18 +76,20 @@ typedef enum
    EMAIL_IMAP4_MAILBOX_ATTRIBUTE_NOINFERIORS = (1 << 3),
    EMAIL_IMAP4_MAILBOX_ATTRIBUTE_NOSELECT = (1 << 4),
    EMAIL_IMAP4_MAILBOX_ATTRIBUTE_UNMARKED = (1 << 5),
+   EMAIL_IMAP4_MAILBOX_ATTRIBUTE_ITERATE = 6,
 } Email_Imap4_Mailbox_Attribute;
 
 typedef enum
 {
-   EMAIL_IMAP4_MAILBOX_FLAG_ANSWERED = (1 << 0),
-   EMAIL_IMAP4_MAILBOX_FLAG_DELETED = (1 << 1),
-   EMAIL_IMAP4_MAILBOX_FLAG_DRAFT = (1 << 2),
-   EMAIL_IMAP4_MAILBOX_FLAG_FLAGGED = (1 << 3),
-   EMAIL_IMAP4_MAILBOX_FLAG_RECENT = (1 << 4),
-   EMAIL_IMAP4_MAILBOX_FLAG_SEEN = (1 << 5),
-   EMAIL_IMAP4_MAILBOX_FLAG_STAR = (1 << 6),
-} Email_Imap4_Mailbox_Flag;
+   EMAIL_IMAP4_MAIL_FLAG_ANSWERED = (1 << 0),
+   EMAIL_IMAP4_MAIL_FLAG_DELETED = (1 << 1),
+   EMAIL_IMAP4_MAIL_FLAG_DRAFT = (1 << 2),
+   EMAIL_IMAP4_MAIL_FLAG_FLAGGED = (1 << 3),
+   EMAIL_IMAP4_MAIL_FLAG_RECENT = (1 << 4),
+   EMAIL_IMAP4_MAIL_FLAG_SEEN = (1 << 5),
+   EMAIL_IMAP4_MAIL_FLAG_STAR = (1 << 6),
+   EMAIL_IMAP4_MAIL_FLAG_ITERATE = 7,
+} Email_Imap4_Mail_Flag;
 
 typedef enum
 {
@@ -110,6 +112,7 @@ typedef enum
    EMAIL_IMAP4_MAILBOX_RIGHT_DELETE_MSG = (1 << 8),
    EMAIL_IMAP4_MAILBOX_RIGHT_EXPUNGE = (1 << 9),
    EMAIL_IMAP4_MAILBOX_RIGHT_ADMIN = (1 << 10),
+   EMAIL_IMAP4_MAILBOX_RIGHT_ITERATE = 11,
 } Email_Imap4_Mailbox_Rights;
 
 typedef struct
@@ -127,8 +130,8 @@ typedef struct
 struct Email_Imap4_Mailbox_Info
 {
    Email *e;
-   Email_Imap4_Mailbox_Flag flags;
-   Email_Imap4_Mailbox_Flag permanentflags;
+   Email_Imap4_Mail_Flag flags;
+   Email_Imap4_Mail_Flag permanentflags;
    Email_Imap4_Mailbox_Access access;
    Email_Imap4_Mailbox_Rights rights;
    unsigned int exists;
@@ -205,6 +208,7 @@ EAPI Email_Operation *email_imap4_delete(Email *e, const char *mbox, Email_Cb cb
 EAPI Email_Operation *email_imap4_rename(Email *e, const char *mbox, const char *newmbox, Email_Cb cb, const void *data);
 EAPI Email_Operation *email_imap4_subscribe(Email *e, const char *mbox, Email_Cb cb, const void *data);
 EAPI Email_Operation *email_imap4_unsubscribe(Email *e, const char *mbox, Email_Cb cb, const void *data);
+EAPI Email_Operation *email_imap4_append(Email *e, const char *mbox, Email_Message *msg, Email_Imap4_Mail_Flag flags, Email_Cb cb, const void *data);
 
 EAPI Email_Contact *email_contact_new(const char *address);
 EAPI Email_Contact *email_contact_ref(Email_Contact *ec);
@@ -247,6 +251,8 @@ EAPI void email_message_attachment_add(Email_Message *msg, Email_Attachment *at)
 EAPI void email_message_attachment_del(Email_Message *msg, Email_Attachment *at);
 EAPI void email_message_data_set(Email_Message *msg, const void *data);
 EAPI void * email_message_data_get(Email_Message *msg);
+EAPI void email_message_date_set(Email_Message *msg, unsigned long date);
+EAPI unsigned long email_message_date_get(const Email_Message *msg);
 EAPI Email *email_message_email_get(Email_Message *msg);
 #endif
 

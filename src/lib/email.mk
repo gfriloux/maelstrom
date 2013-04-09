@@ -1,4 +1,4 @@
-src_lib_libmaelstrom_la_LIBADD += @EMAIL_LIBS@
+src_lib_libmaelstrom_la_LIBADD += @EMAIL_LIBS@ -lm
 
 src_lib_libmaelstrom_la_CPPFLAGS += \
 @EMAIL_CFLAGS@ \

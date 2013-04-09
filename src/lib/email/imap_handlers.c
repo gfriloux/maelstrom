@@ -337,7 +337,6 @@ static int MAILBOX_RIGHTS[128] =
    ['*'] = 0,
 };
 
-
 static Eina_List *
 imap_op_find(Email *e, unsigned int opnum)
 {
@@ -347,6 +346,38 @@ imap_op_find(Email *e, unsigned int opnum)
    EINA_LIST_FOREACH(e->ops, l, op)
      if (op->opnum == opnum) return l;
    return NULL;
+}
+
+static Eina_List *
+imap_op_find_continuable(const Email *e)
+{
+   Email_Operation *op;
+   Eina_List *l;
+
+   EINA_LIST_FOREACH(e->ops, l, op)
+     if (op->allows_cont) return l;
+   return NULL;
+}
+
+static Email_Operation *
+imap_op_update(Email *e, unsigned int opcode, Eina_List *lop)
+{
+   Email_Operation *op = eina_list_data_get(lop);
+
+   if (!lop)
+     {
+        lop = imap_op_find(e, opcode);
+        if (!lop)
+          {/* FFFFFFFFFFFFFFFFFFUUUUUUUUUUUUUUUUUUUUUUUUUUUU WHAT THE FUCK */}
+     }
+   if (lop)
+     e->ops = eina_list_promote_list(e->ops, lop);
+   if (e->ops)
+     {
+        op = eina_list_data_get(e->ops);
+        e->current = op->optype;
+     }
+   return op;
 }
 
 /*
@@ -431,36 +462,56 @@ static void
 next_imap(Email *e)
 {
    Email_Operation *op;
+   Eina_List *l;
 
    if (e->protocol.imap.mbox)
      imap_mbox_status_event(e);
    op = email_op_pop(e);
    if (!op) return;
-   if (email_is_blocked(e)) return;
-   if (op->sent) return;
-   switch (e->current)
+   
+   EINA_LIST_FOREACH(e->ops, l, op)
      {
-      case EMAIL_IMAP4_OP_LIST:
-      case EMAIL_IMAP4_OP_LSUB:
-      case EMAIL_IMAP4_OP_SELECT:
-      case EMAIL_IMAP4_OP_EXAMINE:
-      case EMAIL_IMAP4_OP_CREATE:
-      case EMAIL_IMAP4_OP_DELETE:
-      case EMAIL_IMAP4_OP_RENAME:
-      case EMAIL_IMAP4_OP_SUBSCRIBE:
-      case EMAIL_IMAP4_OP_UNSUBSCRIBE:
-        email_imap_write(e, op, op->opdata, 0);
-        free(op->opdata);
-        op->opdata = NULL;
-        break;
-      case EMAIL_IMAP4_OP_NOOP:
-        email_imap_write(e, op, EMAIL_IMAP4_NOOP, sizeof(EMAIL_IMAP4_NOOP));
-        break;
-      case EMAIL_IMAP4_OP_LOGOUT:
-        email_imap_write(e, op, EMAIL_IMAP4_LOGOUT, sizeof(EMAIL_IMAP4_LOGOUT));
-        break;
-      default:
-        break;
+        if (email_is_blocked(e)) return;
+        if (op->sent) continue;
+        switch (op->optype)
+          {
+           case EMAIL_IMAP4_OP_LIST:
+           case EMAIL_IMAP4_OP_LSUB:
+           case EMAIL_IMAP4_OP_SELECT:
+           case EMAIL_IMAP4_OP_EXAMINE:
+           case EMAIL_IMAP4_OP_CREATE:
+           case EMAIL_IMAP4_OP_DELETE:
+           case EMAIL_IMAP4_OP_RENAME:
+           case EMAIL_IMAP4_OP_SUBSCRIBE:
+           case EMAIL_IMAP4_OP_UNSUBSCRIBE:
+             email_imap_write(e, op, op->opdata, 0);
+             free(op->opdata);
+             op->opdata = NULL;
+             break;
+           case EMAIL_IMAP4_OP_APPEND:
+           {
+              Email_Message *msg = op->opdata;
+
+              imap_func_message_write(op, msg, op->mbox, op->flags);
+              msg->sending--;
+              if (!msg->sending)
+                {
+                   msg->owner = NULL;
+                   if (msg->deleted) email_message_free(msg);
+                }
+              free(op->mbox);
+              op->mbox = NULL;
+              break;
+           }
+           case EMAIL_IMAP4_OP_NOOP:
+             email_imap_write(e, op, EMAIL_IMAP4_NOOP, sizeof(EMAIL_IMAP4_NOOP));
+             break;
+           case EMAIL_IMAP4_OP_LOGOUT:
+             email_imap_write(e, op, EMAIL_IMAP4_LOGOUT, sizeof(EMAIL_IMAP4_LOGOUT));
+             break;
+           default:
+             break;
+          }
      }
 }
 
@@ -518,6 +569,7 @@ imap_dispatch(Email *e)
       case EMAIL_IMAP4_OP_RENAME:
       case EMAIL_IMAP4_OP_SUBSCRIBE:
       case EMAIL_IMAP4_OP_UNSUBSCRIBE:
+      case EMAIL_IMAP4_OP_APPEND:
       {
          Email_Cb cb;
          Email_Operation *op;
@@ -1026,6 +1078,9 @@ int
 imap_data_enum_handle(Email *e, const unsigned char *data, size_t size, size_t *offset)
 {
    const unsigned char *p = data;
+   Email_Operation *op;
+
+   op = eina_list_data_get(e->ops);
    switch (e->current)
      {
         case EMAIL_IMAP4_OP_CAPABILITY:
@@ -1051,6 +1106,14 @@ imap_data_enum_handle(Email *e, const unsigned char *data, size_t size, size_t *
         case EMAIL_IMAP4_OP_UNSUBSCRIBE:
           e->protocol.imap.state = -1;
           return EMAIL_RETURN_DONE;
+        case EMAIL_IMAP4_OP_APPEND: // received go ahead for continuation
+          imap_offset_update(offset, size);
+          email_write(e, ESBUF(op->opdata), ESBUFLEN(op->opdata));
+          email_write(e, CRLF, CRLFLEN);
+          eina_strbuf_free(op->opdata);
+          op->opdata = NULL;
+          e->protocol.imap.state = -1;
+          break;
         case EMAIL_IMAP4_OP_LOGOUT: //going to assume our users aren't idiots here...
           e->need_crlf = 1;
           return EMAIL_RETURN_DONE;
@@ -1210,7 +1273,15 @@ imap_parse_resp_cond(Email *e, const unsigned char *data, size_t size, size_t *o
                   else
                     {
                        if (pp[0] == '+')
-                         return imap_data_enum_handle(e, data, size, offset);
+                         {
+                            if (!e->current)
+                              {
+                                 Eina_List *l;
+                                 l = imap_op_find_continuable(e);
+                                 if (l) imap_op_update(e, 0, l);
+                              }
+                            return imap_data_enum_handle(e, data, size, offset);
+                         }
                        if (pp[0] != '*')
                          {
                             /* some fucking servers don't know how to tag logouts (courier-imap) */
@@ -1226,26 +1297,7 @@ imap_parse_resp_cond(Email *e, const unsigned char *data, size_t size, size_t *o
                   /* some fucking servers don't know how to tag logouts (courier-imap) */
                   if (e->current != EMAIL_IMAP4_OP_LOGOUT) return EMAIL_RETURN_ERROR;
                 case 2:
-                  if (type == 2)
-                    {
-                       Email_Operation *op;
-
-                       if (e->protocol.imap.current != opcode)
-                         {
-                            Eina_List *l;
-
-                            l = imap_op_find(e, opcode);
-                            if (l)
-                              e->ops = eina_list_promote_list(e->ops, l);
-                            else
-                            {/* FFFFFFFFFFFFFFFFFFUUUUUUUUUUUUUUUUUUUUUUUUUUUU WHAT THE FUCK */}
-                         }
-                       if (e->ops)
-                         {
-                            op = eina_list_data_get(e->ops);
-                            e->current = op->optype;
-                         }
-                    }
+                  if (type == 2) imap_op_update(e, opcode, NULL);
                   e->protocol.imap.resp = 1;
                 case 1:
                   if (size < 6) return EMAIL_RETURN_EAGAIN;
@@ -1412,20 +1464,7 @@ data_imap(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
             }
           return ECORE_CALLBACK_RENEW;
         case 2:
-          if (e->protocol.imap.current != opcode)
-            {
-               Eina_List *l;
-
-               l = imap_op_find(e, opcode);
-               if (l)
-                 {
-                    Email_Operation *op = l->data;
-                    e->ops = eina_list_promote_list(e->ops, l);
-                    e->current = op->optype;
-                 }
-               else
-               {/* FFFFFFFFFFFFFFFFFFUUUUUUUUUUUUUUUUUUUUUUUUUUUU WHAT THE FUCK */}
-            }
+          imap_op_update(e, opcode, NULL);
         case 1:
           do
           {

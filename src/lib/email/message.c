@@ -1,4 +1,5 @@
 #include "email_private.h"
+#include <math.h>
 
 #define MESSAGE_BOUNDARY "ASDF8AYWE0G8H31_//123R"
 
@@ -16,6 +17,9 @@ email_message_serialize(Email_Message *msg)
    Eina_Strbuf *buf;
    Eina_List *l;
    Email_Contact *ec;
+   time_t date;
+   char timebuf[1024];
+   struct tm *t;
 /*
    From: Michael Blumenkrantz <michael.blumenkrantz@gmail.com>
    To: Michael Blumenkrantz <michael.blumenkrantz@gmail.com>
@@ -38,6 +42,11 @@ email_message_serialize(Email_Message *msg)
 */
 
    buf = eina_strbuf_new();
+   date = msg->date;
+   if (!date) date = lround(ecore_time_unix_get());
+   t = localtime(&date);
+   strftime(timebuf, sizeof(timebuf), "%a, %d %b %Y %T %z (%Z)", t);
+   eina_strbuf_append_printf(buf, "Date: %s\r\n", timebuf);
    EINA_LIST_FOREACH(msg->from, l, ec)
      {
         if (ec->name)
@@ -77,7 +86,7 @@ email_message_serialize(Email_Message *msg)
    if (msg->subject) eina_strbuf_append_printf(buf, "Subject: %s\r\n", msg->subject);
    if (msg->headers) eina_hash_foreach(msg->headers, (Eina_Hash_Foreach)_email_message_headers, buf);
    if (msg->mimeversion < 1.0) msg->mimeversion = 1.0;
-   eina_strbuf_append_printf(buf, "MIME-Version: %g\r\n", msg->mimeversion);
+   eina_strbuf_append_printf(buf, "MIME-Version: %1.1f\r\n", msg->mimeversion);
    if (msg->attachments)
      eina_strbuf_append_printf(buf, "Content-Type: multipart/mixed; boundary=\""MESSAGE_BOUNDARY"\"\r\n\r\n");
    else
@@ -110,7 +119,8 @@ email_message_serialize(Email_Message *msg)
      }
    else
      eina_strbuf_append(buf, msg->content);
-   eina_strbuf_append(buf, "\r\n.\r\n");
+   if (!email_is_imap(msg->owner))
+     eina_strbuf_append(buf, "\r\n.\r\n"); //smtp requires CRLF.CRLF trailer
    return buf;
 }
 
@@ -153,6 +163,7 @@ email_message_send(Email *e, Email_Message *msg, Email_Send_Cb cb, const void *d
    EINA_SAFETY_ON_NULL_RETURN_VAL(msg, NULL);
    EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, NULL);
    EINA_SAFETY_ON_TRUE_RETURN_VAL(msg->deleted, NULL);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(msg->owner && (msg->owner != e), NULL);
    if (!msg->recipients) return NULL;
 
    msg->owner = e;
@@ -225,6 +236,20 @@ email_message_sender_set(Email_Message *msg, Email_Contact *ec)
    if (ec) email_contact_ref(ec);
    if (msg->sender) email_contact_free(msg->sender);
    msg->sender = ec;
+}
+
+unsigned long
+email_message_date_get(const Email_Message *msg)
+{
+   EINA_SAFETY_ON_NULL_RETURN_VAL(msg, 0);
+   return msg->date;
+}
+
+void
+email_message_date_set(Email_Message *msg, unsigned long date)
+{
+   EINA_SAFETY_ON_NULL_RETURN(msg);
+   msg->date = date;
 }
 
 Email_Contact *

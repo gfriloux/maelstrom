@@ -120,6 +120,7 @@ typedef enum
    EMAIL_IMAP4_OP_SUBSCRIBE,
    EMAIL_IMAP4_OP_UNSUBSCRIBE,
    EMAIL_IMAP4_OP_LSUB,
+   EMAIL_IMAP4_OP_APPEND,
    EMAIL_IMAP4_OP_LOGOUT,
 } Email_Imap4_Op;
 
@@ -133,6 +134,7 @@ typedef void (*Email_Flag_Set_Cb)(Email *, unsigned int);
 struct Email_Message
 {
    Email *owner;
+   unsigned int sending; //wait until after send to delete
    void *data;
 
    Eina_List *recipients; /* anyone who will receive the message */
@@ -144,10 +146,10 @@ struct Email_Message
    size_t csize;
    const char *charset;
    double mimeversion;
+   unsigned long date;
 
    Eina_Hash *headers;
    Eina_List *attachments;
-   Eina_Bool sending : 1; //wait until after send to delete
    Eina_Bool deleted : 1; //user deleted message
 };
 
@@ -176,8 +178,11 @@ struct Email_Operation
    void *opdata;
    void *userdata;
    void *cb;
+   char *mbox; //target mbox for imap APPENDs
+   unsigned int flags;
    Eina_Bool deleted : 1;
    Eina_Bool sent : 1;
+   Eina_Bool allows_cont : 1; //imap operation that allows/requires continuation
    Eina_Bool blocking : 1;
 };
 
@@ -283,6 +288,7 @@ email_write(Email *e, const void *data, size_t size)
 {
    if (eina_log_domain_level_check(email_log_dom, EINA_LOG_LEVEL_DBG))
      DBG("Sending:\n%s", (char*)data);
+   if (!size) size = strlen((char*)data);
    ecore_con_server_send(e->svr, data, size);
 }
 
@@ -325,10 +331,12 @@ email_imap_write(Email *e, Email_Operation *op, const char *data, size_t size)
      }
    snprintf(buf, sizeof(buf), "%u ", op->opnum);
    email_write(e, buf, strlen(buf));
-   if (op->opdata)
+   if (data)
+     email_write(e, data, size ?: strlen(data));
+   else if (op->opdata)
      email_write(e, op->opdata, strlen(op->opdata));
    else
-     email_write(e, data, size ?: strlen(data));
+     CRI("WTF");
    op->sent = 1;
 }
 
@@ -341,7 +349,7 @@ email_is_blocked(const Email *e)
         Email_Operation *op = eina_list_data_get(e->ops);
         /* if there's a blocker queue, we are not blocked if the first blocker has not been sent */
         if (eina_list_data_get(e->protocol.imap.blockers) == op)
-          return !op->sent;
+          return op->sent;
         return EINA_TRUE;
      }
    return EINA_FALSE;
@@ -374,6 +382,8 @@ Eina_Bool send_smtp(Email *e);
 void email_login_pop(Email *e, Ecore_Con_Event_Server_Data *ev);
 void email_login_smtp(Email *e, Ecore_Con_Event_Server_Data *ev);
 int email_login_imap(Email *e, const unsigned char *data, size_t size, size_t *offset);
+
+void imap_func_message_write(Email_Operation *op, Email_Message *msg, const char *mbox, Email_Imap4_Mail_Flag flags);
 
 void email_fake_free(void *d, void *e);
 Email_Operation *email_op_new(Email *e, unsigned int type, void *cb, const void *data);

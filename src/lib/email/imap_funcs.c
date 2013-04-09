@@ -1,5 +1,54 @@
 #include "email_private.h"
 
+static const char *mail_flags[] =
+{
+   "\\Answered",
+   "\\Deleted",
+   "\\Draft",
+   "\\Flagged",
+   NULL,
+   "\\Seen",
+   NULL,
+};
+
+void
+imap_func_message_write(Email_Operation *op, Email_Message *msg, const char *mbox, Email_Imap4_Mail_Flag flags)
+{
+   char buf[4096];
+   unsigned int flag;
+
+   op->opdata = email_message_serialize(msg);
+   if (flags)
+     {
+        Eina_Bool first = EINA_TRUE;
+        snprintf(buf, sizeof(buf), "APPEND %s (", mbox);
+        email_imap_write(op->e, op, buf, 0);
+        for (flag = 0; flag < EMAIL_IMAP4_MAIL_FLAG_ITERATE; flag++)
+          if (flags & (1 << flag))
+            {
+               if (!first) email_write(op->e, " ", 1);
+               if (mail_flags[flag])
+                 {
+                    first = EINA_FALSE;
+                    email_write(op->e, mail_flags[flag], 0);
+                 }
+            }
+        snprintf(buf, sizeof(buf), ") {%zu%s}" CRLF, ESBUFLEN(op->opdata), op->e->features.imap.LITERALPLUS ? "+" : "");
+        email_write(op->e, buf, 0);
+     }   
+   else
+     {
+        snprintf(buf, sizeof(buf), "APPEND %s () {%zu%s}" CRLF, mbox, ESBUFLEN(op->opdata), op->e->features.imap.LITERALPLUS ? "+" : "");
+        email_imap_write(op->e, op, buf, 0);
+     }
+   if (!op->e->features.imap.LITERALPLUS) return;
+   // http://tools.ietf.org/html/rfc2088
+   email_write(op->e, ESBUF(op->opdata), ESBUFLEN(op->opdata));
+   email_write(op->e, CRLF, CRLFLEN);
+   eina_strbuf_free(op->opdata);
+   op->opdata = NULL;
+}
+
 const Eina_Inarray *
 email_imap4_namespaces_get(const Email *e, Email_Imap4_Namespace_Type type)
 {
@@ -204,5 +253,35 @@ email_imap4_unsubscribe(Email *e, const char *mbox, Email_Cb cb, const void *dat
      email_imap_write(e, op, buf, 0);
    else
      op->opdata = strdup(buf);
+   return op;
+}
+
+Email_Operation *
+email_imap4_append(Email *e, const char *mbox, Email_Message *msg, Email_Imap4_Mail_Flag flags, Email_Cb cb, const void *data)
+{
+   Email_Operation *op;
+
+   EINA_SAFETY_ON_NULL_RETURN_VAL(e, NULL);
+   EINA_SAFETY_ON_NULL_RETURN_VAL(msg, NULL);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, NULL);
+   EINA_SAFETY_ON_NULL_RETURN_VAL(cb, NULL);
+   EINA_SAFETY_ON_NULL_RETURN_VAL(mbox, NULL);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(msg->owner && (msg->owner != e), NULL);
+
+   op = email_op_new(e, EMAIL_IMAP4_OP_APPEND, cb, data);
+   op->allows_cont = 1;
+   if (!e->features.imap.LITERALPLUS)
+     email_operation_blocking_set(op); // APPEND requires continuation data without LITERAL+
+   if (email_is_blocked(e))
+     {
+
+        msg->sending++;
+        msg->owner = e;
+        op->opdata = msg;
+        op->mbox = strdup(mbox);
+        op->flags = flags;
+     }
+   else
+     imap_func_message_write(op, msg, mbox, flags);
    return op;
 }

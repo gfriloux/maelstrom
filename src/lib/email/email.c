@@ -121,7 +121,9 @@ email_op_new(Email *e, unsigned int type, void *cb, const void *data)
 void
 email_op_free(Email_Operation *op)
 {
+   if (!op) return;
    free(op->opdata);
+   free(op->mbox);
    free(op);
 }
 
@@ -133,10 +135,10 @@ email_op_pop(Email *e)
    op = eina_list_data_get(e->ops);
    if (email_is_imap(e))
      {
-        if (op == eina_list_data_get(e->protocol.imap.blockers))
+        if (op && (op == eina_list_data_get(e->protocol.imap.blockers)))
           e->protocol.imap.blockers = eina_list_remove_list(e->protocol.imap.blockers, e->protocol.imap.blockers);
      }
-   e->ops = eina_list_remove_list(e->ops, e->ops);
+   if (op) e->ops = eina_list_remove_list(e->ops, e->ops);
    email_op_free(op);
    if (!e->ops)
      {
@@ -430,6 +432,7 @@ email_operation_blocking_set(Email_Operation *op)
 {
    EINA_SAFETY_ON_NULL_RETURN(op);
    if (!email_is_imap(op->e)) return; //SAFETY ?
+   if (op->blocking) return;
    op->e->protocol.imap.blockers = eina_list_append(op->e->protocol.imap.blockers, op);
    op->blocking = 1;
 }

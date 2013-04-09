@@ -7,6 +7,26 @@
 
 #define IMAP_TEST_MBOX_NAME "EMAILTESTIMAPNAMEHAHA"
 
+#define IMAP_TEST_MESSAGE "Hello Joe, do you think we can meet at 3:30 tomorrow?"
+#define IMAP_TEST_MESSAGE_FROM "foobar@Blurdybloop.COM"
+#define IMAP_TEST_MESSAGE_FROM_NAME "Fred Foobar"
+#define IMAP_TEST_MESSAGE_TO "mooch@owatagu.siam.edu"
+#define IMAP_TEST_MESSAGE_SUBJECT "afternoon meeting"
+
+/* full message text
+
+"Date: Mon, 7 Feb 1994 21:52:25 -0800 (PST)\r\n" \
+"From: Fred Foobar <foobar@Blurdybloop.COM>\r\n" \
+"Subject: afternoon meeting\r\n" \
+"To: mooch@owatagu.siam.edu\r\n" \
+"Message-Id: <B27397-0100000@Blurdybloop.COM>\r\n" \
+"MIME-Version: 1.0\r\n" \
+"Content-Type: TEXT/PLAIN; CHARSET=US-ASCII\r\n" \
+"\r\n" \
+"Hello Joe, do you think we can meet at 3:30 tomorrow?\r\n" \
+"\r\n"
+
+*/
 char *getpass_x(const char *prompt);
 
 static void
@@ -31,7 +51,7 @@ static void
 mail_flags(Email_Imap4_Mailbox_Attribute flags)
 {
    unsigned int x;
-   for (x = 0; x < 7; x++)
+   for (x = 0; x < EMAIL_IMAP4_MAILBOX_ATTRIBUTE_ITERATE; x++)
      if (flags & (1 << x))
        printf(" %s", MBOX_FLAGS[x]);
 }
@@ -55,7 +75,7 @@ static void
 mail_rights(Email_Imap4_Mailbox_Rights flags)
 {
    unsigned int x;
-   for (x = 0; x < 12; x++)
+   for (x = 0; x < EMAIL_IMAP4_MAILBOX_RIGHT_ITERATE; x++)
      if (flags & (1 << x))
        printf(" %s", MBOX_RIGHTS[x]);
 }
@@ -111,6 +131,25 @@ mbox_delete(Email_Operation *op, Email_Operation_Status status)
 }
 
 static void
+mbox_sent(Email_Operation *op, Email_Operation_Status status)
+{
+   Email_Message *msg = email_operation_data_get(op);
+   switch (status)
+     {
+      case EMAIL_OPERATION_STATUS_OK:
+        printf("APPENDED MESSAGE TO MAILBOX SUCCESSFULLY!\n");
+        break;
+      case EMAIL_OPERATION_STATUS_NO:
+        printf("FAILED TO APPEND MESSAGE TO MAILBOX: %s\n", email_operation_status_message_get(op));
+        break;
+      case EMAIL_OPERATION_STATUS_BAD:
+        printf("IMAP SERVER APPEARS TO BE MENTALLY HANDICAPPED!\n");
+      default: break;
+     }
+   email_message_free(msg);
+}
+
+static void
 mbox_create(Email_Operation *op, Email_Operation_Status status)
 {
    char *mbox = email_operation_data_get(op);
@@ -136,7 +175,9 @@ mail_select(Email_Operation *op, Email_Imap4_Mailbox_Info *info)
    char buf[1024];
    const Eina_Inarray *namespaces;
    Email_Imap4_Namespace *ns;
+   Email_Message *msg;
    char *mbox;
+   Email_Contact *ec;
 
    if (info->access == EMAIL_IMAP4_MAILBOX_ACCESS_READONLY)
      acc = "READ-ONLY";
@@ -156,7 +197,18 @@ mail_select(Email_Operation *op, Email_Imap4_Mailbox_Info *info)
    mbox = strdup(namespaces ? buf : IMAP_TEST_MBOX_NAME);
    op = email_imap4_create(info->e, mbox, mbox_create, mbox);
    email_operation_blocking_set(op);
-   email_imap4_delete(email_operation_email_get(op), mbox, mbox_delete, mbox);
+   msg = email_message_new();
+   email_message_content_set(msg, IMAP_TEST_MESSAGE, sizeof(IMAP_TEST_MESSAGE) - 1);
+   ec = email_contact_new(IMAP_TEST_MESSAGE_FROM);
+   email_contact_name_set(ec, IMAP_TEST_MESSAGE_FROM_NAME);
+   email_message_from_add(msg, ec);
+   email_contact_free(ec);
+   ec = email_contact_new(IMAP_TEST_MESSAGE_TO);
+   email_message_contact_add(msg, ec, EMAIL_MESSAGE_CONTACT_TYPE_TO);
+   email_contact_free(ec);
+   email_message_subject_set(msg, IMAP_TEST_MESSAGE_SUBJECT);
+   email_imap4_append(info->e, mbox, msg, EMAIL_IMAP4_MAIL_FLAG_DRAFT, mbox_sent, msg);
+   email_imap4_delete(info->e, mbox, mbox_delete, mbox);
    return EINA_TRUE;
 }
 
