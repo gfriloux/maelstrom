@@ -17,9 +17,30 @@ _struct_reset(Email *e)
      {
         eina_stringshare_del(e->features.smtp.domain);
      }
+   else if (email_is_pop(e))
+     {
+        if (e->features.pop.apop_str) eina_binbuf_free(e->features.pop.apop_str);      
+     }
    else if (email_is_imap(e))
      {
+        unsigned int x;
+
         free(e->protocol.imap.mbox);
+        for (x = 0; x < EMAIL_IMAP4_NAMESPACE_LAST; x++)
+          {
+             Email_Imap4_Namespace *ns;
+
+             if (!e->features.imap.namespaces[x]) continue;
+             EINA_INARRAY_FOREACH(e->features.imap.namespaces[x], ns)
+               {
+                  eina_stringshare_del(ns->prefix);
+                  eina_stringshare_del(ns->delim);
+                  eina_hash_free(ns->extensions);
+               }
+             eina_inarray_free(e->features.imap.namespaces[x]);
+             e->features.imap.namespaces[x] = NULL;
+          }
+        e->protocol.imap.blockers = eina_list_free(e->protocol.imap.blockers);
      }
    memset(&e->protocol, 0, sizeof(e->protocol));
    memset(&e->features, 0, sizeof(e->features));
@@ -44,7 +65,7 @@ disc(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Del *ev)
              e->svr = ecore_con_server_connect(ECORE_CON_REMOTE_CORK, e->addr, EMAIL_POP3_PORT, e);
              break;
            case EMAIL_TYPE_IMAP4:
-             e->svr = ecore_con_server_connect(ECORE_CON_REMOTE_CORK, e->addr, EMAIL_IMAP_PORT, e);
+             e->svr = ecore_con_server_connect(ECORE_CON_REMOTE_CORK, e->addr, EMAIL_IMAP4_PORT, e);
              break;
            case EMAIL_TYPE_SMTP:
              e->svr = ecore_con_server_connect(ECORE_CON_REMOTE_CORK, e->addr, EMAIL_SMTP_PORT, e);
@@ -77,12 +98,30 @@ email_op_new(Email *e, unsigned int type, void *cb, const void *data)
    op->userdata = (void*)data;
    op->cb = cb;
    e->ops = eina_list_append(e->ops, op);
+   if (!email_is_blocked(e))
+     {
+        if (email_is_imap(e))
+          {
+             e->protocol.imap.current = op->opnum;
+             /* small optimization here:
+              * imap allows concurrent commands, so if we only have one active command
+              * we know what our current op is by default
+              */
+             if (eina_list_count(e->ops) == 1)
+               e->current = type;
+             else
+               e->current = 0;
+          }
+        else
+          e->current = type;
+     }
    return op;
 }
 
 void
 email_op_free(Email_Operation *op)
 {
+   free(op->opdata);
    free(op);
 }
 
@@ -92,6 +131,11 @@ email_op_pop(Email *e)
    Email_Operation *op;
 
    op = eina_list_data_get(e->ops);
+   if (email_is_imap(e))
+     {
+        if (op == eina_list_data_get(e->protocol.imap.blockers))
+          e->protocol.imap.blockers = eina_list_remove_list(e->protocol.imap.blockers, e->protocol.imap.blockers);
+     }
    e->ops = eina_list_remove_list(e->ops, e->ops);
    email_op_free(op);
    if (!e->ops)
@@ -101,11 +145,19 @@ email_op_pop(Email *e)
         return NULL;
      }
 
-   DBG("Next queued call");
    op = eina_list_data_get(e->ops);
-   e->current = op->optype;
    if (email_is_imap(e))
-     e->protocol.imap.current = op->opnum;
+     {
+        if (eina_list_count(e->ops) == 1)
+          {
+             e->protocol.imap.current = op->opnum;
+             e->current = op->optype;
+          }
+     }
+   else
+     e->current = op->optype;
+   if (e->current)
+     DBG("Next queued call");
    return op;
 }
 
@@ -167,15 +219,17 @@ email_free(Email *e)
    if (!e) return;
 
    eina_stringshare_del(e->username);
+   memset(e->password, 0, strlen(e->password));
+   if (e->password[0]) ERR("PASSWORD ZEROING FAILED!");
    free(e->password);
    if (e->svr)
      {
         ecore_con_server_del(e->svr);
+        e->svr = NULL;
         e->deleted = EINA_TRUE;
         return;
      }
-   eina_stringshare_del(e->addr);
-   if (e->buf) eina_binbuf_free(e->buf);
+   _struct_reset(e);
    EINA_LIST_FREE(e->certs, str)
      free(str);
    EINA_LIST_FREE(e->ops, op)
@@ -188,8 +242,6 @@ email_free(Email *e)
       default:
         break;
      }
-   if (email_is_pop(e) && e->features.pop.apop_str)
-     eina_binbuf_free(e->features.pop.apop_str);
    ecore_event_handler_del(e->h_data);
    ecore_event_handler_del(e->h_del);
    ecore_event_handler_del(e->h_error);
@@ -255,7 +307,7 @@ email_connect(Email *e, const char *host, Eina_Bool secure)
         upgrade_cb = (Ecore_Event_Handler_Cb)upgrade_pop;
         break;
       case EMAIL_TYPE_IMAP4:
-        port = e->secure ? EMAIL_IMAPS_PORT : EMAIL_IMAP_PORT;
+        port = e->secure ? EMAIL_IMAPS_PORT : EMAIL_IMAP4_PORT;
         data_cb = (Ecore_Event_Handler_Cb)data_imap;
         error_cb = (Ecore_Event_Handler_Cb)error_imap;
         upgrade_cb = (Ecore_Event_Handler_Cb)upgrade_imap;
@@ -296,18 +348,23 @@ email_quit(Email *e, Email_Cb cb, const void *data)
    EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, EINA_FALSE);
 
    if (email_is_imap(e))
-     optype = EMAIL_IMAP_OP_LOGOUT;
+     optype = EMAIL_IMAP4_OP_LOGOUT;
    else if (email_is_pop(e))
      optype = EMAIL_POP_OP_QUIT;
    else return NULL;
    op = email_op_new(e, optype, cb, data);
-   if (!e->current)
+   if (!email_is_blocked(e))
      {
-        e->current = optype;
         if (email_is_imap(e))
-          email_imap_write(e, op, EMAIL_IMAP4_LOGOUT, sizeof(EMAIL_IMAP4_LOGOUT) - 1);
+          {
+             email_operation_blocking_set(op); //logout always blocks (obviously)
+             email_imap_write(e, op, EMAIL_IMAP4_LOGOUT, sizeof(EMAIL_IMAP4_LOGOUT) - 1);
+          }
         else
-          email_write(e, EMAIL_POP3_QUIT, sizeof(EMAIL_POP3_QUIT) - 1);
+          {
+             email_write(e, EMAIL_POP3_QUIT, sizeof(EMAIL_POP3_QUIT) - 1);
+             e->current = optype;
+          }
      }
    return op;
 }
@@ -354,15 +411,31 @@ email_operation_data_set(Email_Operation *op, const void *data)
    op->userdata = (void*)data;
 }
 
+const char *
+email_operation_status_message_get(const Email_Operation *op)
+{
+   EINA_SAFETY_ON_NULL_RETURN_VAL(op, NULL);
+   return op->opdata;
+}
+
 const Eina_List *
-email_queue_get(Email *e)
+email_operations_get(Email *e)
 {
    EINA_SAFETY_ON_NULL_RETURN_VAL(e, NULL);
    return e->ops;
 }
 
+void
+email_operation_blocking_set(Email_Operation *op)
+{
+   EINA_SAFETY_ON_NULL_RETURN(op);
+   if (!email_is_imap(op->e)) return; //SAFETY ?
+   op->e->protocol.imap.blockers = eina_list_append(op->e->protocol.imap.blockers, op);
+   op->blocking = 1;
+}
+
 Eina_Bool
-email_op_cancel(Email *e, Email_Operation *op)
+email_operation_cancel(Email *e, Email_Operation *op)
 {
    Eina_List *l;
 

@@ -154,10 +154,16 @@ data_smtp(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
    qcb = op->cb;
    if (e->current == EMAIL_POP_OP_QUIT)
      {
+        Eina_Bool success = EINA_FALSE;
         if ((ev->size < 3) || (memcmp(ev->data, "221", 3)))
           ERR("Could not QUIT properly!");
-        if (qcb && (!op->deleted)) qcb(op);
-        ecore_con_server_del(e->svr);
+        else
+          {
+             ecore_con_server_del(e->svr);
+             e->svr = NULL;
+             success = EINA_TRUE;
+          }
+        if (qcb && (!op->deleted)) qcb(op, success);
         return ECORE_CALLBACK_RENEW;
      }
    switch (e->protocol.smtp.state)

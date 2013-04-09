@@ -10,11 +10,8 @@ email_pop3_stat(Email *e, Email_Stat_Cb cb, const void *data)
    EINA_SAFETY_ON_NULL_RETURN_VAL(cb, NULL);
 
    op = email_op_new(e, EMAIL_POP_OP_STAT, cb, data);
-   if (!e->current)
-     {
-        e->current = EMAIL_POP_OP_STAT;
-        email_write(e, "STAT\r\n", 6);
-     }
+   if (!email_is_blocked(e))
+     email_write(e, "STAT\r\n", 6);
    return op;
 }
 
@@ -27,11 +24,8 @@ email_pop3_list(Email *e, Email_List_Cb cb, const void *data)
    EINA_SAFETY_ON_NULL_RETURN_VAL(cb, NULL);
 
    op = email_op_new(e, EMAIL_POP_OP_LIST, cb, data);
-   if (!e->current)
-     {
-        e->current = EMAIL_POP_OP_LIST;
-        email_write(e, "LIST\r\n", 6);
-     }
+   if (!email_is_blocked(e))
+     email_write(e, "LIST\r\n", 6);
    return op;
 }
 
@@ -43,11 +37,8 @@ email_pop3_rset(Email *e, Email_Cb cb, const void *data)
    EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, NULL);
 
    op = email_op_new(e, EMAIL_POP_OP_RSET, cb, data);
-   if (!e->current)
-     {
-        e->current = EMAIL_POP_OP_RSET;
-        email_write(e, EMAIL_POP3_RSET, sizeof(EMAIL_POP3_RSET) - 1);
-     }
+   if (!email_is_blocked(e))
+     email_write(e, EMAIL_POP3_RSET, sizeof(EMAIL_POP3_RSET) - 1);
    return op;
 }
 
@@ -60,9 +51,8 @@ email_pop3_delete(Email *e, unsigned int id, Email_Cb cb, const void *data)
    EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, NULL);
 
    op = email_op_new(e, EMAIL_POP_OP_DELE, cb, data);
-   if (!e->current)
+   if (!email_is_blocked(e))
      {
-        e->current = EMAIL_POP_OP_DELE;
         snprintf(buf, sizeof(buf), EMAIL_POP3_DELE, id);
         email_write(e, buf, strlen(buf));
      }
@@ -81,9 +71,8 @@ email_pop3_retrieve(Email *e, unsigned int id, Email_Retr_Cb cb, const void *dat
    EINA_SAFETY_ON_NULL_RETURN_VAL(cb, NULL);
 
    op = email_op_new(e, EMAIL_POP_OP_RETR, cb, data);
-   if (!e->current)
+   if (!email_is_blocked(e))
      {
-        e->current = EMAIL_POP_OP_RETR;
         snprintf(buf, sizeof(buf), EMAIL_POP3_RETR, id);
         email_write(e, buf, strlen(buf));
      }

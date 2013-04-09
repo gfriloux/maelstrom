@@ -4,7 +4,8 @@
 int
 email_login_imap(Email *e, const unsigned char *data, size_t size, size_t *offset)
 {
-   e->current = EMAIL_IMAP_OP_LOGIN;
+   e->current = EMAIL_IMAP4_OP_LOGIN;
+   DBG("LOGIN CALLED");
    switch (e->state)
      {
       case EMAIL_STATE_SSL:
@@ -23,7 +24,7 @@ email_login_imap(Email *e, const unsigned char *data, size_t size, size_t *offse
         e->state = EMAIL_STATE_USER;
         if (!e->protocol.imap.caps)
           {
-             e->current = EMAIL_IMAP_OP_CAPABILITY;
+             e->current = EMAIL_IMAP4_OP_CAPABILITY;
              email_imap_write(e, NULL, "CAPABILITY\r\n", sizeof("CAPABILITY\r\n") - 1);
              return EMAIL_RETURN_DONE;
           }
@@ -69,7 +70,7 @@ email_login_imap(Email *e, const unsigned char *data, size_t size, size_t *offse
         e->current = 0;
         switch (e->protocol.imap.status)
           {
-           case EMAIL_IMAP_STATUS_OK: break;
+           case EMAIL_OPERATION_STATUS_OK: break;
            default:
              ecore_con_server_del(e->svr);
              /* FIXME: error event */
@@ -78,10 +79,19 @@ email_login_imap(Email *e, const unsigned char *data, size_t size, size_t *offse
           }
         INF("Logged in successfully!");
         e->state++;
-        imap_offset_update(offset, size);
-        ecore_event_add(EMAIL_EVENT_CONNECTED, e, (Ecore_End_Cb)email_fake_free, NULL);
+        if (e->features.imap.NAMESPACE)
+          {
+             Email_Operation *op;
+
+             op = email_op_new(e, EMAIL_IMAP4_OP_NAMESPACE, NULL, NULL);
+             email_imap_write(e, op, EMAIL_IMAP4_NAMESPACE, sizeof(EMAIL_IMAP4_NAMESPACE) - 1);
+          }
+        else
+          ecore_event_add(EMAIL_EVENT_CONNECTED, e, (Ecore_End_Cb)email_fake_free, NULL);
+        *offset += size;
       default:
         break;
      }
+   e->protocol.imap.state = 0;
    return EMAIL_RETURN_EAGAIN;
 }

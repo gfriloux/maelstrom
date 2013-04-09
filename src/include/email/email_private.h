@@ -38,7 +38,7 @@ extern Eina_Hash *_email_contacts_hash;
 
 #define EMAIL_SMTP_PORT 25
 
-#define EMAIL_IMAP_PORT 143
+#define EMAIL_IMAP4_PORT 143
 #define EMAIL_IMAPS_PORT 993
 #define EMAIL_IMAP4_SSL_PORT 585 //< wtf is this used for???
 
@@ -52,6 +52,7 @@ extern Eina_Hash *_email_contacts_hash;
 
 #define EMAIL_IMAP4_LOGOUT "LOGOUT\r\n"
 #define EMAIL_IMAP4_NOOP "NOOP\r\n"
+#define EMAIL_IMAP4_NAMESPACE "NAMESPACE\r\n"
 
 #define EMAIL_SMTP_FROM "MAIL FROM: <%s>\r\n"
 #define EMAIL_SMTP_TO "RCPT TO: <%s>\r\n"
@@ -91,15 +92,6 @@ typedef enum
 
 typedef enum
 {
-   EMAIL_IMAP_STATUS_NONE,
-   EMAIL_IMAP_STATUS_OK,
-   EMAIL_IMAP_STATUS_NO,
-   EMAIL_IMAP_STATUS_BAD,
-   EMAIL_IMAP_STATUS_LAST
-} Email_Imap_Status;
-
-typedef enum
-{
    EMAIL_POP_OP_STAT = 1,
    EMAIL_POP_OP_LIST,
    EMAIL_POP_OP_RSET,
@@ -115,14 +107,21 @@ typedef enum
 
 typedef enum
 {
-   EMAIL_IMAP_OP_CAPABILITY = 1,
-   EMAIL_IMAP_OP_LOGIN,
-   EMAIL_IMAP_OP_LIST,
-   EMAIL_IMAP_OP_SELECT,
-   EMAIL_IMAP_OP_EXAMINE,
-   EMAIL_IMAP_OP_NOOP,
-   EMAIL_IMAP_OP_LOGOUT,
-} Email_Imap_Op;
+   EMAIL_IMAP4_OP_CAPABILITY = 1,
+   EMAIL_IMAP4_OP_NAMESPACE,
+   EMAIL_IMAP4_OP_LOGIN,
+   EMAIL_IMAP4_OP_LIST,
+   EMAIL_IMAP4_OP_SELECT,
+   EMAIL_IMAP4_OP_EXAMINE,
+   EMAIL_IMAP4_OP_NOOP,
+   EMAIL_IMAP4_OP_CREATE,
+   EMAIL_IMAP4_OP_DELETE,
+   EMAIL_IMAP4_OP_RENAME,
+   EMAIL_IMAP4_OP_SUBSCRIBE,
+   EMAIL_IMAP4_OP_UNSUBSCRIBE,
+   EMAIL_IMAP4_OP_LSUB,
+   EMAIL_IMAP4_OP_LOGOUT,
+} Email_Imap4_Op;
 
 /* for simple flag parsing */
 typedef void (*Email_Flag_Set_Cb)(Email *, unsigned int);
@@ -178,6 +177,8 @@ struct Email_Operation
    void *userdata;
    void *cb;
    Eina_Bool deleted : 1;
+   Eina_Bool sent : 1;
+   Eina_Bool blocking : 1;
 };
 
 struct Email
@@ -213,10 +214,11 @@ struct Email
       {
          unsigned int current; //current operation number
          int state; //for various parsers to save their states; < 0 when we're parsing a resp line
-         Email_Imap_Status status; //status of current op
+         Email_Operation_Status status; //status of current op
          Email_Imap4_Mailbox_Info *mbox; //info can be updated with untagged data at any time
          Eina_Bool caps : 1; //whether capabilities have been parsed yet
          Eina_Bool resp : 1; //whether respcode for current line has been parsed yet
+         Eina_List *blockers;
       } imap;
    } protocol;
 
@@ -257,6 +259,8 @@ struct Email
          Eina_Bool QUOTA : 1;
          Eina_Bool SORT : 1;
          Eina_Bool UIDPLUS : 1;
+
+         Eina_Inarray *namespaces[EMAIL_IMAP4_NAMESPACE_LAST];
       } imap;
    } features;
    Email_Type type;
@@ -325,6 +329,22 @@ email_imap_write(Email *e, Email_Operation *op, const char *data, size_t size)
      email_write(e, op->opdata, strlen(op->opdata));
    else
      email_write(e, data, size ?: strlen(data));
+   op->sent = 1;
+}
+
+static inline Eina_Bool
+email_is_blocked(const Email *e)
+{
+   if (email_is_pop(e) || email_is_smtp(e)) return eina_list_count(e->ops) > 1;
+   if (e->protocol.imap.blockers)
+     {
+        Email_Operation *op = eina_list_data_get(e->ops);
+        /* if there's a blocker queue, we are not blocked if the first blocker has not been sent */
+        if (eina_list_data_get(e->protocol.imap.blockers) == op)
+          return !op->sent;
+        return EINA_TRUE;
+     }
+   return EINA_FALSE;
 }
 
 extern Eina_Hash *_email_contacts_hash;

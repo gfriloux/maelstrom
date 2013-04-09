@@ -10,8 +10,9 @@ char *getpass_x(const char *prompt);
 static int count = 0;
 
 static void
-mail_quit(Email_Operation *op EINA_UNUSED)
+mail_quit(Email_Operation *op EINA_UNUSED, Email_Operation_Status success)
 {
+   printf("QUIT: %s\n", success ? "SUCCESS!" : "FAIL!");
    ecore_main_loop_quit();
 }
 

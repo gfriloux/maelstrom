@@ -158,7 +158,7 @@ email_message_send(Email *e, Email_Message *msg, Email_Send_Cb cb, const void *d
    msg->owner = e;
    op = email_op_new(e, EMAIL_SMTP_OP_SEND, cb, data);
    op->opdata = msg;
-   if (!e->current) send_smtp(e);
+   if (!email_is_blocked(e)) send_smtp(e);
    return op;
 }
 

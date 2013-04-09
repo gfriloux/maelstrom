@@ -92,21 +92,27 @@ data_pop(Email *e, int type EINA_UNUSED, Ecore_Con_Event_Server_Data *ev)
       {
          Email_Cb cb;
          Email_Operation *op;
+         Eina_Bool success = EINA_TRUE;
 
          op = eina_list_data_get(e->ops);
          if (!email_op_pop_ok(ev->data, ev->size))
            {
               if (e->current == EMAIL_POP_OP_DELE) ERR("Error with DELE");
               else ERR("Error with QUIT");
+              success = EINA_FALSE;
            }
          else
            {
               if (e->current == EMAIL_POP_OP_DELE) INF("DELE successful");
-              else INF("QUIT");
+              else
+                {
+                   INF("QUIT");
+                   ecore_con_server_del(e->svr);
+                   e->svr = NULL;
+                }
            }
          cb = op->cb;
-         if (cb && (!op->deleted)) cb(op);
-         if (e->current == EMAIL_POP_OP_QUIT) ecore_con_server_del(e->svr);
+         if (cb && (!op->deleted)) cb(op, success);
          break;
       }
       default:

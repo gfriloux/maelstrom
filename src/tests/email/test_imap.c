@@ -5,11 +5,14 @@
 #include <Ecore.h>
 #include "Email.h"
 
+#define IMAP_TEST_MBOX_NAME "EMAILTESTIMAPNAMEHAHA"
+
 char *getpass_x(const char *prompt);
 
 static void
-mail_quit(Email_Operation *op EINA_UNUSED)
+mail_quit(Email_Operation *op, Email_Operation_Status success)
 {
+   printf("QUIT: %s - %s\n", success ? "SUCCESS!" : "FAIL!", email_operation_status_message_get(op));
    ecore_main_loop_quit();
 }
 
@@ -25,7 +28,7 @@ static const char *const MBOX_FLAGS[] =
 };
 
 static void
-mail_flags(Email_Imap_Mailbox_Attribute flags)
+mail_flags(Email_Imap4_Mailbox_Attribute flags)
 {
    unsigned int x;
    for (x = 0; x < 7; x++)
@@ -49,7 +52,7 @@ static const char *const MBOX_RIGHTS[] =
 };
 
 static void
-mail_rights(Email_Imap_Mailbox_Rights flags)
+mail_rights(Email_Imap4_Mailbox_Rights flags)
 {
    unsigned int x;
    for (x = 0; x < 12; x++)
@@ -62,7 +65,7 @@ mailinfo_print(void *d EINA_UNUSED, int type, Email_Imap4_Mailbox_Info *info)
 {
    const char *acc = "READ-WRITE";
 
-   if (info->access == EMAIL_IMAP_MAILBOX_ACCESS_READONLY)
+   if (info->access == EMAIL_IMAP4_MAILBOX_ACCESS_READONLY)
      acc = "READ-ONLY";
    if (type) printf("INBOX INFO: %s\n", acc);
 
@@ -87,17 +90,73 @@ mailinfo_print(void *d EINA_UNUSED, int type, Email_Imap4_Mailbox_Info *info)
    return ECORE_CALLBACK_RENEW;
 }
 
+static void
+mbox_delete(Email_Operation *op, Email_Operation_Status status)
+{
+   char *mbox = email_operation_data_get(op);
+   switch (status)
+     {
+      case EMAIL_OPERATION_STATUS_OK:
+        printf("DELETED TEST MAILBOX SUCCESSFULLY!\n");
+        email_quit(email_operation_email_get(op), mail_quit, NULL);
+        break;
+      case EMAIL_OPERATION_STATUS_NO:
+        printf("FAILED TO CREATE MAILBOX '%s': %s\n", IMAP_TEST_MBOX_NAME, email_operation_status_message_get(op));
+        break;
+      case EMAIL_OPERATION_STATUS_BAD:
+        printf("IMAP SERVER APPEARS TO BE MENTALLY HANDICAPPED!\n");
+      default: break;
+     }
+   free(mbox);
+}
+
+static void
+mbox_create(Email_Operation *op, Email_Operation_Status status)
+{
+   char *mbox = email_operation_data_get(op);
+   switch (status)
+     {
+      case EMAIL_OPERATION_STATUS_OK:
+        printf("CREATED TEST MAILBOX SUCCESSFULLY!\n");
+        break;
+      case EMAIL_OPERATION_STATUS_NO:
+        printf("FAILED TO CREATE MAILBOX '%s': %s\n", mbox, email_operation_status_message_get(op));
+        break;
+      case EMAIL_OPERATION_STATUS_BAD:
+        printf("IMAP SERVER APPEARS TO BE MENTALLY HANDICAPPED!\n");
+        free(mbox);
+      default: break;
+     }
+}
+
 static Eina_Bool
-mail_select(Email_Operation *op EINA_UNUSED, Email_Imap4_Mailbox_Info *info)
+mail_select(Email_Operation *op, Email_Imap4_Mailbox_Info *info)
 {
    const char *acc = "READ-WRITE";
+   char buf[1024];
+   const Eina_Inarray *namespaces;
+   Email_Imap4_Namespace *ns;
+   char *mbox;
 
-   if (info->access == EMAIL_IMAP_MAILBOX_ACCESS_READONLY)
+   if (info->access == EMAIL_IMAP4_MAILBOX_ACCESS_READONLY)
      acc = "READ-ONLY";
-   printf("SELECT INBOX: %s\n", acc);
+   printf("SELECT (%s) INBOX: %s\n", email_operation_status_message_get(op), acc);
    mailinfo_print(NULL, 0, info);
    email_imap4_noop(info->e);
-   email_quit(info->e, mail_quit, NULL);
+   namespaces = email_imap4_namespaces_get(info->e, EMAIL_IMAP4_NAMESPACE_PERSONAL);
+   if (namespaces)
+     {
+        EINA_INARRAY_FOREACH(namespaces, ns)
+          {
+             /* ensure we use the correct namespace so our new mbox doesn't get rejected */
+             snprintf(buf, sizeof(buf), "%s" IMAP_TEST_MBOX_NAME, ns->prefix);
+             break;
+          }
+     }
+   mbox = strdup(namespaces ? buf : IMAP_TEST_MBOX_NAME);
+   op = email_imap4_create(info->e, mbox, mbox_create, mbox);
+   email_operation_blocking_set(op);
+   email_imap4_delete(email_operation_email_get(op), mbox, mbox_delete, mbox);
    return EINA_TRUE;
 }
 
@@ -112,7 +171,7 @@ static const char *const MBOX_ATTRS[] =
 };
 
 static void
-mail_list_attrs(Email_Imap_Mailbox_Attribute flags)
+mail_list_attrs(Email_Imap4_Mailbox_Attribute flags)
 {
    unsigned int x;
    for (x = 0; x < 6; x++)
@@ -126,6 +185,7 @@ mail_list(Email_Operation *op, Eina_List *list)
    Email_List_Item_Imap4 *it;
    const Eina_List *l;
 
+   printf("LIST (%s)\n", email_operation_status_message_get(op));
    EINA_LIST_FOREACH(list, l, it)
      {
         printf("%s: (", it->name);
