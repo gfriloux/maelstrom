@@ -503,12 +503,15 @@ next_imap(Email *e)
               op->mbox = NULL;
               break;
            }
-           case EMAIL_IMAP4_OP_NOOP:
-             email_imap_write(e, op, EMAIL_IMAP4_NOOP, sizeof(EMAIL_IMAP4_NOOP));
+#define CASE(TYPE) \
+           case EMAIL_IMAP4_OP_##TYPE: \
+             email_imap_write(e, op, EMAIL_IMAP4_##TYPE, sizeof(EMAIL_IMAP4_##TYPE) - 1); \
              break;
-           case EMAIL_IMAP4_OP_LOGOUT:
-             email_imap_write(e, op, EMAIL_IMAP4_LOGOUT, sizeof(EMAIL_IMAP4_LOGOUT));
-             break;
+           CASE(EXPUNGE);
+           CASE(NOOP);
+           CASE(CLOSE);
+           CASE(LOGOUT);
+#undef CASE
            default:
              break;
           }
@@ -558,11 +561,16 @@ imap_dispatch(Email *e)
 
          op = eina_list_data_get(e->ops);
          cb = op->cb;
+        if (e->protocol.imap.status != EMAIL_OPERATION_STATUS_OK)
+          eina_stringshare_replace(&e->protocol.imap.mboxname, NULL);
          if (cb && (!op->deleted)) tofree = !!cb(op, e->protocol.imap.mbox);
-         if (tofree) free(e->protocol.imap.mbox);
+         if (tofree) email_imap4_mailboxinfo_free(e->protocol.imap.mbox);
          e->protocol.imap.mbox = NULL;
          break;
       }
+      case EMAIL_IMAP4_OP_CLOSE:
+        if (e->protocol.imap.status == EMAIL_OPERATION_STATUS_OK)
+          eina_stringshare_replace(&e->protocol.imap.mboxname, NULL);
       case EMAIL_IMAP4_OP_LOGOUT:
       case EMAIL_IMAP4_OP_CREATE:
       case EMAIL_IMAP4_OP_DELETE:
@@ -570,6 +578,7 @@ imap_dispatch(Email *e)
       case EMAIL_IMAP4_OP_SUBSCRIBE:
       case EMAIL_IMAP4_OP_UNSUBSCRIBE:
       case EMAIL_IMAP4_OP_APPEND:
+      case EMAIL_IMAP4_OP_EXPUNGE:
       {
          Email_Cb cb;
          Email_Operation *op;
@@ -958,9 +967,18 @@ imap_parse_respcode_nums(Email *e, const unsigned char *data, size_t size, size_
    else if (!strncasecmp((char*)p, "RECENT", sizeof("RECENT") - 1))
      imap_mbox_info_get(e)->recent = x;
    else if (!strncasecmp((char*)p, "EXPUNGE", sizeof("EXPUNGE") - 1))
-     imap_mbox_info_get(e)->expunge = x;
+     {
+        if (!imap_mbox_info_get(e)->expunge)
+          imap_mbox_info_get(e)->expunge = eina_inarray_new(sizeof(int), 0);
+        eina_inarray_push(imap_mbox_info_get(e)->expunge, &x);
+     }
    else if (!strncasecmp((char*)p, "FETCH", sizeof("FETCH") - 1))
-     imap_mbox_info_get(e)->fetch = x;
+     {
+        if (!imap_mbox_info_get(e)->fetch)
+          imap_mbox_info_get(e)->fetch = eina_inarray_new(sizeof(Email_Imap4_Message), 0);
+        /* FIXME: rest of rfc3501 p87 msg-att-static */
+        eina_inarray_push(imap_mbox_info_get(e)->fetch, &x);
+     }
    else goto error;
    e->need_crlf = 1;
    imap_offset_update(offset, pp - data);
@@ -1099,6 +1117,7 @@ imap_data_enum_handle(Email *e, const unsigned char *data, size_t size, size_t *
         case EMAIL_IMAP4_OP_SELECT:
         case EMAIL_IMAP4_OP_EXAMINE:
         case EMAIL_IMAP4_OP_NOOP:
+        case EMAIL_IMAP4_OP_CLOSE:
         case EMAIL_IMAP4_OP_CREATE:
         case EMAIL_IMAP4_OP_DELETE:
         case EMAIL_IMAP4_OP_RENAME:

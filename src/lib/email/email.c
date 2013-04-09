@@ -25,7 +25,8 @@ _struct_reset(Email *e)
      {
         unsigned int x;
 
-        free(e->protocol.imap.mbox);
+        email_imap4_mailboxinfo_free(e->protocol.imap.mbox);
+        eina_stringshare_replace(&e->protocol.imap.mboxname, NULL);
         for (x = 0; x < EMAIL_IMAP4_NAMESPACE_LAST; x++)
           {
              Email_Imap4_Namespace *ns;

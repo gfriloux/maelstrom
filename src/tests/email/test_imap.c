@@ -105,6 +105,16 @@ mailinfo_print(void *d EINA_UNUSED, int type, Email_Imap4_Mailbox_Info *info)
    mail_rights(info->rights);
    fputc('\n', stdout);
 
+   if (info->expunge)
+     {
+        unsigned int *num;
+
+        printf("\tEXPUNGE:");
+        EINA_INARRAY_FOREACH(info->expunge, num)
+          printf(" %u", *num);
+        fputc('\n', stdout);
+     }
+
    if (info->uidvalidity) printf("\tUIDVALIDITY: %llu\n", info->uidvalidity);
    if (info->uidnext) printf("\tUIDNEXT: %llu\n", info->uidnext);
    return ECORE_CALLBACK_RENEW;
@@ -124,7 +134,7 @@ mbox_delete(Email_Operation *op, Email_Operation_Status status)
         printf("FAILED TO CREATE MAILBOX '%s': %s\n", IMAP_TEST_MBOX_NAME, email_operation_status_message_get(op));
         break;
       case EMAIL_OPERATION_STATUS_BAD:
-        printf("IMAP SERVER APPEARS TO BE MENTALLY HANDICAPPED!\n");
+        printf("IMAP SERVER APPEARS TO BE MECHANICALLY HANDICAPPED!\n");
       default: break;
      }
    free(mbox);
@@ -143,7 +153,7 @@ mbox_sent(Email_Operation *op, Email_Operation_Status status)
         printf("FAILED TO APPEND MESSAGE TO MAILBOX: %s\n", email_operation_status_message_get(op));
         break;
       case EMAIL_OPERATION_STATUS_BAD:
-        printf("IMAP SERVER APPEARS TO BE MENTALLY HANDICAPPED!\n");
+        printf("IMAP SERVER APPEARS TO BE MECHANICALLY HANDICAPPED!\n");
       default: break;
      }
    email_message_free(msg);
@@ -162,8 +172,25 @@ mbox_create(Email_Operation *op, Email_Operation_Status status)
         printf("FAILED TO CREATE MAILBOX '%s': %s\n", mbox, email_operation_status_message_get(op));
         break;
       case EMAIL_OPERATION_STATUS_BAD:
-        printf("IMAP SERVER APPEARS TO BE MENTALLY HANDICAPPED!\n");
+        printf("IMAP SERVER APPEARS TO BE MECHANICALLY HANDICAPPED!\n");
         free(mbox);
+      default: break;
+     }
+}
+
+static void
+mail_expunge(Email_Operation *op, Email_Operation_Status status)
+{
+   switch (status)
+     {
+      case EMAIL_OPERATION_STATUS_OK:
+        printf("EXPUNGED TEST MAILBOX SUCCESSFULLY!\n");
+        break;
+      case EMAIL_OPERATION_STATUS_NO:
+        printf("FAILED TO EXPUNGE MAILBOX '%s': %s\n", email_imap4_mbox_get(email_operation_email_get(op)), email_operation_status_message_get(op));
+        break;
+      case EMAIL_OPERATION_STATUS_BAD:
+        printf("IMAP SERVER APPEARS TO BE MECHANICALLY HANDICAPPED!\n");
       default: break;
      }
 }
@@ -172,31 +199,22 @@ static Eina_Bool
 mail_select(Email_Operation *op, Email_Imap4_Mailbox_Info *info)
 {
    const char *acc = "READ-WRITE";
-   char buf[1024];
-   const Eina_Inarray *namespaces;
-   Email_Imap4_Namespace *ns;
    Email_Message *msg;
-   char *mbox;
    Email_Contact *ec;
+   char *mbox = email_operation_data_get(op);
 
+   if (!info)
+     {
+        printf("SELECT FAILED!\n");
+        free(mbox);
+        ecore_main_loop_quit();
+        return ECORE_CALLBACK_RENEW;
+     }
    if (info->access == EMAIL_IMAP4_MAILBOX_ACCESS_READONLY)
      acc = "READ-ONLY";
    printf("SELECT (%s) INBOX: %s\n", email_operation_status_message_get(op), acc);
    mailinfo_print(NULL, 0, info);
    email_imap4_noop(info->e);
-   namespaces = email_imap4_namespaces_get(info->e, EMAIL_IMAP4_NAMESPACE_PERSONAL);
-   if (namespaces)
-     {
-        EINA_INARRAY_FOREACH(namespaces, ns)
-          {
-             /* ensure we use the correct namespace so our new mbox doesn't get rejected */
-             snprintf(buf, sizeof(buf), "%s" IMAP_TEST_MBOX_NAME, ns->prefix);
-             break;
-          }
-     }
-   mbox = strdup(namespaces ? buf : IMAP_TEST_MBOX_NAME);
-   op = email_imap4_create(info->e, mbox, mbox_create, mbox);
-   email_operation_blocking_set(op);
    msg = email_message_new();
    email_message_content_set(msg, IMAP_TEST_MESSAGE, sizeof(IMAP_TEST_MESSAGE) - 1);
    ec = email_contact_new(IMAP_TEST_MESSAGE_FROM);
@@ -207,7 +225,10 @@ mail_select(Email_Operation *op, Email_Imap4_Mailbox_Info *info)
    email_message_contact_add(msg, ec, EMAIL_MESSAGE_CONTACT_TYPE_TO);
    email_contact_free(ec);
    email_message_subject_set(msg, IMAP_TEST_MESSAGE_SUBJECT);
-   email_imap4_append(info->e, mbox, msg, EMAIL_IMAP4_MAIL_FLAG_DRAFT, mbox_sent, msg);
+   op = email_imap4_append(info->e, mbox, msg, EMAIL_IMAP4_MAIL_FLAG_DRAFT | EMAIL_IMAP4_MAIL_FLAG_DELETED, mbox_sent, msg);
+   email_operation_blocking_set(op);
+   email_imap4_expunge(info->e, mail_expunge, NULL);
+   email_imap4_close(info->e, NULL, NULL);
    email_imap4_delete(info->e, mbox, mbox_delete, mbox);
    return EINA_TRUE;
 }
@@ -236,6 +257,11 @@ mail_list(Email_Operation *op, Eina_List *list)
 {
    Email_List_Item_Imap4 *it;
    const Eina_List *l;
+   Email *e = email_operation_email_get(op);
+   char buf[1024];
+   const Eina_Inarray *namespaces;
+   Email_Imap4_Namespace *ns;
+   char *mbox;
 
    printf("LIST (%s)\n", email_operation_status_message_get(op));
    EINA_LIST_FOREACH(list, l, it)
@@ -244,7 +270,20 @@ mail_list(Email_Operation *op, Eina_List *list)
         mail_list_attrs(it->attributes);
         printf(" )\n");
      }
-   email_imap4_select(email_operation_email_get(op), "INBOX", mail_select, NULL);
+   namespaces = email_imap4_namespaces_get(e, EMAIL_IMAP4_NAMESPACE_PERSONAL);
+   if (namespaces)
+     {
+        EINA_INARRAY_FOREACH(namespaces, ns)
+          {
+             /* ensure we use the correct namespace so our new mbox doesn't get rejected */
+             snprintf(buf, sizeof(buf), "%s" IMAP_TEST_MBOX_NAME, ns->prefix);
+             break;
+          }
+     }
+   mbox = strdup(namespaces ? buf : IMAP_TEST_MBOX_NAME);
+   op = email_imap4_create(e, mbox, mbox_create, mbox);
+   email_operation_blocking_set(op);
+   email_imap4_select(e, mbox, mail_select, mbox);
    return EINA_TRUE;
 }
 

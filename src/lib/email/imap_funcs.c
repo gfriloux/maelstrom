@@ -49,6 +49,24 @@ imap_func_message_write(Email_Operation *op, Email_Message *msg, const char *mbo
    op->opdata = NULL;
 }
 
+Eina_Stringshare *
+email_imap4_mbox_get(const Email *e)
+{
+   EINA_SAFETY_ON_NULL_RETURN_VAL(e, NULL);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, NULL);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(!email_is_imap(e), NULL);
+   return e->protocol.imap.mboxname;
+}
+
+void
+email_imap4_mailboxinfo_free(Email_Imap4_Mailbox_Info *info)
+{
+   if (!info) return;
+   if (info->expunge) eina_inarray_free(info->expunge);
+   if (info->fetch) eina_inarray_free(info->fetch);
+   free(info);
+}
+
 const Eina_Inarray *
 email_imap4_namespaces_get(const Email *e, Email_Imap4_Namespace_Type type)
 {
@@ -114,6 +132,7 @@ email_imap4_select(Email *e, const char *mbox, Email_Imap4_Mailbox_Info_Cb cb, c
 
    op = email_op_new(e, EMAIL_IMAP4_OP_SELECT, cb, data);
    snprintf(buf, sizeof(buf), "SELECT %s" CRLF, mbox);
+   eina_stringshare_replace(&e->protocol.imap.mboxname, mbox);
    if (!email_is_blocked(e))
      email_imap_write(e, op, buf, 0);
    else
@@ -134,10 +153,25 @@ email_imap4_examine(Email *e, const char *mbox, Email_Imap4_Mailbox_Info_Cb cb, 
 
    op = email_op_new(e, EMAIL_IMAP4_OP_EXAMINE, cb, data);
    snprintf(buf, sizeof(buf), "EXAMINE %s" CRLF, mbox);
+   eina_stringshare_replace(&e->protocol.imap.mboxname, mbox);
    if (!email_is_blocked(e))
      email_imap_write(e, op, buf, 0);
    else
      op->opdata = strdup(buf);
+   return op;
+}
+
+Email_Operation *
+email_imap4_expunge(Email *e, Email_Cb cb, const void *data)
+{
+   Email_Operation *op;
+
+   EINA_SAFETY_ON_NULL_RETURN_VAL(e, NULL);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, NULL);
+
+   op = email_op_new(e, EMAIL_IMAP4_OP_EXPUNGE, cb, data);
+   if (!email_is_blocked(e))
+     email_imap_write(e, op, EMAIL_IMAP4_EXPUNGE, sizeof(EMAIL_IMAP4_EXPUNGE) - 1);
    return op;
 }
 
@@ -152,6 +186,20 @@ email_imap4_noop(Email *e)
    op = email_op_new(e, EMAIL_IMAP4_OP_NOOP, NULL, NULL);
    if (!email_is_blocked(e))
      email_imap_write(e, op, EMAIL_IMAP4_NOOP, sizeof(EMAIL_IMAP4_NOOP) - 1);
+   return op;
+}
+
+Email_Operation *
+email_imap4_close(Email *e, Email_Cb cb, const void *data)
+{
+   Email_Operation *op;
+
+   EINA_SAFETY_ON_NULL_RETURN_VAL(e, NULL);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, NULL);
+
+   op = email_op_new(e, EMAIL_IMAP4_OP_CLOSE, cb, data);
+   if (!email_is_blocked(e))
+     email_imap_write(e, op, EMAIL_IMAP4_CLOSE, sizeof(EMAIL_IMAP4_CLOSE) - 1);
    return op;
 }
 

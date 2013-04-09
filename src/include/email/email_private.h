@@ -52,6 +52,8 @@ extern Eina_Hash *_email_contacts_hash;
 
 #define EMAIL_IMAP4_LOGOUT "LOGOUT\r\n"
 #define EMAIL_IMAP4_NOOP "NOOP\r\n"
+#define EMAIL_IMAP4_CLOSE "CLOSE\r\n"
+#define EMAIL_IMAP4_EXPUNGE "EXPUNGE\r\n"
 #define EMAIL_IMAP4_NAMESPACE "NAMESPACE\r\n"
 
 #define EMAIL_SMTP_FROM "MAIL FROM: <%s>\r\n"
@@ -114,6 +116,8 @@ typedef enum
    EMAIL_IMAP4_OP_SELECT,
    EMAIL_IMAP4_OP_EXAMINE,
    EMAIL_IMAP4_OP_NOOP,
+   EMAIL_IMAP4_OP_CLOSE,
+   EMAIL_IMAP4_OP_EXPUNGE,
    EMAIL_IMAP4_OP_CREATE,
    EMAIL_IMAP4_OP_DELETE,
    EMAIL_IMAP4_OP_RENAME,
@@ -221,9 +225,10 @@ struct Email
          int state; //for various parsers to save their states; < 0 when we're parsing a resp line
          Email_Operation_Status status; //status of current op
          Email_Imap4_Mailbox_Info *mbox; //info can be updated with untagged data at any time
+         Eina_Stringshare *mboxname; //currently SELECT/EXAMINE mailbox name
+         Eina_List *blockers;
          Eina_Bool caps : 1; //whether capabilities have been parsed yet
          Eina_Bool resp : 1; //whether respcode for current line has been parsed yet
-         Eina_List *blockers;
       } imap;
    } protocol;
 

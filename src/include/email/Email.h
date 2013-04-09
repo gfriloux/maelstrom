@@ -127,6 +127,14 @@ typedef struct
    Email_Imap4_Mailbox_Attribute attributes;
 } Email_List_Item_Imap4; //mailboxes
 
+typedef struct
+{
+   unsigned int id;
+   Email_Imap4_Mail_Flag flags;
+   unsigned long date;
+   /* FIXME: rest of rfc3501 p87 msg-att-static */
+} Email_Imap4_Message;
+
 struct Email_Imap4_Mailbox_Info
 {
    Email *e;
@@ -135,8 +143,8 @@ struct Email_Imap4_Mailbox_Info
    Email_Imap4_Mailbox_Access access;
    Email_Imap4_Mailbox_Rights rights;
    unsigned int exists;
-   unsigned int expunge;
-   unsigned int fetch;
+   Eina_Inarray *expunge; // unsigned int
+   Eina_Inarray *fetch; // Email_Imap4_Message
    unsigned int recent;
    unsigned int unseen;
    unsigned long long uidvalidity;
@@ -191,18 +199,22 @@ EAPI void email_smtp_set(Email *e, const char *from_domain);
 EAPI Eina_Bool email_connect(Email *e, const char *host, Eina_Bool secure);
 
 EAPI Email_Operation *email_quit(Email *e, Email_Cb cb, const void *data);
-EAPI Email_Operation * email_pop3_stat(Email *e, Email_Stat_Cb cb, const void *data);
-EAPI Email_Operation * email_pop3_list(Email *e, Email_List_Cb cb, const void *data);
-EAPI Email_Operation * email_pop3_rset(Email *e, Email_Cb cb, const void *data);
-EAPI Email_Operation * email_pop3_delete(Email *e, unsigned int id, Email_Cb cb, const void *data);
-EAPI Email_Operation * email_pop3_retrieve(Email *e, unsigned int id, Email_Retr_Cb cb, const void *data);
+EAPI Email_Operation *email_pop3_stat(Email *e, Email_Stat_Cb cb, const void *data);
+EAPI Email_Operation *email_pop3_list(Email *e, Email_List_Cb cb, const void *data);
+EAPI Email_Operation *email_pop3_rset(Email *e, Email_Cb cb, const void *data);
+EAPI Email_Operation *email_pop3_delete(Email *e, unsigned int id, Email_Cb cb, const void *data);
+EAPI Email_Operation *email_pop3_retrieve(Email *e, unsigned int id, Email_Retr_Cb cb, const void *data);
 
+EAPI Eina_Stringshare *email_imap4_mbox_get(const Email *e);
+EAPI void email_imap4_mailboxinfo_free(Email_Imap4_Mailbox_Info *info);
 EAPI const Eina_Inarray /* Email_Imap_Namespace */ *email_imap4_namespaces_get(const Email *e, Email_Imap4_Namespace_Type type);
 EAPI Email_Operation *email_imap4_list(Email *e, const char *reference, const char *mbox, Email_List_Cb cb, const void *data);
 EAPI Email_Operation *email_imap4_lsub(Email *e, const char *reference, const char *mbox, Email_List_Cb cb, const void *data);
 EAPI Email_Operation *email_imap4_select(Email *e, const char *mbox, Email_Imap4_Mailbox_Info_Cb cb, const void *data);
 EAPI Email_Operation *email_imap4_examine(Email *e, const char *mbox, Email_Imap4_Mailbox_Info_Cb cb, const void *data);
+EAPI Email_Operation *email_imap4_expunge(Email *e, Email_Cb cb, const void *data);
 EAPI Email_Operation *email_imap4_noop(Email *e);
+EAPI Email_Operation *email_imap4_close(Email *e, Email_Cb cb, const void *data);
 EAPI Email_Operation *email_imap4_create(Email *e, const char *mbox, Email_Cb cb, const void *data);
 EAPI Email_Operation *email_imap4_delete(Email *e, const char *mbox, Email_Cb cb, const void *data);
 EAPI Email_Operation *email_imap4_rename(Email *e, const char *mbox, const char *newmbox, Email_Cb cb, const void *data);
