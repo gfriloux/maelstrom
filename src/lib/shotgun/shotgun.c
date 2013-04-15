@@ -144,7 +144,7 @@ shotgun_data_detect(Shotgun_Auth *auth, Ecore_Con_Event_Server_Data *ev)
         data += 21, len -= 21;
      }
 
-   tag = data + 1, len--;;
+   tag = data + 1, len--;
    while ((tag[0] != '>') && (tag[0] != ' '))
      {
         //DBG("\ndata: '%s'\ntag: '%s'", data, tag);
