@@ -4,8 +4,8 @@ void
 auth_cram_md5(Email *e, const unsigned char *data, size_t size)
 {
    char *b64, md5sum[33];
-   unsigned char *bin, digest[16];
-   int bsize;
+   unsigned char *bin, digest[16] = {0};
+   size_t bsize;
    Eina_Strbuf *sbuf;
 
    bin = email_base64_decode((const char*)data, size, &bsize);
@@ -14,7 +14,7 @@ auth_cram_md5(Email *e, const unsigned char *data, size_t size)
    email_md5_digest_to_str(digest, md5sum);
    sbuf = eina_strbuf_new();
    eina_strbuf_append_printf(sbuf, "%s %s", e->username, md5sum);
-   b64 = email_base64_encode(eina_strbuf_string_get(sbuf), eina_strbuf_length_get(sbuf), &bsize);
+   b64 = email_base64_encode((void*)eina_strbuf_string_get(sbuf), eina_strbuf_length_get(sbuf), &bsize);
    eina_strbuf_free(sbuf);
    ecore_con_server_send(e->svr, b64, bsize);
    ecore_con_server_send(e->svr, CRLF, CRLFLEN);

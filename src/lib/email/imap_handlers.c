@@ -1,5 +1,6 @@
 #include "email_private.h"
 #include <assert.h>
+#include <sys/param.h>
 
 static const char *const imap_status[] =
 {
@@ -147,28 +148,55 @@ typedef enum
 
 typedef enum
 {
-   MAILBOX_FLAG_UNSUPPORTED = 0,
-   MAILBOX_FLAG_ANSWERED,
-   MAILBOX_FLAG_DELETED,
-   MAILBOX_FLAG_DRAFT,
-   MAILBOX_FLAG_FLAGGED,
-   MAILBOX_FLAG_RECENT,
-   MAILBOX_FLAG_SEEN,
-   MAILBOX_FLAG_STAR,
-   MAILBOX_FLAG_LAST
-} Mailbox_Flags;
+   MAIL_FLAG_UNSUPPORTED = 0,
+   MAIL_FLAG_ANSWERED,
+   MAIL_FLAG_DELETED,
+   MAIL_FLAG_DRAFT,
+   MAIL_FLAG_FLAGGED,
+   MAIL_FLAG_RECENT,
+   MAIL_FLAG_SEEN,
+   MAIL_FLAG_STAR,
+   MAIL_FLAG_LAST
+} Mail_Flags;
 
-static const Imap_String const MAILBOX_FLAGS[] =
+static const Imap_String const MAIL_FLAGS[] =
 {
-   [MAILBOX_FLAG_UNSUPPORTED] = CS(""),
-   [MAILBOX_FLAG_ANSWERED] = CS("\\ANSWERED"),
-   [MAILBOX_FLAG_DELETED] = CS("\\DELETED"),
-   [MAILBOX_FLAG_DRAFT] = CS("\\DRAFT"),
-   [MAILBOX_FLAG_FLAGGED] = CS("\\FLAGGED"),
-   [MAILBOX_FLAG_RECENT] = CS("\\RECENT"),
-   [MAILBOX_FLAG_SEEN] = CS("\\SEEN"),
-   [MAILBOX_FLAG_STAR] = CS("\\*"),
-   [MAILBOX_FLAG_LAST] = CS(""),
+   [MAIL_FLAG_UNSUPPORTED] = CS(""),
+   [MAIL_FLAG_ANSWERED] = CS("\\ANSWERED"),
+   [MAIL_FLAG_DELETED] = CS("\\DELETED"),
+   [MAIL_FLAG_DRAFT] = CS("\\DRAFT"),
+   [MAIL_FLAG_FLAGGED] = CS("\\FLAGGED"),
+   [MAIL_FLAG_RECENT] = CS("\\RECENT"),
+   [MAIL_FLAG_SEEN] = CS("\\SEEN"),
+   [MAIL_FLAG_STAR] = CS("\\*"),
+   [MAIL_FLAG_LAST] = CS(""),
+};
+
+typedef enum
+{
+   MAIL_ATTRIBUTE_UNSUPPORTED = 0,
+   MAIL_ATTRIBUTE_FLAGS,
+   MAIL_ATTRIBUTE_ENVELOPE,
+   MAIL_ATTRIBUTE_INTERNALDATE,
+   MAIL_ATTRIBUTE_RFC822,
+   MAIL_ATTRIBUTE_BODYSTRUCTURE,
+   MAIL_ATTRIBUTE_BODY,
+   MAIL_ATTRIBUTE_UID,
+   MAIL_ATTRIBUTE_LAST
+} Mail_Attributes;
+
+
+static const Imap_String const MAIL_ATTRIBUTES[] =
+{
+   [MAIL_ATTRIBUTE_UNSUPPORTED] = CS(""),
+   [MAIL_ATTRIBUTE_FLAGS] = CS("FLAGS ("),
+   [MAIL_ATTRIBUTE_ENVELOPE] = CS("ENVELOPE ("),
+   [MAIL_ATTRIBUTE_INTERNALDATE] = CS("INTERNALDATE "),
+   [MAIL_ATTRIBUTE_RFC822] = CS("RFC822"),
+   [MAIL_ATTRIBUTE_BODYSTRUCTURE] = CS("BODYSTRUCTURE "),
+   [MAIL_ATTRIBUTE_BODY] = CS("BODY"),
+   [MAIL_ATTRIBUTE_UID] = CS("UID "),
+   [MAIL_ATTRIBUTE_LAST] = CS("")
 };
 
 #undef CS
@@ -275,14 +303,14 @@ static int MAILBOX_ATTRIBUTE_PREFIXES[128] =
 /* table to lookup where to start comparing mbox flag strings based on first character
  * NULL means there's no possible matches so we can just print a fixme and skip immediately
  */
-static int MAILBOX_FLAG_PREFIXES[128] =
+static int MAIL_FLAG_PREFIXES[128] =
 {
-   ['a'] = MAILBOX_FLAG_ANSWERED,
+   ['a'] = MAIL_FLAG_ANSWERED,
    ['b'] = 0,
    ['c'] = 0,
-   ['d'] = MAILBOX_FLAG_DELETED,
+   ['d'] = MAIL_FLAG_DELETED,
    ['e'] = 0,
-   ['f'] = MAILBOX_FLAG_FLAGGED,
+   ['f'] = MAIL_FLAG_FLAGGED,
    ['g'] = 0,
    ['h'] = 0,
    ['i'] = 0,
@@ -294,8 +322,8 @@ static int MAILBOX_FLAG_PREFIXES[128] =
    ['o'] = 0,
    ['p'] = 0,
    ['q'] = 0,
-   ['r'] = MAILBOX_FLAG_RECENT,
-   ['s'] = MAILBOX_FLAG_SEEN,
+   ['r'] = MAIL_FLAG_RECENT,
+   ['s'] = MAIL_FLAG_SEEN,
    ['t'] = 0,
    ['u'] = 0,
    ['v'] = 0,
@@ -303,7 +331,7 @@ static int MAILBOX_FLAG_PREFIXES[128] =
    ['x'] = 0,
    ['y'] = 0,
    ['z'] = 0,
-   ['*'] = MAILBOX_FLAG_STAR,
+   ['*'] = MAIL_FLAG_STAR,
 };
 
 static int MAILBOX_RIGHTS[128] =
@@ -332,6 +360,37 @@ static int MAILBOX_RIGHTS[128] =
    ['v'] = 0,
    ['w'] = MAILBOX_RIGHT_WRITE,
    ['x'] = MAILBOX_RIGHT_DELETE_MBOX,
+   ['y'] = 0,
+   ['z'] = 0,
+   ['*'] = 0,
+};
+
+static int MAIL_ATTRIBUTE_PREFIXES[128] =
+{
+   ['a'] = 0,
+   ['b'] = MAIL_ATTRIBUTE_BODYSTRUCTURE,
+   ['c'] = 0,
+   ['d'] = 0,
+   ['e'] = MAIL_ATTRIBUTE_ENVELOPE,
+   ['f'] = MAIL_ATTRIBUTE_FLAGS,
+   ['g'] = 0,
+   ['h'] = 0,
+   ['i'] = MAIL_ATTRIBUTE_INTERNALDATE,
+   ['j'] = 0,
+   ['k'] = 0,
+   ['l'] = 0,
+   ['m'] = 0,
+   ['n'] = 0,
+   ['o'] = 0,
+   ['p'] = 0,
+   ['q'] = 0,
+   ['r'] = MAIL_ATTRIBUTE_RFC822,
+   ['s'] = 0,
+   ['t'] = 0,
+   ['u'] = MAIL_ATTRIBUTE_UID,
+   ['v'] = 0,
+   ['w'] = 0,
+   ['x'] = 0,
    ['y'] = 0,
    ['z'] = 0,
    ['*'] = 0,
@@ -484,6 +543,7 @@ next_imap(Email *e)
            case EMAIL_IMAP4_OP_RENAME:
            case EMAIL_IMAP4_OP_SUBSCRIBE:
            case EMAIL_IMAP4_OP_UNSUBSCRIBE:
+           case EMAIL_IMAP4_OP_FETCH:
              email_imap_write(e, op, op->opdata, 0);
              free(op->opdata);
              op->opdata = NULL;
@@ -521,7 +581,7 @@ next_imap(Email *e)
 static void
 imap_dispatch(Email *e)
 {
-   Eina_Bool tofree = EINA_TRUE;
+   Eina_Bool tofree = EINA_FALSE;
    const char *opname = "LIST";
 
    switch (e->current)
@@ -550,6 +610,31 @@ imap_dispatch(Email *e)
                   eina_stringshare_del(it->name);
                   free(it);
                }
+          }
+        break;
+      }
+      case EMAIL_IMAP4_OP_FETCH:
+      {
+        Email_Imap4_Fetch_Cb cb;
+        Email_Operation *op;
+        Eina_Inarray *fetch;
+
+        op = eina_list_data_get(e->ops);
+        cb = op->cb;
+        fetch = imap_mbox_info_get(e)->fetch;
+        INF("FETCH returned %u messages", fetch ? eina_inarray_count(fetch) : 0);
+        if (cb && (!op->deleted))
+          {
+             tofree = !!cb(op, fetch);
+             imap_mbox_info_get(e)->fetch = NULL;
+          }
+        if (tofree && fetch)
+          {
+             Email_Imap4_Message *it;
+
+             EINA_INARRAY_FOREACH(fetch, it)
+               email_message_free(it->msg);
+             eina_inarray_free(fetch);
           }
         break;
       }
@@ -621,7 +706,7 @@ imap_atom_special(char c)
    return EINA_FALSE;
 }
 
-static unsigned long long
+static size_t
 imap_parse_num(const unsigned char *data, size_t size, size_t *length)
 {
    char buf[256];
@@ -689,15 +774,24 @@ imap_mailbox_attribute_set(Email *e, Mailbox_Attributes flag)
 }
 
 static void
-imap_mailbox_flag_set(Email *e, Mailbox_Flags flag)
+imap_mailbox_flag_set(Email *e, Mail_Flags flag)
 {
    imap_mbox_info_get(e)->flags |= 1 << (flag - 1);
 }
 
 static void
-imap_mailbox_permanentflag_set(Email *e, Mailbox_Flags flag)
+imap_mailbox_permanentflag_set(Email *e, Mail_Flags flag)
 {
    imap_mbox_info_get(e)->permanentflags |= 1 << (flag - 1);
+}
+
+static void
+imap_mail_fetch_flag_set(Email *e, Mail_Flags flag)
+{
+   Email_Imap4_Message *im;
+
+   im = eina_inarray_nth(imap_mbox_info_get(e)->fetch, eina_inarray_count(imap_mbox_info_get(e)->fetch) - 1);
+   im->flags |= 1 << (flag - 1);
 }
 
 /* utility for shortening flag mapper lines */
@@ -893,7 +987,7 @@ imap_parse_mailbox_flags(Email *e, Email_Flag_Set_Cb cb, const unsigned char *da
 
    while (1)
      {
-        if (!IMAP_FLAG_MAPPER(1, cb, MAILBOX_FLAG_PREFIXES, MAILBOX_FLAGS, MAILBOX_FLAG_LAST)) goto out;
+        if (!IMAP_FLAG_MAPPER(1, cb, MAIL_FLAG_PREFIXES, MAIL_FLAGS, MAIL_FLAG_LAST)) goto out;
         /* flag could not be matched or end of flags */
         for (pp = p; DIFF(pp - data) + 1 < size; pp++)
           if (imap_atom_special(pp[0]) || (pp[0] == '\\')) break; // backslash is valid here
@@ -947,6 +1041,867 @@ imap_parse_mailbox_rights(Email *e, const unsigned char *data, size_t size, size
    return ret;
 }
 
+Email_Contact *
+imap_parse_fetch_address(const unsigned char *data, size_t size, size_t *end)
+{
+   const unsigned char *pp, *p = data;
+   unsigned int state;
+   char addr[4096];
+   Email_Contact *ec = NULL;
+   Eina_Stringshare *name = NULL;
+   Eina_Stringshare *rtaddr = NULL;
+   const unsigned char *mbox[2] = {NULL};
+   const unsigned char *host[2] = {NULL};
+
+/*
+
+"(" addr-name SP addr-adl SP addr-mailbox SP addr-host ")"
+
+*/
+   p++;
+   for (state = 0; state < 4; state++)
+     {
+        if (!strncasecmp((char*)p, "NIL", 3))
+          {
+            p += 3;
+            if (p[0] == ' ') p++;
+            continue;
+          }
+        if (!strncasecmp((char*)p, "\"\"", 2))
+          {
+            p += 2;
+            if (p[0] == ' ') p++;
+            continue;
+          }
+        p++;
+        pp = memchr(p, '"', size - DIFF(p - data));
+        if (!pp) return ec;
+        switch (state)
+          {
+           case 0: //addr-name
+             name = eina_stringshare_add_length((char*)p, pp - p);
+             break;
+           case 1: //addr-adl
+             rtaddr = eina_stringshare_add_length((char*)p, pp - p);
+             break;
+           case 2: //addr-mailbox
+             mbox[0] = p, mbox[1] = pp;
+             break;
+           case 3:
+             host[0] = p, host[1] = pp;
+             break;
+          }
+        p = pp + 2;
+     }
+   if (DIFF(mbox[1] - mbox[0]) + DIFF(host[1] - host[0]) > sizeof(addr) - 2)
+     {
+        eina_stringshare_del(name);
+        eina_stringshare_del(rtaddr);
+        return NULL;
+     }
+   memcpy(addr, mbox[0], DIFF(mbox[1] - mbox[0]));
+   addr[DIFF(mbox[1] - mbox[0])] = '@';
+   memcpy(addr + DIFF(mbox[1] - mbox[0]) + 1, host[0], DIFF(host[1] - host[0]));
+   addr[DIFF(mbox[1] - mbox[0]) + DIFF(host[1] - host[0]) + 1] = 0;
+   ec = email_contact_new(addr);
+   ec->name = name;
+   ec->routing_address = rtaddr;
+   *end = DIFF(p - data);
+   return ec;
+}
+
+size_t
+imap_parse_fetch_envelope(Email *e, const unsigned char *data, size_t size, Email_Imap4_Message *im)
+{
+   const unsigned char *pp, *p = data;
+   Email_Contact *ec;
+   struct tm t;
+   size_t off;
+   unsigned int state;
+
+/*
+
+"(" env-date SP env-subject SP env-from SP env-sender SP env-reply-to SP env-to SP env-cc SP env-bcc SP env-in-reply-to SP env-message-id ")"
+    ^
+*/
+   if (!im->msg) im->msg = calloc(1, sizeof(Email_Message));
+   im->msg->owner = e;
+
+   for (state = 0; state < 10;)
+     {
+        if (!strncasecmp((char*)p, "NIL", 3))
+          {
+            p += 3;
+            if (p[0] == ' ') p++;
+            state++;
+            continue;
+          }
+        if (!memcmp(p, "\"\"", 2))
+          {
+            p += 2;
+            if (p[0] == ' ') p++;
+            state++;
+            continue;
+          }
+        switch (state)
+          {
+           case 0: //env-date
+             if (p[0] == '"')
+               {
+                  p++;
+                  if (p[1] == '"') //same as NIL
+                    {
+                       p++;
+                       state++;
+                       break;
+                    }
+                  /* Wed, 17 Jul 1996 02:23:25 -0700 (PDT) */
+                  pp = (unsigned char*)strptime((char*)p, "%a, %d %b %Y %T %z", &t);
+                  im->msg->date = mktime(&t);
+                  pp = memchr(pp ?: p, '"', size - DIFF((pp ?: p) - data));
+                  if (!pp) return 0;
+                  p = pp + 1;
+                  state++;
+                  break;
+               }
+             return 0;
+           case 1: //env-subject
+             pp = memchr(p + 1, '"', size - DIFF(p - data));
+             if (!pp) return 0;
+             im->msg->subject = eina_stringshare_add_length((char*)p + 1, pp - p - 1);
+             p = pp + 1;
+             state++;
+             break;
+           case 2: //env-from
+             if (!im->msg->from) p++;
+             ec = imap_parse_fetch_address(p, size - DIFF(p - data), &off);
+             if (!ec) return EMAIL_RETURN_ERROR;
+             im->msg->from = eina_list_append(im->msg->from, ec);
+             p += off;
+             if (p[0] == '(') continue; //more from
+             state++, p++;
+             break;
+           case 3: //env-sender
+             if (!im->msg->sender) p++;
+             ec = imap_parse_fetch_address(p, size - DIFF(p - data), &off);
+             if (!ec) return EMAIL_RETURN_ERROR;
+             im->msg->sender = eina_list_append(im->msg->sender, ec);
+             p += off;
+             if (p[0] == '(') continue; //more sender
+             state++, p++;
+             break;
+           case 4: //env-reply-to
+             if (!im->msg->reply_to) p++;
+             ec = imap_parse_fetch_address(p, size - DIFF(p - data), &off);
+             if (!ec) return EMAIL_RETURN_ERROR;
+             im->msg->reply_to = eina_list_append(im->msg->reply_to, ec);
+             p += off;
+             if (p[0] == '(') continue; //more reply_to
+             state++, p++;
+             break;
+           case 5: //env-to
+             if (!im->msg->to) p++;
+             ec = imap_parse_fetch_address(p, size - DIFF(p - data), &off);
+             if (!ec) return EMAIL_RETURN_ERROR;
+             im->msg->to = eina_list_append(im->msg->to, ec);
+             p += off;
+             if (p[0] == '(') continue; //more to
+             state++, p++;
+             break;
+           case 6: //env-cc
+             if (!im->msg->cc) p++;
+             ec = imap_parse_fetch_address(p, size - DIFF(p - data), &off);
+             if (!ec) return EMAIL_RETURN_ERROR;
+             im->msg->cc = eina_list_append(im->msg->cc, ec);
+             p += off;
+             if (p[0] == '(') continue; //more cc
+             state++, p++;
+             break;
+           case 7: //env-bcc
+             if (!im->msg->bcc) p++;
+             ec = imap_parse_fetch_address(p, size - DIFF(p - data), &off);
+             if (!ec) return EMAIL_RETURN_ERROR;
+             im->msg->bcc = eina_list_append(im->msg->bcc, ec);
+             p += off;
+             if (p[0] == '(') continue; //more bcc
+             state++, p++;
+             break;
+           case 8: //env-in-reply-to
+             pp = memchr(p + 1, '"', size - DIFF(p - data));
+             if (!pp) return 0;
+             im->msg->in_reply_to = eina_stringshare_add_length((char*)p + 1, pp - p - 1);
+             state++;
+             p = pp + 1;
+             break;
+           case 9: //env-message-id
+             pp = memchr(p + 1, '"', size - DIFF(p - data));
+             if (!pp) return 0;
+             im->msg->msgid = eina_stringshare_add_length((char*)p + 1, pp - p - 1);
+             state++;
+             p = pp + 1;
+             break;
+          }
+        if ((p[0] != ' ') && (state < 9))
+          return 0;
+        p++;
+     }
+   return DIFF(p - data);
+}
+
+size_t
+imap_parse_fetch_bodystructure(Email *e, const unsigned char *data, size_t size, Email_Imap4_Message *im)
+{
+   const unsigned char *pp, *p = data;
+   Eina_Inarray *arr;
+   Eina_Stringshare *s;
+   size_t off;
+   char buf[4096], *b;
+   unsigned int state;
+   Email_Message_Part *part;
+
+   if (p[0] == '(') p++;
+   part = calloc(1, sizeof(Email_Message_Part));
+   for (state = 0; state < 9;)
+     {
+        if (!memcmp(p, "NIL", 3))
+          {
+             p += 3;
+             if (p[0] == ' ') p++;
+             state++;
+             continue;
+          }
+        if (!memcmp(p, "", 2))
+          {
+             p += 2;
+             if (p[0] == ' ') p++;
+             state++;
+             continue;
+          }
+        switch (state)
+          {
+           case 0: //content-type
+             p++;
+             pp = memchr(p, '"', size - DIFF(p - data));
+             off = DIFF(pp - p);
+             memcpy(buf, p, off);
+             buf[off++] = '/';
+             p = pp + 3;
+             pp = memchr(p, '"', size - DIFF(p - data));
+             memcpy(buf + off, p, DIFF(pp - p));
+             buf[off + DIFF(pp - p)] = 0;
+             part->content_type = eina_stringshare_add_length(buf, off + DIFF(pp - p));
+             p = pp + 1;
+             state++;
+             break;
+           case 1:
+             if (!im->params) im->params = eina_hash_string_superfast_new((Eina_Free_Cb)email_util_inarray_stringshare_free);
+             p += 2;
+             pp = memchr(p, '"', size - DIFF(p - data));
+             memcpy(buf, p, MIN(DIFF(pp - p), sizeof(buf)));
+             buf[DIFF(pp - p)] = 0;
+             p = pp + 3;
+             pp = memchr(p, '"', size - DIFF(p - data));
+             if (!strcasecmp(buf, "charset"))
+               part->charset = eina_stringshare_add_length((char*)p, DIFF(pp - p));
+             else if (!strcasecmp(buf, "boundary"))
+               {
+                  im->boundary = eina_strbuf_new();
+                  eina_strbuf_append_length(im->boundary, (char*)p, DIFF(pp - p));
+               }
+             else
+               {
+                  arr = eina_inarray_new(sizeof(char*), 0);
+                  s = eina_stringshare_add_length((char*)p, DIFF(pp - p));
+                  eina_inarray_push(arr, &s);
+                  eina_hash_add(im->params, buf, arr);
+                  while (pp[1] != ')')
+                    {
+                       p = pp + 3;
+                       pp = memchr(p, '"', size - DIFF(p - data));
+                       arr = eina_inarray_new(sizeof(char*), 0);
+                       s = eina_stringshare_add_length((char*)p, DIFF(pp - p));
+                       eina_inarray_push(arr, &s);
+                    }
+               }
+             p = pp + 2;
+             state++;
+             break;
+           case 2: //body-fld-id
+             p++;
+             pp = memchr(p, '"', size - DIFF(p - data));
+             memcpy(buf, p, MIN(DIFF(pp - p), sizeof(buf)));
+             buf[DIFF(pp - p)] = 0;
+             INF("FIELD-ID: %s", buf);
+             p = pp + 1;
+             state++;
+             break;
+           case 3: //body-fld-desc
+             p++;
+             pp = memchr(p, '"', size - DIFF(p - data));
+             memcpy(buf, p, MIN(DIFF(pp - p), sizeof(buf)));
+             buf[DIFF(pp - p)] = 0;
+             INF("FIELD-DESC: %s", buf);
+             p = pp + 1;
+             state++;
+             break;
+           case 4: //body-fld-enc
+             p++;
+             pp = memchr(p, '"', size - DIFF(p - data));
+             memcpy(buf, p, MIN(DIFF(pp - p), sizeof(buf)));
+             buf[DIFF(pp - p)] = 0;
+             b = buf;
+             eina_str_toupper(&b);
+             part->encoding = email_util_encoding_type_get(buf);
+             p = pp + 1;
+             state++;
+             break;
+           case 5: //body-fld-octets
+             part->size = strtoul((char*)p, (char**)&pp, 10);
+             p = pp;
+             state++;
+             break;
+           case 6: //body-fld-lines
+             if (part->content_type && (!strcasecmp(part->content_type, "text/plain")))
+               part->lines = strtoul((char*)p, (char**)&pp, 10);
+             p = pp;
+             state++;
+             break;
+           /* FIXME: 2 more states, not in rfc wtfwtfwtf!!!! */
+          }
+        if ((p[0] != ' ') && (state < 9))
+          {
+             email_message_part_free(part);
+             return 0;
+          }
+        p++;
+     }
+   while (part)
+     {
+        if (!im->msg) im->msg = calloc(1, sizeof(Email_Message));
+        if (im->part_nums)
+          {
+             unsigned int *pnum;
+
+             if (!im->msg->content)
+               {
+                  pnum = eina_inarray_nth(im->part_nums, 0);
+                  if (*pnum == 1) //check if we fetched the first part
+                    {
+                       email_message_content_set(im->msg, part);
+                       part->num = 1;
+                       break;
+                    }
+               }
+             pnum = eina_inarray_nth(im->part_nums, eina_list_count(im->msg->parts));
+             if (pnum)
+               part->num = *pnum;
+             else
+               part->num = eina_list_count(im->msg->parts);
+             email_message_part_add(im->msg, part);
+          }
+        else if (!im->msg->content)
+          {
+             email_message_content_set(im->msg, part);
+             part->num = 1;
+          }
+        else
+          {
+             email_message_part_add(im->msg, part);
+             part->num = eina_list_count(im->msg->parts);
+          }
+        break;
+     }
+   /* multipart */
+   if (p[0] == '(') return DIFF(p - data) + imap_parse_fetch_bodystructure(e, p, size - DIFF(p - data), im);
+   p++;
+   return DIFF(p - data);
+}
+
+Eina_List *
+imap_parse_message_contacts(unsigned char *data, size_t size, size_t *end)
+{
+   unsigned char *r, *pp, *p = data;
+   Email_Contact *ec;
+   Eina_List *l = NULL;
+/*
+
+Fred Foobar <foobar@Blurdybloop.COM>, Fred Foobar <foobar@Blurdybloop.COM>
+
+*/
+
+   while ((DIFF(p - data) < size) && (p[0] != '\r'))
+     {
+        if (p[0] == ',') p += 2;
+        for (pp = p; (pp[0] != '<') && (pp[0] != '@'); pp++);
+        for (r = pp; (r[0] != ',') && (r[0] != '\r'); r++);
+        if (pp[0] == '<')
+          {
+             unsigned char *e;
+
+             if (p[0] == '"') p++;
+             if (DIFF(pp - p) > 2)
+               {
+                  e = pp - 1;
+                  if (e[-1] == '"') e--;
+               }
+             r[-1] = 0;
+             ec = email_contact_new((char*)pp + 1);
+             if (DIFF(pp - p) > 2)
+               ec->name = eina_stringshare_add_length((char*)p, DIFF(e - p));
+          }
+        else
+          {
+             unsigned char c = r[0];
+             r[0] = 0;
+             ec = email_contact_new((char*)data);
+             r[0] = c;
+          }
+        p = r;
+        l = eina_list_append(l, ec);
+     }
+   *end = DIFF(p - data);
+   return l;
+}
+
+void
+imap_parse_body_message_parts(Email_Imap4_Message *im, unsigned char *data, size_t size)
+{
+   unsigned char *pp, *p = data;
+   Email_Message_Part *part = NULL;
+   unsigned int *pnum, cnum = 1;
+   Eina_List *parts = im->msg->parts;
+
+   if (im->part_nums)
+     {
+        EINA_INARRAY_FOREACH(im->part_nums, pnum)
+          {
+             if (*pnum == 1)
+               part = im->msg->content;
+             else
+               part = eina_list_data_get(im->msg->parts);
+             break;
+          }
+     }
+   else
+     {
+        if (!im->msg->content)
+          {
+             part = im->msg->content = email_message_part_new(NULL, NULL);
+             part->num = 1;
+             email_message_content_set(im->msg, part);
+          }
+     }
+   parts = im->msg->parts;
+   part = im->msg->content ?: eina_list_data_get(parts);
+   if (im->boundary)
+     {
+        while (DIFF(p - data) < im->size)
+          {
+             p += ESBUFLEN(im->boundary) + CRLFLEN;
+             //im->msg->content->size is size of full message; im->msg->content->size is not to be trusted!
+             while (p[0] != '\r') // headers
+               {
+                  if (!strncasecmp((char*)p, "Content-", sizeof("Content-") - 1))
+                    {
+                       p += sizeof("Content-") - 1;
+                       if (!strncasecmp((char*)p, "Type: ", 6))
+                         {
+                            p += 6;
+                            for (pp = p; (pp[0] != ';') && (pp[0] != '\r'); pp++);
+                            eina_stringshare_replace_length(&part->content_type, (char*)p, DIFF(pp - p));
+                            if (pp[0] == ';')
+                              {
+                                 pp++;
+                                 if (pp[0] != '\r')
+                                   {
+                                      p = pp + 1;
+                                      if (!strncasecmp((char*)p, "charset=", sizeof("charset=") - 1))
+                                        {
+                                           for (pp = p; (pp[0] != ';') && (pp[0] != '\r'); pp++);
+                                           eina_stringshare_replace_length(&part->charset, (char*)p, DIFF(pp - p));
+                                        }
+                                      if (pp[0] != '\r') pp = memchr(pp, '\r', size - DIFF(pp - data));
+                                   }
+                              }
+                            p = pp;
+                         }
+                       else if (!strncasecmp((char*)p, "Disposition: ", sizeof("Disposition: ") - 1))
+                         {
+                            p += sizeof("Disposition: ") - 1;
+                            for (pp = p; (pp[0] != ';') && (pp[0] != '\r'); pp++);
+                            if (!strncasecmp((char*)p, "inline", 6))
+                              {
+                               //FIXME: maybe do something here, not really needed though
+                              }
+                            if (pp[0] == ';')
+                              {
+                                 pp++;
+                                 if (pp[0] != '\r')
+                                   {
+                                      p = pp + 1;
+                                      if (!strncasecmp((char*)p, "filename=", sizeof("filename=") - 1))
+                                        {
+                                           for (pp = p; (pp[0] != ';') && (pp[0] != '\r'); pp++);
+                                           eina_stringshare_replace_length(&part->name, (char*)p, DIFF(pp - p));
+                                        }
+                                      if (pp[0] != '\r') pp = memchr(pp, '\r', size - DIFF(pp - data));
+                                   }
+                              }
+                            p = pp;
+                         }
+                    }
+                  else
+                    p = memchr(p, '\r', size - DIFF(p - data)); //not sure what else could be here?
+                  p += CRLFLEN;
+               }
+             p += CRLFLEN;
+             if (DIFF(p - data) == im->size) return;
+             /* actual message text now */
+             for (pp = p; pp && (pp[1] != '\n') && (DIFF(pp - data) < im->size); pp = memchr(pp, '\r', im->size - DIFF(pp - data)));
+             part->content = eina_binbuf_new();
+             eina_binbuf_append_length(part->content, p, pp ? DIFF(pp - p) : (im->size - DIFF(p - data)));
+             if (!pp) break;
+             p = pp + CRLFLEN;
+             if (part == im->msg->content)
+               part = eina_list_data_get(parts);
+             else
+               {
+                  parts = eina_list_next(parts);
+                  part = eina_list_data_get(parts);
+               }
+             if (!part)
+               {
+                  part = email_message_part_new(NULL, NULL);
+                  part->num = cnum++;
+                  email_message_part_add(im->msg, part);
+               }
+          }
+     }
+   else
+     {
+        p += CRLFLEN;
+        /* actual message text now */
+        for (pp = p; pp && (pp[1] != '\n') && (DIFF(pp - data) < im->size); pp = memchr(pp, '\r', im->size - DIFF(pp - data)));
+        part->content = eina_binbuf_new();
+        eina_binbuf_append_length(part->content, p, pp ? DIFF(pp - p) : (im->size - DIFF(p - data)));
+     }
+}
+
+/* TODO: this should be used for POP parsing as well I guess */
+void
+imap_parse_body_message(Email_Imap4_Message *im, const unsigned char *data, size_t size)
+{
+   unsigned char *pp, *p = (unsigned char*)data;
+
+   if (!im->msg) im->msg = calloc(1, sizeof(Email_Message));
+   switch (im->type)
+     {
+      case EMAIL_IMAP4_FETCH_BODY_TYPE_MIME:
+        /* FIXME: wtf is this? */
+        return;
+      case EMAIL_IMAP4_FETCH_BODY_TYPE_TEXT: break;
+      case EMAIL_IMAP4_FETCH_BODY_TYPE_HEADER:
+      case EMAIL_IMAP4_FETCH_BODY_TYPE_HEADER_FIELDS:
+      case EMAIL_IMAP4_FETCH_BODY_TYPE_HEADER_FIELDS_NOT:
+      default:
+        while (p[0] != '\r')
+          {
+             size_t off = 0;
+
+             pp = memchr(p, ':', size);
+             /* yeah I'm modifying a read-only buffer. deal with it. */
+             pp[0] = 0;
+             if (!strcasecmp((char*)p, "Date"))
+               {
+                  struct tm t;
+
+                  if (!im->msg->date)
+                    {
+                       p = (unsigned char*)strptime((char*)pp + 2, "%a, %d %b %Y %T %z", &t);
+                       im->msg->date = mktime(&t);
+                    }
+                  else
+                    p = pp + 2;
+               }
+             else if (!strcasecmp((char*)p, "From"))
+               {
+                  p = pp + 2;
+                  if (!im->msg->from)
+                    {
+                       im->msg->from = eina_list_merge(im->msg->from, imap_parse_message_contacts(p, size - DIFF(p - data), &off));
+                       p += off;
+                    }
+               }
+             else if (!strcasecmp((char*)p, "To"))
+               {
+                  p = pp + 2;
+                  if (!im->msg->to)
+                    {
+                       im->msg->to = eina_list_merge(im->msg->to, imap_parse_message_contacts(p, size - DIFF(p - data), &off));
+                       p += off;
+                    }
+               }
+             else if (!strcasecmp((char*)p, "Cc"))
+               {
+                  p = pp + 2;
+                  if (!im->msg->cc)
+                    {
+                       im->msg->cc = eina_list_merge(im->msg->cc, imap_parse_message_contacts(p, size - DIFF(p - data), &off));
+                       p += off;
+                    }
+               }
+             else if (!strcasecmp((char*)p, "Bcc"))
+               {
+                  p = pp + 2;
+                  if (!im->msg->bcc)
+                    {
+                       im->msg->bcc = eina_list_merge(im->msg->bcc, imap_parse_message_contacts(p, size - DIFF(p - data), &off));
+                       p += off;
+                    }
+               }
+             pp = memchr(p, '\r', size - DIFF(p - data));
+             if (pp) p = pp + CRLFLEN;
+          }
+     }
+   if (im->type > EMAIL_IMAP4_FETCH_BODY_TYPE_TEXT) return;
+   imap_parse_body_message_parts(im, p, size - DIFF(p - data));
+}
+
+int
+imap_parse_fetch_body(Email *e, const unsigned char *data, size_t size, Email_Imap4_Message *im, size_t *end)
+{
+   /* it's likely that this will be received in multiple parts, so *end is the increment used to update offset in parent function */
+   const unsigned char *pp, *p = data;
+
+   e->current = EMAIL_IMAP4_OP_FETCH;
+   while (e->protocol.imap.state < 4)
+     {
+        switch (e->protocol.imap.state)
+          {
+           case -4: //just started
+             switch (im->type)
+               {
+                case EMAIL_IMAP4_FETCH_BODY_TYPE_HEADER_FIELDS:
+                case EMAIL_IMAP4_FETCH_BODY_TYPE_HEADER_FIELDS_NOT:
+                  /* FIXME: worth listing all the headers someone tried to fetch? */
+                  pp = memchr(p, '{', size);
+                  if (!pp) return 0;
+                  p = pp;
+                  break;
+                default: break;
+               }
+             p++;
+             im->size = strtoul((char*)p, (char**)&pp, 10);
+             e->protocol.imap.state = 1;
+             p = pp;
+             *end = DIFF(p - data);
+             continue;
+           case 1: // need octet crlf
+             if (DIFF(p - data) + 3 > size) return EMAIL_RETURN_EAGAIN;
+             p += 3;
+             *end = DIFF(p - data);
+             e->protocol.imap.state++;
+             continue;
+           case 2: //cleverly reuse automatically saved buffer
+             if (size - DIFF(p - data) < im->size) return EMAIL_RETURN_EAGAIN;
+             e->protocol.imap.state++;
+             continue;
+           case 3:
+             if (im->size)
+               {
+                  imap_parse_body_message(im, e->buf ? EBUF(e->buf) : p, e->buf ? EBUFLEN(e->buf) : size);
+                  *end += im->size;
+               }
+             e->protocol.imap.state++;
+          }
+     }
+   return EMAIL_RETURN_DONE;
+}
+
+int
+imap_parse_fetch(Email *e, const unsigned char *data, size_t size, size_t *offset)
+{
+   Email_Imap4_Message im, *imc;
+   const unsigned char *pp, *p = data;
+   size_t off = 0;
+   Mail_Attributes attr;
+   unsigned char c, fc;
+
+   if (!imap_mbox_info_get(e)->fetch)
+     imap_mbox_info_get(e)->fetch = eina_inarray_new(sizeof(Email_Imap4_Message), 0);
+
+   if (e->protocol.imap.state > 0)
+     {
+        imc = eina_inarray_nth(imap_mbox_info_get(e)->fetch, eina_inarray_count(imap_mbox_info_get(e)->fetch) - 1);
+        switch (imap_parse_fetch_body(e, p, size, imc, &off))
+          {
+           case EMAIL_RETURN_DONE: break;
+           case EMAIL_RETURN_EAGAIN:
+             p += off;
+             imap_offset_update(offset, DIFF(p - data));
+             return EMAIL_RETURN_EAGAIN;
+           default: return EMAIL_RETURN_ERROR;
+          }
+     }
+
+   memset(&im, 0, sizeof(Email_Imap4_Message));
+   im.e = e;
+   eina_inarray_push(imap_mbox_info_get(e)->fetch, &im);
+   imc = eina_inarray_nth(imap_mbox_info_get(e)->fetch, eina_inarray_count(imap_mbox_info_get(e)->fetch) - 1);
+   c = tolower(p[0]);
+   if (c > 127) return EMAIL_RETURN_ERROR;
+   attr = MAIL_ATTRIBUTE_PREFIXES[c];
+   fc = tolower(MAIL_ATTRIBUTES[attr].string[0]);
+   for (; attr && (attr < MAIL_ATTRIBUTE_LAST) && (fc == c);)
+     {
+        size_t len = MAIL_ATTRIBUTES[attr].len;
+
+        if (len + 1 + DIFF(p - data) > size)
+          {
+             imap_offset_update(offset, p - data);
+             return EMAIL_RETURN_EAGAIN;
+          }
+        if (!strncasecmp((char*)p, MAIL_ATTRIBUTES[attr].string, len))
+          {
+             p += len;
+             switch (attr)
+               {
+                case MAIL_ATTRIBUTE_FLAGS:
+                  off = *offset;
+                  imap_parse_mailbox_flags(e, imap_mail_fetch_flag_set, p, size - DIFF(p - data), offset);
+                  p += *offset - off;
+                  *offset = off;
+                  break;
+                case MAIL_ATTRIBUTE_ENVELOPE:
+                  off = imap_parse_fetch_envelope(e, p, size - DIFF(p - data), imc);
+                  if (!off) return EMAIL_RETURN_ERROR;
+                  p += off + 1;
+                  break;
+                case MAIL_ATTRIBUTE_INTERNALDATE:
+                  p++;
+                  {
+                     struct tm t;
+                     pp = (unsigned char*)strptime((char*)p, "%d-%b-%Y %T %z", &t);
+                     imc->internaldate = mktime(&t);
+                     p = memchr(pp ?: p, '"', size - DIFF((pp ?: p) - data));
+                     p++;
+                  }
+                  break;
+                case MAIL_ATTRIBUTE_UID:
+                  imc->uid = strtoul((char*)p, (char**)&pp, 10);
+                  if (pp) p = pp;
+                  break;
+                case MAIL_ATTRIBUTE_BODYSTRUCTURE:
+                  if (p[0] != '(') break; // BODYSTRUCTURE BODY ()
+                case MAIL_ATTRIBUTE_BODY: //CAN be segmented
+                  if (p[0] == '[') // something crazy
+                    {
+                       p++;
+                       if (isdigit(p[0]))
+                         {
+                            unsigned int pnum;
+
+                            imc->part_nums = eina_inarray_new(sizeof(int), 0);
+                            while (isdigit(p[0]))
+                              {
+                                 unsigned int *ppnum;
+                                 Eina_Bool found = EINA_FALSE;
+
+                                 pnum = strtoul((char*)p, (char**)&pp, 10);
+                                 EINA_INARRAY_FOREACH(imc->part_nums, ppnum)
+                                   {
+                                      if (*ppnum == pnum)
+                                        {
+                                           found = EINA_TRUE;
+                                           break;
+                                        }
+                                   }
+                                 if (!found)
+                                   eina_inarray_push(imc->part_nums, &pnum);
+                                 p = pp + 1;
+                              }
+                         }
+                       switch (p[0])
+                         {
+                          case 't':
+                          case 'T':
+                            imc->type = EMAIL_IMAP4_FETCH_BODY_TYPE_TEXT;
+                            p += sizeof("TEXT") - 1;
+                            break;
+                          case 'm':
+                          case 'M':
+                            imc->type = EMAIL_IMAP4_FETCH_BODY_TYPE_MIME;
+                            p += sizeof("MIME") - 1;
+                            break;
+                          default:
+                            p += sizeof("HEADER") - 1;
+                            if (p[0] == '.')
+                              {
+                                 p += sizeof(".FIELDS") - 1;
+                                 if (p[0] == '.')
+                                   {
+                                      p += sizeof(".NOT") - 1;
+                                      imc->type = EMAIL_IMAP4_FETCH_BODY_TYPE_HEADER_FIELDS_NOT;
+                                   }
+                                 else
+                                   imc->type = EMAIL_IMAP4_FETCH_BODY_TYPE_HEADER_FIELDS;
+                              }
+                            else
+                              imc->type = EMAIL_IMAP4_FETCH_BODY_TYPE_HEADER;
+                         }
+                       if (p[0] == ']') p += 2;
+                       switch (imap_parse_fetch_body(e, p, size - DIFF(p - data), imc, &off))
+                         {
+                          case EMAIL_RETURN_EAGAIN:
+                            p += off;
+                            imap_offset_update(offset, DIFF(p - data));
+                            return EMAIL_RETURN_EAGAIN;
+                         }
+                    }
+                  else if ((p[0] == '(') || (p[1] == '('))
+                    {
+                       if (p[0] != '(') p++;
+                       p++;
+                       off = imap_parse_fetch_bodystructure(e, p, size - DIFF(p - data), imc);
+                    }
+                  else if (p[1] == '{')
+                    {
+                       p++;
+                       switch (imap_parse_fetch_body(e, p, size - DIFF(p - data), imc, &off))
+                         {
+                          case EMAIL_RETURN_EAGAIN:
+                            p += off;
+                            imap_offset_update(offset, DIFF(p - data));
+                            return EMAIL_RETURN_EAGAIN;
+                         }
+                    }
+                  if (!off) return EMAIL_RETURN_EAGAIN;
+                  p += off;
+                  break;
+                case MAIL_ATTRIBUTE_RFC822:
+                default: break;
+               }
+             if (DIFF(p - data) == size)
+               {
+                  imap_offset_update(offset, DIFF(p - data));
+                  return EMAIL_RETURN_EAGAIN;
+               }
+             if (p[0] == ')') break;
+             p++;
+             c = tolower(p[0]);
+             if (c > 127) break;
+             attr = MAIL_ATTRIBUTE_PREFIXES[c];
+             fc = tolower(MAIL_ATTRIBUTES[attr].string[0]);
+          }
+        else
+          attr++, fc = tolower(MAIL_ATTRIBUTES[attr].string[0]);
+     }
+   imap_offset_update(offset, DIFF(p - data));
+   if (attr == MAIL_ATTRIBUTE_LAST) return EMAIL_RETURN_EAGAIN;
+   e->need_crlf = 1;
+   return EMAIL_RETURN_DONE;
+}
+
 int
 imap_parse_respcode_nums(Email *e, const unsigned char *data, size_t size, size_t *offset)
 {
@@ -972,12 +1927,12 @@ imap_parse_respcode_nums(Email *e, const unsigned char *data, size_t size, size_
           imap_mbox_info_get(e)->expunge = eina_inarray_new(sizeof(int), 0);
         eina_inarray_push(imap_mbox_info_get(e)->expunge, &x);
      }
-   else if (!strncasecmp((char*)p, "FETCH", sizeof("FETCH") - 1))
+   else if (!strncasecmp((char*)p, "FETCH (", sizeof("FETCH (") - 1))
      {
-        if (!imap_mbox_info_get(e)->fetch)
-          imap_mbox_info_get(e)->fetch = eina_inarray_new(sizeof(Email_Imap4_Message), 0);
-        /* FIXME: rest of rfc3501 p87 msg-att-static */
-        eina_inarray_push(imap_mbox_info_get(e)->fetch, &x);
+        /* fml */
+        p += sizeof("FETCH (") - 1;
+        imap_offset_update(offset, DIFF(p - data));
+        return imap_parse_fetch(e, p, size - DIFF(p - data), offset);
      }
    else goto error;
    e->need_crlf = 1;
@@ -991,7 +1946,7 @@ error:
 }
 
 int
-imap_parse_namespace(Email *e, const unsigned char *data, size_t size, size_t *offset)
+imap_parse_namespace(Email *e, const unsigned char *data, size_t size EINA_UNUSED, size_t *offset)
 {
    const unsigned char *pp, *p = data;
    Email_Imap4_Namespace_Type type = EMAIL_IMAP4_NAMESPACE_PERSONAL;
@@ -1088,7 +2043,7 @@ imap_parse_namespace(Email *e, const unsigned char *data, size_t size, size_t *o
      }
    e->protocol.imap.state = 0;
    e->need_crlf = 1;
-   imap_offset_update(offset, p - data);
+   imap_offset_update(offset, DIFF(p - data));
    return EMAIL_RETURN_DONE;
 }
 
@@ -1114,6 +2069,8 @@ imap_data_enum_handle(Email *e, const unsigned char *data, size_t size, size_t *
         case EMAIL_IMAP4_OP_LIST:
         case EMAIL_IMAP4_OP_LSUB:
           return imap_parse_list(e, data, size, offset);
+        case EMAIL_IMAP4_OP_FETCH:
+          return imap_parse_fetch(e, data, size, offset);
         case EMAIL_IMAP4_OP_SELECT:
         case EMAIL_IMAP4_OP_EXAMINE:
         case EMAIL_IMAP4_OP_NOOP:
@@ -1202,6 +2159,7 @@ imap_parse_respcode_bracket(Email *e, const unsigned char *data, size_t size, si
                   imap_mbox_info_get(e)->unseen = imap_parse_num(p, size - (p - data), &len);
                   break;
                 default: break;
+                  *offset -= len;
                }
              break;
 #undef FIXME
@@ -1235,7 +2193,7 @@ imap_parse_respcode_mboxdata(Email *e, const unsigned char *data, size_t size, s
         e->current = EMAIL_IMAP4_OP_NAMESPACE;
         return imap_data_enum_handle(e, data, size, offset);
      }
-   if (!strncasecmp((char*)p, "CAPABILITY (", 10))
+   if (!strncasecmp((char*)p, "CAPABILITY (", sizeof("CAPABILITY (") - 1))
      {
         e->current = EMAIL_IMAP4_OP_CAPABILITY;
         return imap_data_enum_handle(e, data, size, offset);

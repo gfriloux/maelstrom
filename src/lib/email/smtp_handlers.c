@@ -63,9 +63,9 @@ send_smtp(Email *e)
           {
              char buf2[1024];
              snprintf(buf2, sizeof(buf2), "%s@%s", e->username, e->features.smtp.domain);
-             msg->sender = email_contact_new(buf2);
+             msg->sender = eina_list_append(msg->sender, email_contact_new(buf2));
           }
-        ec = msg->sender;
+        ec = eina_list_data_get(msg->sender);
         size = sizeof(char) * (sizeof(EMAIL_SMTP_FROM) + strlen(ec->address)) - 2;
         buf = alloca(size);
         snprintf(buf, size, EMAIL_SMTP_FROM, ec->address);
@@ -74,7 +74,7 @@ send_smtp(Email *e)
         e->protocol.smtp.internal_state = 0;
         break;
       case EMAIL_SMTP_STATE_TO:
-        ec = eina_list_nth(msg->recipients, e->protocol.smtp.internal_state++);
+        ec = eina_list_nth(msg->to, e->protocol.smtp.internal_state++);
         if (!ec)
           {
              e->protocol.smtp.state++;

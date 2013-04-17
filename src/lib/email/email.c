@@ -192,8 +192,6 @@ email_shutdown(void)
    ecore_shutdown();
 
    eina_log_domain_unregister(email_log_dom);
-   if (_email_contacts_hash) eina_hash_free(_email_contacts_hash);
-   _email_contacts_hash = NULL;
 
    eina_shutdown();
 }

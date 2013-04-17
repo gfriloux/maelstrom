@@ -31,7 +31,6 @@ void *alloca (size_t);
 #define CRI(...)            EINA_LOG_DOM_CRIT(email_log_dom, __VA_ARGS__)
 
 extern int email_log_dom;
-extern Eina_Hash *_email_contacts_hash;
 
 #define EMAIL_POP3_PORT 110
 #define EMAIL_POP3S_PORT 995
@@ -125,6 +124,7 @@ typedef enum
    EMAIL_IMAP4_OP_UNSUBSCRIBE,
    EMAIL_IMAP4_OP_LSUB,
    EMAIL_IMAP4_OP_APPEND,
+   EMAIL_IMAP4_OP_FETCH,
    EMAIL_IMAP4_OP_LOGOUT,
 } Email_Imap4_Op;
 
@@ -141,37 +141,51 @@ struct Email_Message
    unsigned int sending; //wait until after send to delete
    void *data;
 
-   Eina_List *recipients; /* anyone who will receive the message */
-   Email_Contact *sender; /* Sender: */
+   Eina_List *to;
+   Eina_List *cc;
+   Eina_List *bcc;
+   Eina_List *sender; /* Sender: */
+   Eina_List *reply_to; /* Sender: */
    Eina_List *from; /* Email_Contact * */ /* From: X,Y,Z */
-   char *subject;
+   Eina_Stringshare *subject;
+   Eina_Stringshare *in_reply_to;
+   Eina_Stringshare *msgid;
 
-   char *content;
-   size_t csize;
-   const char *charset;
+   Email_Message_Part *content;
+   Eina_List *parts;
+   unsigned int attachments;
+
+
    double mimeversion;
    unsigned long date;
 
    Eina_Hash *headers;
-   Eina_List *attachments;
    Eina_Bool deleted : 1; //user deleted message
 };
 
-struct Email_Attachment
+struct Email_Message_Part
 {
-   const char *name;
-   const char *content_type;
+   unsigned int refcount;
+   unsigned int num;
+   Eina_Stringshare *name;
+   Eina_Stringshare *content_type;
+   Eina_Stringshare *charset;
+   Email_Message_Part_Encoding encoding;
 
-   void *content;
-   size_t csize;
+   Eina_List *parts;
+
+   Eina_Binbuf *content;
+   size_t size; //possible to have size without content
+   unsigned int lines; //number of lines in text/plain parts
+   unsigned int attachments;
 };
 
 struct Email_Contact
 {
    unsigned int refcount;
-   const char *address;
-   const char *name;
-   Email_Message_Contact_Type type;
+   Eina_Stringshare *address;
+   Eina_Stringshare *routing_address; //wtf is this???
+   Eina_Stringshare *name;
 };
 
 struct Email_Operation
@@ -317,9 +331,9 @@ email_is_imap(const Email *e)
 
 /* use this for offset updates to ensure the current offset doesn't get overwritten */
 static inline void
-imap_offset_update(size_t *offset, size_t new)
+imap_offset_update(size_t *offset, size_t plus)
 {
-   *offset += new;
+   *offset += plus;
 }
 
 static inline void
@@ -360,8 +374,6 @@ email_is_blocked(const Email *e)
    return EINA_FALSE;
 }
 
-extern Eina_Hash *_email_contacts_hash;
-
 void auth_cram_md5(Email *e, const unsigned char *data, size_t size);
 
 Eina_Bool upgrade_pop(Email *e, int type, Ecore_Con_Event_Server_Upgrade *ev);
@@ -381,7 +393,6 @@ Eina_Bool email_pop3_stat_read(Email *e, const unsigned char *recv, size_t size)
 Eina_Bool email_pop3_list_read(Email *e, Ecore_Con_Event_Server_Data *ev);
 Eina_Bool email_pop3_retr_read(Email *e, Ecore_Con_Event_Server_Data *ev);
 
-Eina_Binbuf *email_message_serialize(Email_Message *msg);
 Eina_Bool send_smtp(Email *e);
 
 void email_login_pop(Email *e, Ecore_Con_Event_Server_Data *ev);
@@ -395,8 +406,8 @@ Email_Operation *email_op_new(Email *e, unsigned int type, void *cb, const void 
 void email_op_free(Email_Operation *op);
 Email_Operation *email_op_pop(Email *e);
 
-char *email_base64_encode(const char *string, double len, int *);
-unsigned char *email_base64_decode(const char *string, int len, int *);
+char *email_base64_encode(const unsigned char *string, size_t len, size_t *size);
+unsigned char *email_base64_decode(const char *string, size_t len, size_t *size);
 void email_md5_digest_to_str(unsigned char *digest, char *ret);
-void email_md5_hmac_encode(unsigned char *digest, const char *string, size_t size, const char *key, size_t ksize);
+void email_md5_hmac_encode(unsigned char *digest, const char *string, size_t size, const void *key, size_t ksize);
 #endif

@@ -1,5 +1,28 @@
 #include "email_private.h"
 
+static const char *fetch_body_types[] =
+{
+   [EMAIL_IMAP4_FETCH_BODY_TYPE_TEXT] = "TEXT",
+   [EMAIL_IMAP4_FETCH_BODY_TYPE_HEADER] = "HEADER",
+   [EMAIL_IMAP4_FETCH_BODY_TYPE_HEADER_FIELDS] = "HEADER.FIELDS",
+   [EMAIL_IMAP4_FETCH_BODY_TYPE_HEADER_FIELDS_NOT] = "HEADER.FIELDS.NOT",
+   [EMAIL_IMAP4_FETCH_BODY_TYPE_MIME] = "MIME",
+};
+
+static const char *fetch_types[] =
+{
+   [EMAIL_IMAP4_FETCH_TYPE_ALL] = "ALL",
+   [EMAIL_IMAP4_FETCH_TYPE_FULL] = "FULL",
+   [EMAIL_IMAP4_FETCH_TYPE_FAST] = "FAST",
+   [EMAIL_IMAP4_FETCH_TYPE_ENVELOPE] = "ENVELOPE",
+   [EMAIL_IMAP4_FETCH_TYPE_FLAGS] = "FLAGS",
+   [EMAIL_IMAP4_FETCH_TYPE_INTERNALDATE] = "INTERNALDATE",
+   [EMAIL_IMAP4_FETCH_TYPE_BODYSTRUCTURE] = "BODYSTRUCTURE",
+   [EMAIL_IMAP4_FETCH_TYPE_UID] = "UID",
+   [EMAIL_IMAP4_FETCH_TYPE_RFC822] = "RFC822",
+   [EMAIL_IMAP4_FETCH_TYPE_BODY] = "BODY",
+};
+
 static const char *mail_flags[] =
 {
    "\\Answered",
@@ -59,12 +82,37 @@ email_imap4_mbox_get(const Email *e)
 }
 
 void
+email_imap4_message_free(Email_Imap4_Message *im)
+{
+   if (!im) return;
+   if (im->boundary) eina_strbuf_free(im->boundary);
+   eina_inarray_free(im->part_nums);
+   email_message_free(im->msg);
+   eina_hash_free(im->params);
+   free(im);
+}
+
+void
 email_imap4_mailboxinfo_free(Email_Imap4_Mailbox_Info *info)
 {
    if (!info) return;
    if (info->expunge) eina_inarray_free(info->expunge);
-   if (info->fetch) eina_inarray_free(info->fetch);
+   if (info->fetch)
+     {
+        Email_Imap4_Message *im;
+
+        EINA_INARRAY_FOREACH(info->fetch, im)
+          email_message_free(im->msg);
+     }
+   eina_inarray_free(info->fetch);
    free(info);
+}
+
+Email_Operation_Status
+email_operation_imap4_status_get(const Email_Operation *op)
+{
+   EINA_SAFETY_ON_NULL_RETURN_VAL(op, 0);
+   return op->e->protocol.imap.status;
 }
 
 const Eina_Inarray *
@@ -168,6 +216,7 @@ email_imap4_expunge(Email *e, Email_Cb cb, const void *data)
 
    EINA_SAFETY_ON_NULL_RETURN_VAL(e, NULL);
    EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, NULL);
+   EINA_SAFETY_ON_NULL_RETURN_VAL(e->protocol.imap.mboxname, NULL);
 
    op = email_op_new(e, EMAIL_IMAP4_OP_EXPUNGE, cb, data);
    if (!email_is_blocked(e))
@@ -196,6 +245,7 @@ email_imap4_close(Email *e, Email_Cb cb, const void *data)
 
    EINA_SAFETY_ON_NULL_RETURN_VAL(e, NULL);
    EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, NULL);
+   EINA_SAFETY_ON_NULL_RETURN_VAL(e->protocol.imap.mboxname, NULL);
 
    op = email_op_new(e, EMAIL_IMAP4_OP_CLOSE, cb, data);
    if (!email_is_blocked(e))
@@ -331,5 +381,190 @@ email_imap4_append(Email *e, const char *mbox, Email_Message *msg, Email_Imap4_M
      }
    else
      imap_func_message_write(op, msg, mbox, flags);
+   return op;
+}
+
+Email_Operation *
+email_imap4_fetch(Email *e, unsigned int range[2], Email_Imap4_Fetch_Info **infos, unsigned int info_count, Email_Imap4_Fetch_Cb cb, const void *data)
+{
+   Email_Operation *op = NULL;
+   Eina_Strbuf *sbuf;
+   Eina_Bool body = EINA_FALSE;
+   char buf[4096];
+   unsigned int x;
+   unsigned int num = info_count ?: UINT_MAX;
+
+   EINA_SAFETY_ON_NULL_RETURN_VAL(e, NULL);
+   EINA_SAFETY_ON_NULL_RETURN_VAL(range, NULL);
+   EINA_SAFETY_ON_NULL_RETURN_VAL(infos, NULL);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(e->state != EMAIL_STATE_CONNECTED, NULL);
+   EINA_SAFETY_ON_NULL_RETURN_VAL(e->protocol.imap.mboxname, NULL);
+
+   if (range[0] == range[1])
+     {
+        if (range[0])
+          snprintf(buf, sizeof(buf), "FETCH %u (", range[0]);
+        else
+          snprintf(buf, sizeof(buf), "FETCH 1:* (");
+     }
+   else
+     {
+        if (range[0] && range[1])
+          snprintf(buf, sizeof(buf), "FETCH %u:%u (", range[0], range[1]);
+        else if (range[0])
+          snprintf(buf, sizeof(buf), "FETCH %u:* (", range[0]);
+        else
+          snprintf(buf, sizeof(buf), "FETCH *:%u (", range[1]);
+     }
+   sbuf = eina_strbuf_manage_new(strdup(buf));
+   for (x = 0; x < num; x++)
+     {
+        if (!infos[x])
+          {
+             EINA_SAFETY_ON_TRUE_GOTO(!x, error);
+             break;
+          }
+        switch (infos[x]->type)
+          {
+           case EMAIL_IMAP4_FETCH_TYPE_ALL:
+           case EMAIL_IMAP4_FETCH_TYPE_FULL:
+           case EMAIL_IMAP4_FETCH_TYPE_FAST:
+             if (info_count != 1)
+               {
+                  ERR("EMAIL_IMAP4_FETCH_TYPE_%s CANNOT BE USED WITH OTHER FETCH TYPES!", fetch_types[infos[x]->type]);
+                  goto error;
+               }
+             eina_strbuf_append(sbuf, fetch_types[infos[x]->type]);
+             break;
+           case EMAIL_IMAP4_FETCH_TYPE_BODYSTRUCTURE:
+           case EMAIL_IMAP4_FETCH_TYPE_ENVELOPE:
+           case EMAIL_IMAP4_FETCH_TYPE_FLAGS:
+           case EMAIL_IMAP4_FETCH_TYPE_INTERNALDATE:
+           case EMAIL_IMAP4_FETCH_TYPE_UID:
+             if (x) eina_strbuf_append_char(sbuf, ' ');
+             eina_strbuf_append(sbuf, fetch_types[infos[x]->type]);
+             break;
+           case EMAIL_IMAP4_FETCH_TYPE_RFC822:
+             if (x) eina_strbuf_append_char(sbuf, ' ');
+             eina_strbuf_append(sbuf, fetch_types[infos[x]->type]);
+             {
+                Eina_Bool used = EINA_FALSE;
+                if (infos[x]->u.rfc822.header)
+                  {
+                     eina_strbuf_append(sbuf, ".HEADER");
+                     used = EINA_TRUE;
+                  }
+                if (infos[x]->u.rfc822.size)
+                  {
+                     if (used)
+                       {
+                          eina_strbuf_append_char(sbuf, ' ');
+                          eina_strbuf_append(sbuf, fetch_types[infos[x]->type]);
+                       }
+                     eina_strbuf_append(sbuf, ".SIZE");
+                     used = EINA_TRUE;
+                  }
+                if (infos[x]->u.rfc822.text)
+                  {
+                     if (used)
+                       {
+                          eina_strbuf_append_char(sbuf, ' ');
+                          eina_strbuf_append(sbuf, fetch_types[infos[x]->type]);
+                       }
+                     eina_strbuf_append(sbuf, ".TEXT");
+                  }
+             }
+             break;
+           case EMAIL_IMAP4_FETCH_TYPE_BODY:
+             if (body)
+               {
+                  ERR("ONLY ONE BODY TYPE ALLOWED PER FETCH!");
+                  goto error;
+               }
+             body = EINA_TRUE;
+             if (x) eina_strbuf_append_char(sbuf, ' ');
+             eina_strbuf_append(sbuf, fetch_types[infos[x]->type]);
+             if (infos[x]->u.body.peek) eina_strbuf_append(sbuf, ".PEEK");
+             {
+                Eina_Bool need_brace = EINA_TRUE;
+                unsigned int p;
+                unsigned int pnum = infos[x]->u.body.part_count ?: UINT_MAX;
+
+                if (infos[x]->u.body.parts)
+                  {
+                     for (p = 0; p < pnum; p++)
+                       {
+                          if (!infos[x]->u.body.parts[p])
+                            {
+                               pnum = p;
+                               break;
+                            }
+                          if (need_brace) need_brace = !eina_strbuf_append_char(sbuf, '[');
+                          else eina_strbuf_append_char(sbuf, '.');
+                          eina_strbuf_append_printf(sbuf, "%u", infos[x]->u.body.parts[p]);
+                       }
+                  }
+                else
+                  pnum = 0;
+                switch (infos[x]->u.body.type)
+                  {
+                   case EMAIL_IMAP4_FETCH_BODY_TYPE_NONE: break;
+                   case EMAIL_IMAP4_FETCH_BODY_TYPE_MIME:
+                     if (!pnum)
+                       {
+                          ERR("MUST HAVE PART NUMBERS TO USE MIME BODY FETCHING!");
+                          goto error;
+                       }
+                   case EMAIL_IMAP4_FETCH_BODY_TYPE_TEXT:
+                   case EMAIL_IMAP4_FETCH_BODY_TYPE_HEADER:
+                   case EMAIL_IMAP4_FETCH_BODY_TYPE_HEADER_FIELDS:
+                   case EMAIL_IMAP4_FETCH_BODY_TYPE_HEADER_FIELDS_NOT:
+                     if (need_brace) need_brace = !eina_strbuf_append_char(sbuf, '[');
+                     else eina_strbuf_append_char(sbuf, '.');
+                     eina_strbuf_append(sbuf, fetch_body_types[infos[x]->u.body.type]);
+                     if ((infos[x]->u.body.type != EMAIL_IMAP4_FETCH_BODY_TYPE_HEADER_FIELDS_NOT) &&
+                         (infos[x]->u.body.type != EMAIL_IMAP4_FETCH_BODY_TYPE_HEADER_FIELDS))
+                       break;
+                     if (!infos[x]->u.body.fields_count)
+                       {
+                          ERR("MUST HAVE FIELD NAMES IN ORDER TO FETCH THEM!");
+                          goto error;
+                       }
+                     eina_strbuf_append(sbuf, " (");
+                     {
+                        Eina_Bool need_space = EINA_FALSE;
+                        unsigned int fnum = infos[x]->u.body.fields_count ?: UINT_MAX;
+
+                        for (p = 0; p < fnum; p++)
+                          {
+                             if (!infos[x]->u.body.fields[p]) break;
+                             if (need_space) eina_strbuf_append_char(sbuf, ' ');
+                             need_space = eina_strbuf_append(sbuf, infos[x]->u.body.fields[p]);
+                          }
+                     }
+                     eina_strbuf_append_char(sbuf, ')');
+                     break;
+                   default:
+                     ERR("UNKNOWN FETCH BODY TYPE!");
+                     goto error;
+                  }
+                if (!need_brace) eina_strbuf_append_char(sbuf, ']');
+                if (infos[x]->u.body.range[1] > infos[x]->u.body.range[0])
+                  eina_strbuf_append_printf(sbuf, "<%zu.%zu>", infos[x]->u.body.range[0], infos[x]->u.body.range[1]);
+             }
+             break;
+           default:
+             ERR("UNKNOWN FETCH TYPE! IGNORING!");
+             continue;
+          }
+     }
+   eina_strbuf_append(sbuf, ")\r\n");
+   op = email_op_new(e, EMAIL_IMAP4_OP_FETCH, cb, data);
+   if (email_is_blocked(e))
+     op->opdata = eina_strbuf_string_steal(sbuf);
+   else
+     email_imap_write(e, op, ESBUF(sbuf), ESBUFLEN(sbuf));
+error:
+   eina_strbuf_free(sbuf);
    return op;
 }

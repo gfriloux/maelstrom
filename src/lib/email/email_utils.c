@@ -1,44 +1,57 @@
-#include <stdlib.h>
-#include <string.h>
+#include "email_private.h"
 #include "cencode.h"
 #include "cdecode.h"
 #include "md5.h"
 
+static const char *const encoding_strings[] =
+{
+   [EMAIL_MESSAGE_PART_ENCODING_7BIT] = "7BIT",
+   [EMAIL_MESSAGE_PART_ENCODING_8BIT] = "8BIT",
+   [EMAIL_MESSAGE_PART_ENCODING_BINARY] = "BINARY",
+   [EMAIL_MESSAGE_PART_ENCODING_BASE64] = "BASE64",
+   [EMAIL_MESSAGE_PART_ENCODING_QUOTED_PRINTABLE] = "QUOTED-PRINTABLE",
+};
+
 char *
-email_base64_encode(const char *string, double len, int *retlen)
+email_base64_encode(const unsigned char *string, size_t len, size_t *size)
 {
    base64_encodestate s;
    char *ret = NULL;
-   int size[2];
+   size_t retlen[2];
 
    if ((len < 1) || (!string)) return NULL;
 
-   if (!(ret = malloc(sizeof(char) * ((((len + 2) - ((int)(len + 2) % 3)) / 3) * 4) + 4)))
+   if (!(ret = malloc(sizeof(char) * ((((len + 2) - ((size_t)(len + 2) % 3)) / 3) * 4) + 4)))
      return NULL;
    base64_init_encodestate(&s);
-   size[0] = base64_encode_block(string, len, ret, &s);
-   size[1] = base64_encode_blockend(ret + size[0], &s);
-   ret[size[0] + size[1]] = '\0';
-   if (ret[size[0] + size[1] - 1] == '\n')
-     ret[size[0] + size[1] - 1] = '\0';
-   *retlen = size[0] + size[1];
+   retlen[0] = base64_encode_block((char*)string, len, ret, &s);
+   retlen[1] = base64_encode_blockend(ret + retlen[0], &s);
+   ret[retlen[0] + retlen[1]] = '\0';
+   if (ret[retlen[0] + retlen[1] - 1] == '\n')
+     {
+        ret[retlen[0] + retlen[1] - 1] = '\0';
+        if (size) *size = retlen[0] + retlen[1] - 1;
+     }
+   else if (size)
+     *size = retlen[0] + retlen[1];
 
    return ret;
 }
 
 unsigned char *
-email_base64_decode(const char *string, int len, int *retlen)
+email_base64_decode(const char *string, size_t len, size_t *size)
 {
    base64_decodestate s;
    unsigned char *ret = NULL;
+   size_t retlen;
 
    if ((len < 1) || (!string)) return NULL;
 
-   if (!(ret = malloc(sizeof(char) * (int)((double)len / (double)(4 / 3)) + 1)))
+   if (!(ret = malloc(sizeof(char) * (size_t)((double)len / (double)(4 / 3)))))
      return NULL;
    base64_init_decodestate(&s);
-   *retlen = base64_decode_block(string, len, ret, &s);
-   ret[*retlen] = '\0';
+   retlen = base64_decode_block((char*)string, len, ret, &s);
+   if (size) *size = retlen;
 
    return ret;
 }
@@ -110,4 +123,38 @@ email_md5_hmac_encode(unsigned char *digest, const char *string, size_t size, co
    md5_process_bytes(digest, 16, &ctx);     /* then results of 1st
                                          * hash */
    md5_finish_ctx(&ctx, digest);          /* finish up 2nd pass */
+}
+
+///////////////////////////////////////////////////////////////////
+
+void
+email_util_inarray_stringshare_free(Eina_Inarray *arr)
+{
+   Eina_Stringshare *s;
+
+   if (!arr) return;
+   EINA_INARRAY_FOREACH(arr, s)
+     eina_stringshare_del(s);
+   eina_inarray_free(arr);
+}
+
+const char *
+email_util_encoding_string_get(Email_Message_Part_Encoding encoding)
+{
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(!encoding, NULL);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(encoding >= EMAIL_MESSAGE_PART_ENCODING_LAST, NULL);
+   return encoding_strings[encoding];
+}
+
+Email_Message_Part_Encoding
+email_util_encoding_type_get(const char *uppercase)
+{
+   unsigned int x;
+
+   if (!uppercase) return EMAIL_MESSAGE_PART_ENCODING_NONE;
+   if (!uppercase[0]) return EMAIL_MESSAGE_PART_ENCODING_NONE;
+
+   for (x = EMAIL_MESSAGE_PART_ENCODING_7BIT; x < EMAIL_MESSAGE_PART_ENCODING_LAST; x++)
+     if (!strcmp(encoding_strings[x], uppercase)) break;
+   return x;
 }

@@ -7,7 +7,7 @@ sasl_plain_init(Email *e)
 {
    Eina_Binbuf *buf;
    char *ret;
-   int size;
+   size_t size;
 
    buf = eina_binbuf_new();
 
@@ -15,7 +15,7 @@ sasl_plain_init(Email *e)
    eina_binbuf_append_length(buf, (unsigned char*)e->username, eina_stringshare_strlen(e->username));
    eina_binbuf_append_char(buf, 0);
    eina_binbuf_append_length(buf, (unsigned char*)e->password, strlen(e->password));
-   ret = email_base64_encode((char*)eina_binbuf_string_get(buf), eina_binbuf_length_get(buf), &size);
+   ret = email_base64_encode(eina_binbuf_string_get(buf), eina_binbuf_length_get(buf), &size);
    eina_binbuf_free(buf);
    return ret;
 }
@@ -179,10 +179,10 @@ email_login_smtp(Email *e, Ecore_Con_Event_Server_Data *ev)
                {
                   /* continuation of AUTH LOGIN */
                   char *b64;
-                  int bsize;
+                  size_t bsize;
 
                   DBG("Continuing with AUTH LOGIN");
-                  b64 = email_base64_encode(e->username, strlen(e->username), &bsize);
+                  b64 = email_base64_encode((void*)e->username, strlen(e->username), &bsize);
                   ecore_con_server_send(e->svr, b64, bsize);
                   ecore_con_server_send(e->svr, "\r\n", 2);
                   free(b64);
@@ -198,10 +198,10 @@ email_login_smtp(Email *e, Ecore_Con_Event_Server_Data *ev)
           {
              /* continuation of AUTH LOGIN */
              char *b64;
-             int bsize;
+             size_t bsize;
 
              DBG("Continuing with AUTH LOGIN");
-             b64 = email_base64_encode(e->password, strlen(e->password), &bsize);
+             b64 = email_base64_encode((void*)e->password, strlen(e->password), &bsize);
              ecore_con_server_send(e->svr, b64, bsize);
              ecore_con_server_send(e->svr, "\r\n", 2);
              free(b64);

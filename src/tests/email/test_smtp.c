@@ -40,7 +40,7 @@ con(void *d EINA_UNUSED, int type EINA_UNUSED, Email *e)
    scanf("%1023s", buf);
    ec = email_contact_new(buf);
    email_message_contact_add(msg, ec, EMAIL_MESSAGE_CONTACT_TYPE_TO);
-   email_message_content_set(msg, "test message!", sizeof("test message!") - 1);
+   email_message_content_set(msg, email_message_part_text_new("test message!", sizeof("test message!") - 1));
    email_message_send(e, msg, _send, NULL);
    email_contact_free(ec);
    return ECORE_CALLBACK_RENEW;
