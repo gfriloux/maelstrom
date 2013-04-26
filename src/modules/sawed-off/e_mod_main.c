@@ -130,39 +130,39 @@ _e_mod_sos_config_load(void)
 }
 
 static void
-_link_del_cb(void *d EINA_UNUSED, const EDBus_Message *msg)
+_link_del_cb(void *d EINA_UNUSED, const Eldbus_Message *msg)
 {
    char *url;
    const char *lnk;
 
    if (!mod->images) return;
-   if (!edbus_message_arguments_get(msg, "s", &url)) return;
+   if (!eldbus_message_arguments_get(msg, "s", &url)) return;
    lnk = eina_stringshare_add(url);
    mod->images = eina_list_remove(mod->images, lnk);
    eina_stringshare_del(lnk);
 }
 
 static void
-_link_cb(void *d EINA_UNUSED, const EDBus_Message *msg)
+_link_cb(void *d EINA_UNUSED, const Eldbus_Message *msg)
 {
    char *url;
 
-   if (edbus_message_arguments_get(msg, "s", &url))
+   if (eldbus_message_arguments_get(msg, "s", &url))
      mod->images = eina_list_prepend(mod->images, eina_stringshare_add(url));
 }
 
 static void
-_link_self_cb(void *d EINA_UNUSED, const EDBus_Message *msg)
+_link_self_cb(void *d EINA_UNUSED, const Eldbus_Message *msg)
 {
    char *url;
 
    if (sos_config->ignore_self_links) return;
-   if (edbus_message_arguments_get(msg, "s", &url))
+   if (eldbus_message_arguments_get(msg, "s", &url))
      mod->images = eina_list_prepend(mod->images, eina_stringshare_add(url));
 }
 
 static void
-_contact_info_cb(void *d, const EDBus_Message *msg, EDBus_Pending *pending EINA_UNUSED)
+_contact_info_cb(void *d, const Eldbus_Message *msg, Eldbus_Pending *pending EINA_UNUSED)
 {
    const char *jid = d;
    char *name, *icon;
@@ -170,7 +170,7 @@ _contact_info_cb(void *d, const EDBus_Message *msg, EDBus_Pending *pending EINA_
    int priority;
    Mod_Contact *mc;
 
-   if (!edbus_message_arguments_get(msg, "ssui", &name, &icon, &st, &priority))
+   if (!eldbus_message_arguments_get(msg, "ssui", &name, &icon, &st, &priority))
      {
         eina_stringshare_del(jid);
         return;
@@ -191,14 +191,14 @@ _contact_info_cb(void *d, const EDBus_Message *msg, EDBus_Pending *pending EINA_
 }
 
 static void
-_status_cb(void *d EINA_UNUSED, const EDBus_Message *msg)
+_status_cb(void *d EINA_UNUSED, const Eldbus_Message *msg)
 {
    char *jid, *res, *desc;
    unsigned int st, type;
    int priority;
    Mod_Contact *mc;
 
-   if (!edbus_message_arguments_get(msg, "sssuui",
+   if (!eldbus_message_arguments_get(msg, "sssuui",
      &jid, &res, &desc, &st, &type, &priority))
      return;
 
@@ -213,7 +213,7 @@ _status_cb(void *d EINA_UNUSED, const EDBus_Message *msg)
    if (!mc)
      {
         mc = mod_contact_new(jid, res, desc, st, type, priority);
-        edbus_proxy_call(mod->proxy_contact, "info", _contact_info_cb, eina_stringshare_ref(mc->jid), -1, "s", mc->jid);
+        eldbus_proxy_call(mod->proxy_contact, "info", _contact_info_cb, eina_stringshare_ref(mc->jid), -1, "s", mc->jid);
         return;
      }
    
@@ -222,47 +222,47 @@ _status_cb(void *d EINA_UNUSED, const EDBus_Message *msg)
 }
 
 static void
-_link_list_cb(void *d EINA_UNUSED, const EDBus_Message *msg, EDBus_Pending *pending EINA_UNUSED)
+_link_list_cb(void *d EINA_UNUSED, const Eldbus_Message *msg, Eldbus_Pending *pending EINA_UNUSED)
 {
-   EDBus_Message_Iter *array = NULL;
+   Eldbus_Message_Iter *array = NULL;
    char *txt = NULL;
    const char *name, *error;
 
-   if (edbus_message_error_get(msg, &name, &error))
+   if (eldbus_message_error_get(msg, &name, &error))
      {
         ERR("%s: %s", name, error);
         return;
      }
-   if (!edbus_message_arguments_get(msg, "as", &array)) return;
+   if (!eldbus_message_arguments_get(msg, "as", &array)) return;
 
-   while (edbus_message_iter_get_and_next(array, 's', &txt))
+   while (eldbus_message_iter_get_and_next(array, 's', &txt))
      mod->images = eina_list_append(mod->images, eina_stringshare_add(txt));
 }
 
 static void
-_contacts_list_cb(void *d EINA_UNUSED, const EDBus_Message *msg, EDBus_Pending *pending EINA_UNUSED)
+_contacts_list_cb(void *d EINA_UNUSED, const Eldbus_Message *msg, Eldbus_Pending *pending EINA_UNUSED)
 {
-   EDBus_Message_Iter *array = NULL;
+   Eldbus_Message_Iter *array = NULL;
    char *txt = NULL;
    const char *name, *error;
 
-   if (edbus_message_error_get(msg, &name, &error))
+   if (eldbus_message_error_get(msg, &name, &error))
      {
         ERR("%s: %s", name, error);
         return;
      }
-   if (!edbus_message_arguments_get(msg, "as", &array)) return;
+   if (!eldbus_message_arguments_get(msg, "as", &array)) return;
 
-   while (edbus_message_iter_get_and_next(array, 's', &txt))
-     edbus_proxy_call(mod->proxy_contact, "info", _contact_info_cb, eina_stringshare_add(txt), -1, "s", txt);
+   while (eldbus_message_iter_get_and_next(array, 's', &txt))
+     eldbus_proxy_call(mod->proxy_contact, "info", _contact_info_cb, eina_stringshare_add(txt), -1, "s", txt);
 }
 
 static void
-_connected_cb(void *d EINA_UNUSED, const EDBus_Message *msg)
+_connected_cb(void *d EINA_UNUSED, const Eldbus_Message *msg)
 {
    Eina_Bool state;
 
-   if (!edbus_message_arguments_get(msg, "b", &state)) return;
+   if (!eldbus_message_arguments_get(msg, "b", &state)) return;
    mod->connected = !!state;
    _set_active((mod->nameowned && mod->connected));
    if (!mod->connected)
@@ -271,16 +271,16 @@ _connected_cb(void *d EINA_UNUSED, const EDBus_Message *msg)
         return;
      }
    if (mod->contacts_list) return;
-   edbus_proxy_call(mod->proxy_list, "get", _contacts_list_cb, NULL, -1, "");
+   eldbus_proxy_call(mod->proxy_list, "get", _contacts_list_cb, NULL, -1, "");
 }
 
 static void
-_new_msg_cb(void *d EINA_UNUSED, const EDBus_Message *msg)
+_new_msg_cb(void *d EINA_UNUSED, const Eldbus_Message *msg)
 {
    char *jid, *txt;
    Mod_Contact *mc;
 
-   if (!edbus_message_arguments_get(msg, "ss", &jid, &txt)) return;
+   if (!eldbus_message_arguments_get(msg, "ss", &jid, &txt)) return;
    mc = eina_hash_find(mod->contacts, jid);
    if (!mc) return; // should be impossible
    mod->contacts_list = eina_inlist_promote(mod->contacts_list, EINA_INLIST_GET(mc));
@@ -300,9 +300,9 @@ _name_owner_change(void *d EINA_UNUSED, const char *bus EINA_UNUSED, const char 
      {
         mod->connected = 1;
         if (!mod->contacts_list)
-          edbus_proxy_call(mod->proxy_list, "get", _contacts_list_cb, NULL, -1, "");
+          eldbus_proxy_call(mod->proxy_list, "get", _contacts_list_cb, NULL, -1, "");
         if (sos_config->fetch_past_links && (!mod->images))
-          edbus_proxy_call(mod->proxy_link, "list", _link_list_cb, NULL, -1, "");
+          eldbus_proxy_call(mod->proxy_link, "list", _link_list_cb, NULL, -1, "");
      }
    _set_active((mod->nameowned && mod->connected));
    if (!mod->nameowned) E_FREE_LIST(mod->images, eina_stringshare_del);
@@ -315,7 +315,7 @@ _link_activate(unsigned int num)
 
    if (mod->tooltip_active)
      {
-        edbus_proxy_call(mod->proxy_link, "show", NULL, NULL, -1, "s", "");
+        eldbus_proxy_call(mod->proxy_link, "show", NULL, NULL, -1, "s", "");
         mod->tooltip_number = mod->tooltip_active = 0;
         return;
      }
@@ -324,7 +324,7 @@ _link_activate(unsigned int num)
    if (!url) url = eina_list_data_get(mod->images);
    mod->tooltip_number = num;
    mod->tooltip_active = 1;
-   edbus_proxy_call(mod->proxy_link, "show", NULL, NULL, -1, "s", url);
+   eldbus_proxy_call(mod->proxy_link, "show", NULL, NULL, -1, "s", url);
 }
 
 static void
@@ -338,7 +338,7 @@ _sawedoff_key_cb(void *data EINA_UNUSED, Evas *e EINA_UNUSED, Evas_Object *obj, 
      }
    if ((!strcmp(ev->keyname, "Return")) || (!strcmp(ev->keyname, "KP_Enter")))
      { 
-        edbus_proxy_call(mod->proxy_contact, "send_echo", NULL, NULL, -1, "ssu",
+        eldbus_proxy_call(mod->proxy_contact, "send_echo", NULL, NULL, -1, "ssu",
           mod->contact_active->jid, e_entry_text_get(obj), 0);
         e_entry_clear(mod->popup_entry);
         if (!sos_config->close_on_send) return;
@@ -555,7 +555,7 @@ static void
 _action_link_open_cb(E_Object *obj EINA_UNUSED, const char *params EINA_UNUSED)
 {
    if (!mod->images) return;
-   edbus_proxy_call(mod->proxy_link, "open", NULL, NULL, -1, "s", eina_list_data_get(mod->images));
+   eldbus_proxy_call(mod->proxy_link, "open", NULL, NULL, -1, "s", eina_list_data_get(mod->images));
 }
 
 static void
@@ -626,7 +626,7 @@ EAPI void *
 e_modapi_init(E_Module *m)
 {
    char buf[4096];
-   EDBus_Object *obj;
+   Eldbus_Object *obj;
    E_Action *act;
 
    snprintf(buf, sizeof(buf), "%s/locale", m->dir);
@@ -645,23 +645,23 @@ e_modapi_init(E_Module *m)
    mod->module = m;
    mod->edj = eina_stringshare_add(buf);
 
-   edbus_init();
-   mod->conn = edbus_connection_get(EDBUS_CONNECTION_TYPE_SESSION);
-   edbus_name_owner_changed_callback_add(mod->conn, SHOTGUN_DBUS_METHOD_BASE,
+   eldbus_init();
+   mod->conn = eldbus_connection_get(ELDBUS_CONNECTION_TYPE_SESSION);
+   eldbus_name_owner_changed_callback_add(mod->conn, SHOTGUN_DBUS_METHOD_BASE,
 					 _name_owner_change, NULL, EINA_TRUE);
-   obj = edbus_object_get(mod->conn, SHOTGUN_DBUS_INTERFACE, SHOTGUN_DBUS_PATH);
-   mod->proxy_core = edbus_proxy_get(obj, SHOTGUN_DBUS_METHOD_BASE ".core");
+   obj = eldbus_object_get(mod->conn, SHOTGUN_DBUS_INTERFACE, SHOTGUN_DBUS_PATH);
+   mod->proxy_core = eldbus_proxy_get(obj, SHOTGUN_DBUS_METHOD_BASE ".core");
 
-   edbus_proxy_signal_handler_add(mod->proxy_core, "link", _link_cb, NULL);
-   edbus_proxy_signal_handler_add(mod->proxy_core, "link_self", _link_self_cb, NULL);
-   edbus_proxy_signal_handler_add(mod->proxy_core, "link_del", _link_del_cb, NULL);
-   edbus_proxy_signal_handler_add(mod->proxy_core, "new_msg", _new_msg_cb, NULL);
-   edbus_proxy_signal_handler_add(mod->proxy_core, "status", _status_cb, NULL);
-   edbus_proxy_signal_handler_add(mod->proxy_core, "connected", _connected_cb, NULL);
+   eldbus_proxy_signal_handler_add(mod->proxy_core, "link", _link_cb, NULL);
+   eldbus_proxy_signal_handler_add(mod->proxy_core, "link_self", _link_self_cb, NULL);
+   eldbus_proxy_signal_handler_add(mod->proxy_core, "link_del", _link_del_cb, NULL);
+   eldbus_proxy_signal_handler_add(mod->proxy_core, "new_msg", _new_msg_cb, NULL);
+   eldbus_proxy_signal_handler_add(mod->proxy_core, "status", _status_cb, NULL);
+   eldbus_proxy_signal_handler_add(mod->proxy_core, "connected", _connected_cb, NULL);
 
-   mod->proxy_link = edbus_proxy_get(obj, SHOTGUN_DBUS_METHOD_BASE ".link");
-   mod->proxy_contact = edbus_proxy_get(obj, SHOTGUN_DBUS_METHOD_BASE ".contact");
-   mod->proxy_list = edbus_proxy_get(obj, SHOTGUN_DBUS_METHOD_BASE ".list");
+   mod->proxy_link = eldbus_proxy_get(obj, SHOTGUN_DBUS_METHOD_BASE ".link");
+   mod->proxy_contact = eldbus_proxy_get(obj, SHOTGUN_DBUS_METHOD_BASE ".contact");
+   mod->proxy_list = eldbus_proxy_get(obj, SHOTGUN_DBUS_METHOD_BASE ".list");
 
    _e_mod_sos_config_load();
 
@@ -707,7 +707,7 @@ e_modapi_init(E_Module *m)
 EAPI int
 e_modapi_shutdown(E_Module *m EINA_UNUSED)
 {
-   EDBus_Object *obj;
+   Eldbus_Object *obj;
    e_configure_registry_item_del("extensions/sawed-off_shotgun");
 
    e_configure_registry_category_del("extensions");
@@ -722,22 +722,22 @@ e_modapi_shutdown(E_Module *m EINA_UNUSED)
    e_config_domain_save("module.sawed-off_shotgun", conf_edd, sos_config);
    _e_mod_sos_config_free();
    E_CONFIG_DD_FREE(conf_edd);
-   obj = edbus_proxy_object_get(mod->proxy_core);
-   edbus_proxy_unref(mod->proxy_core);
-   edbus_proxy_unref(mod->proxy_link);
-   edbus_proxy_unref(mod->proxy_list);
-   edbus_proxy_unref(mod->proxy_contact);
-   edbus_object_unref(obj);
-   edbus_name_owner_changed_callback_del(mod->conn, SHOTGUN_DBUS_METHOD_BASE,
+   obj = eldbus_proxy_object_get(mod->proxy_core);
+   eldbus_proxy_unref(mod->proxy_core);
+   eldbus_proxy_unref(mod->proxy_link);
+   eldbus_proxy_unref(mod->proxy_list);
+   eldbus_proxy_unref(mod->proxy_contact);
+   eldbus_object_unref(obj);
+   eldbus_name_owner_changed_callback_del(mod->conn, SHOTGUN_DBUS_METHOD_BASE,
                                          _name_owner_change, NULL);
-   edbus_connection_unref(mod->conn);
+   eldbus_connection_unref(mod->conn);
    E_FREE_LIST(mod->images, eina_stringshare_del);
    E_FREE_LIST(mod->actions, e_action_del);
    eina_hash_free(mod->contacts);
    if (mod->ef) eet_close(mod->ef);
    E_FREE(mod);
    E_FREE_FUNC(eio_file, eio_file_cancel);
-   edbus_shutdown();
+   eldbus_shutdown();
    E_FREE_LIST(handlers, ecore_event_handler_del);
    return 1;
 }

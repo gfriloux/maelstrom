@@ -3,7 +3,7 @@
 
 #include <e.h>
 #include "ui.h"
-#include <EDBus.h>
+#include <Eldbus.h>
 
 #ifdef ENABLE_NLS
 # include <libintl.h>
@@ -34,11 +34,11 @@ typedef struct Mod
    E_Module *module;
    Eet_File *ef;
    const char *edj;
-   EDBus_Connection *conn;
-   EDBus_Proxy *proxy_core;
-   EDBus_Proxy *proxy_link;
-   EDBus_Proxy *proxy_contact;
-   EDBus_Proxy *proxy_list;
+   Eldbus_Connection *conn;
+   Eldbus_Proxy *proxy_core;
+   Eldbus_Proxy *proxy_link;
+   Eldbus_Proxy *proxy_contact;
+   Eldbus_Proxy *proxy_list;
    Eina_List *images; /* Eina_Stringshare */
    Eina_List *actions;
    Eina_Hash *contacts;

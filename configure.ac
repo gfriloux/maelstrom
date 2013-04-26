@@ -310,7 +310,7 @@ AC_ARG_ENABLE([sawedoff],
    [want_sawedoff=$enableval], [])
 
 if test "x$want_sawedoff" != "xno"; then
-   PKG_CHECK_MODULES([E], [enlightenment edbus2], [build_sawedoff="yes"], [build_sawedoff=])
+   PKG_CHECK_MODULES([E], [enlightenment eldbus], [build_sawedoff="yes"], [build_sawedoff=])
    MODULE_DIR=$(pkg-config --variable=modules enlightenment)
    release=$(pkg-config --variable=release enlightenment)
    MODULE_ARCH="$host_os-$host_cpu-$release"
