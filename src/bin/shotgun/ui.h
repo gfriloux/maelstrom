@@ -313,6 +313,7 @@ void chat_link_copy(Contact_List *c, const char *url);
 void chat_image_add(Contact_List *cl, const char *url);
 void chat_image_free(Image *i);
 void chat_image_cleanup(Contact_List *cl);
+Eina_Bool chat_image_complete(void *data EINA_UNUSED, int type EINA_UNUSED, Azy_Event_Client_Transfer_Complete *ev);
 Eina_Bool chat_image_status(void *data EINA_UNUSED, int type, Azy_Event_Client_Transfer_Progress *ev);
 void chat_conv_image_show(void *data, Evas_Object *obj, Elm_Entry_Anchor_Info *ev);
 void chat_conv_image_hide(Contact *c, Evas_Object *obj, Elm_Entry_Anchor_Info *ev);

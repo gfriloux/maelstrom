@@ -104,13 +104,19 @@ _chat_image_sort_cb(Image *a, Image *b)
    return 1;
 }
 
-Eina_Error
-_chat_image_complete(Azy_Client *cli, Azy_Content *content EINA_UNUSED, Eina_Binbuf *buf)
+Eina_Bool
+chat_image_complete(void *data EINA_UNUSED, int type EINA_UNUSED, Azy_Event_Client_Transfer_Complete *ev)
 {
-   Image *i = azy_client_data_get(cli);
+   Image *i = azy_client_data_get(ev->client);
+   Eina_Binbuf *buf;
+   size_t size;
 
    if (i->buf) eina_binbuf_free(i->buf);
-   i->buf = buf;
+   i->buf = NULL;
+   if (!i->valid) return ECORE_CALLBACK_RENEW;
+   buf = azy_content_return_get(ev->content, NULL);
+   size = eina_binbuf_length_get(buf);
+   i->buf = eina_binbuf_manage_new_length(eina_binbuf_string_steal(buf), size);
    i->timestamp = (unsigned long long)ecore_time_unix_get();
    if (ui_eet_image_add(i->addr, i->buf, i->timestamp) == 1)
      i->cl->image_size += eina_binbuf_length_get(i->buf);
@@ -143,21 +149,17 @@ chat_image_status(void *data EINA_UNUSED, int type EINA_UNUSED, Azy_Event_Client
         if (i->buf) eina_binbuf_free(i->buf);
         i->buf = NULL;
         azy_client_close(i->client);
+        if ((status >= 400) || (status <= 300)) goto dummy;
         if (++i->tries < IMAGE_FETCH_TRIES)
           {
              Azy_Client_Call_Id id;
 
              azy_client_util_reconnect(i->client);
              id = azy_client_blank(i->client, AZY_NET_TYPE_GET, NULL, NULL, NULL);
-             if (id)
-               azy_client_callback_set(i->client, id, (Azy_Client_Transfer_Complete_Cb)_chat_image_complete);
-             else
+             if (!id)
                {
                   ERR("fetch retry failed: img(%s)!", i->addr);
-                  ui_eet_dummy_add(i->addr);
-                  i->dummy = EINA_TRUE;
-                  azy_client_free(i->client);
-                  i->client = NULL;
+                  goto dummy;
                }
           }
         else
@@ -165,25 +167,24 @@ chat_image_status(void *data EINA_UNUSED, int type EINA_UNUSED, Azy_Event_Client
              azy_client_free(i->client);
              i->client = NULL;
           }
-        i->cl->image_list = eina_inlist_remove(i->cl->image_list, EINA_INLIST_GET(i));
         eina_hash_del_by_key(i->cl->images, i->addr);
         return ECORE_CALLBACK_RENEW;
      }
    h = azy_net_header_get(ev->net, "content-type");
    if (h)
      {
-        if (strncasecmp(h, "image/", 6))
-          {
-             ui_eet_dummy_add(i->addr);
-             i->dummy = EINA_TRUE;
-             if (i->buf) eina_binbuf_free(i->buf);
-             i->buf = NULL;
-             if (i->client) azy_client_free(i->client);
-             i->client = NULL;
-          }
+        if (strncasecmp(h, "image/", 6)) goto dummy;
      }
    i->valid = !i->dummy;
 
+   return ECORE_CALLBACK_RENEW;
+dummy:
+   ui_eet_dummy_add(i->addr);
+   i->dummy = EINA_TRUE;
+   if (i->buf) eina_binbuf_free(i->buf);
+   i->buf = NULL;
+   if (i->client) azy_client_free(i->client);
+   i->client = NULL;
    return ECORE_CALLBACK_RENEW;
 }
 
@@ -286,9 +287,7 @@ chat_image_add(Contact_List *cl, const char *url)
 
              azy_client_data_set(i->client, i);
              id = azy_client_blank(i->client, AZY_NET_TYPE_GET, NULL, NULL, NULL);
-             if (id)
-               azy_client_callback_set(i->client, id, (Azy_Client_Transfer_Complete_Cb)_chat_image_complete);
-             else
+             if (!id)
                {
                   azy_client_free(i->client);
                   i->client = NULL;
