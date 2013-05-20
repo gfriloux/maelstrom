@@ -460,7 +460,9 @@ ui_dbus_signal_status(Contact *c, Shotgun_Event_Presence *pres)
 {
    const char *res, *desc;
 
-   res = strrchr(pres->jid, '/') + 1;
+   res = strrchr(pres->jid, '/');
+   if (res) res++;
+   else res = "/";
    desc = pres->description ?: "";
    eldbus_service_signal_emit(ui_core_iface, UI_DBUS_SIGNAL_STATUS_CHANGE, 
      c->base->jid, res, desc, pres->status, pres->type, pres->priority);
