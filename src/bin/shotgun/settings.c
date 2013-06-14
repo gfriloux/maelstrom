@@ -77,18 +77,6 @@ static char *BROWSERS[] = { NULL, "chrome", "firefox", "opera", NULL, "xdg-open"
 } while (0)
 
 static void
-_settings_image_size_change(UI_WIN *ui, Evas_Object *obj, void *event_info EINA_UNUSED)
-{
-   ui->settings->allowed_image_size = elm_slider_value_get(obj);
-}
-
-static void
-_settings_image_age_change(UI_WIN *ui, Evas_Object *obj, void *event_info EINA_UNUSED)
-{
-   ui->settings->allowed_image_age = elm_slider_value_get(obj);
-}
-
-static void
 _settings_logging_change(Contact_List *cl, Evas_Object *obj, void *event_info EINA_UNUSED)
 {
    Eina_List *l, *ll;
@@ -255,13 +243,11 @@ _settings_mail_notify_change(UI_WIN *ui, Evas_Object *obj EINA_UNUSED, void *eve
 void
 settings_new(UI_WIN *ui)
 {
-   Evas_Object *scr, *ic, *back, *box, *ck, *fr, *frbox, *sl, *radio, *sradio;
+   Evas_Object *scr, *ic, *back, *box, *ck, *fr, *frbox, *radio, *sradio;
    Contact_List *cl;
-   Login_Window *lw;
    char buf[1024];
 
-   IF_UI_IS_LOGIN(ui) lw = (Login_Window*)ui;
-   else cl = (Contact_List*)ui;
+   cl = (Contact_List*)ui;
 
    ui->settings_box = box = elm_box_add(ui->win);
    EXPAND(box);
@@ -336,14 +322,6 @@ settings_new(UI_WIN *ui)
    SETTINGS_CHECK("Disable notifications", disable_notify, "Disables use of notification popups");
 #endif
 
-   SETTINGS_FRAME("Images");
-   elm_frame_collapse_set(fr, EINA_TRUE);
-   SETTINGS_CHECK("Disable automatic image fetching", disable_image_fetch, "Disables background fetching of images");
-   SETTINGS_SLIDER("Max image age", "Number of days to save linked images on disk before deleting them",
-                   "%1.0f days", 60, image_age);
-   SETTINGS_SLIDER("Max image memory", "Total size of images to keep in memory",
-                   "%1.0f MB", 512, image_size);
-
    SETTINGS_FRAME("List");
    elm_frame_collapse_set(fr, EINA_TRUE);
    SETTINGS_CHECK("Don't show status in list item", disable_list_status, "Do not show a contact's status inlined under the name");
@@ -380,18 +358,6 @@ settings_new(UI_WIN *ui)
 void
 settings_toggle(UI_WIN *ui, Evas_Object *obj EINA_UNUSED, void *event_info)
 {
-   Contact_List *cl;
-   Login_Window *lw;
-
-   IF_UI_IS_LOGIN(ui) lw = (Login_Window*)ui;
-   else cl = (Contact_List*)ui;
-
-   IF_UI_IS_NOT_LOGIN(ui)
-     {
-        if ((!cl->image_cleaner) && cl->settings->allowed_image_age)
-          ui_eet_idler_start(cl);
-        chat_image_cleanup(cl);
-     }
    IF_ILLUME(ui)
      {
         if (elm_flip_front_visible_get(ui->flip))

@@ -1,101 +1,7 @@
 #include "ui.h"
 
-
-static Evas_Object *
-_chat_conv_image_provider(Image *i, Evas_Object *obj EINA_UNUSED, Evas_Object *tt)
-{
-   Evas_Object *ret, *ic, *lbl;
-   int w, h, cw, ch;
-   char *buf;
-   size_t len;
-
-   DBG("(i=%p)", i);
-   if ((!i) || (!i->buf)) goto error;
-
-   w = h = cw = ch = 0;
-   ic = elm_icon_add(tt);
-   if (!elm_image_memfile_set(ic, eina_binbuf_string_get(i->buf), eina_binbuf_length_get(i->buf), NULL, NULL))
-     {
-        /* an unloadable image is a useless image! */
-        i->cl->image_list = eina_inlist_remove(i->cl->image_list, EINA_INLIST_GET(i));
-        eina_hash_del_by_key(i->cl->images, i->addr);
-        evas_object_del(ic);
-        goto error;
-     }
-   evas_object_show(ic);
-   ret = elm_box_add(tt);
-   elm_box_homogeneous_set(ret, EINA_FALSE);
-   EXPAND(ret);
-   FILL(ret);
-
-   lbl = elm_label_add(tt);
-   elm_object_text_set(lbl, i->addr);
-   elm_box_pack_end(ret, lbl);
-   evas_object_show(lbl);
-
-   elm_box_pack_end(ret, ic);
-
-   elm_win_screen_size_get(tt, NULL, NULL, &cw, &ch);
-   elm_win_screen_constrain_set(tt, EINA_TRUE);
-   elm_image_object_size_get(ic, &w, &h);
-   elm_image_resizable_set(ic, 0, 0);
-   elm_image_smooth_set(ic, 1);
-   if (elm_image_animated_available_get(ic))
-     {
-        elm_image_animated_set(ic, EINA_TRUE);
-        elm_image_animated_play_set(ic, EINA_TRUE);
-     }
-   {
-      float sc = 0;
-      if ((float)w / (float)cw >= 0.6)
-        sc = ((float)cw * 0.6) / (float)w;
-      else if ((float)h / (float)ch >= 0.6)
-        sc = ((float)ch * 0.6) / (float)h;
-      if (sc) elm_object_scale_set(ic, sc);
-   }
-   lbl = elm_label_add(tt);
-   len = (i->cl->settings->browser ? strlen(i->cl->settings->browser) : 0) + 64;
-   if (len > 32000)
-     buf = malloc(len);
-   else
-     buf = alloca(len);
-   snprintf(buf, len, "%s%s%s"
-            "Right click link to copy to clipboard",
-            i->cl->settings->browser ? "Left click link to open with \"" : "",
-            i->cl->settings->browser ?: "",
-            i->cl->settings->browser ? "\"<ps>" : "");
-
-   elm_object_text_set(lbl, buf);
-   if (len > 32000) free(buf);
-   elm_box_pack_end(ret, lbl);
-   evas_object_show(lbl);
-   return ret;
-error:
-   ret = elm_bg_add(tt);
-   elm_bg_color_set(ret, 0, 0, 0);
-   evas_object_show(ret);
-   ret = elm_label_add(tt);
-   {
-      len = strlen(i->addr) + (i->cl->settings->browser ? strlen(i->cl->settings->browser) : 0) + 64;
-      if (len > 32000)
-        buf = malloc(len);
-      else
-        buf = alloca(len);
-      snprintf(buf, len, "%s<ps>"
-               "%s%s%s"
-               "Right click link to copy to clipboard",
-               i->addr,
-               i->cl->settings->browser ? "Left click link to open with \"" : "",
-               i->cl->settings->browser ?: "",
-               i->cl->settings->browser ? "\"<ps>" : "");
-      elm_object_text_set(ret, buf);
-      if (len > 32000) free(buf);
-   }
-   return ret;
-}
-
 static int
-_chat_image_sort_cb(Image *a, Image *b)
+_chat_image_sort_cb(Link *a, Link *b)
 {
    long long diff;
    diff = a->timestamp - b->timestamp;
@@ -104,152 +10,44 @@ _chat_image_sort_cb(Image *a, Image *b)
    return 1;
 }
 
-Eina_Bool
-chat_image_complete(void *data EINA_UNUSED, int type EINA_UNUSED, Azy_Event_Client_Transfer_Complete *ev)
-{
-   Image *i = azy_client_data_get(ev->client);
-   Eina_Binbuf *buf;
-   size_t size;
-
-   if (i->buf) eina_binbuf_free(i->buf);
-   i->buf = NULL;
-   if (!i->valid) return ECORE_CALLBACK_RENEW;
-   buf = azy_content_return_get(ev->content, NULL);
-   size = eina_binbuf_length_get(buf);
-   i->buf = eina_binbuf_manage_new_length(eina_binbuf_string_steal(buf), size);
-   i->timestamp = (unsigned long long)ecore_time_unix_get();
-   if (ui_eet_image_add(i->addr, i->buf, i->timestamp) == 1)
-     i->cl->image_size += eina_binbuf_length_get(i->buf);
-   if (i->client) azy_client_free(i->client);
-   i->client = NULL;
-   chat_image_cleanup(i->cl);
-   if (i->cl->dbus_image == i)
-     {
-        Elm_Entry_Anchor_Info e;
-
-        memset(&e, 0, sizeof(Elm_Entry_Anchor_Info));
-        e.name = i->addr;
-        chat_conv_image_show(i->cl, NULL, &e);
-     }
-   return ECORE_CALLBACK_RENEW;
-}
-
-Eina_Bool
-chat_image_status(void *data EINA_UNUSED, int type EINA_UNUSED, Azy_Event_Client_Transfer_Progress *ev)
-{
-   int status;
-   const char *h;
-   Image *i = azy_client_data_get(ev->client);
-
-   if (i->valid) return ECORE_CALLBACK_RENEW; //already checked
-   status = azy_net_code_get(ev->net);
-   DBG("%i code for image: %s", status, azy_net_uri_get(ev->net));
-   if (status != 200)
-     {
-        if (i->buf) eina_binbuf_free(i->buf);
-        i->buf = NULL;
-        azy_client_close(i->client);
-        if ((status >= 400) || (status <= 300)) goto dummy;
-        if (++i->tries < IMAGE_FETCH_TRIES)
-          {
-             Azy_Client_Call_Id id;
-
-             azy_client_util_reconnect(i->client);
-             id = azy_client_blank(i->client, AZY_NET_TYPE_GET, NULL, NULL, NULL);
-             if (!id)
-               {
-                  ERR("fetch retry failed: img(%s)!", i->addr);
-                  goto dummy;
-               }
-          }
-        else
-          {
-             azy_client_free(i->client);
-             i->client = NULL;
-          }
-        eina_hash_del_by_key(i->cl->images, i->addr);
-        return ECORE_CALLBACK_RENEW;
-     }
-   h = azy_net_header_get(ev->net, "content-type");
-   if (h)
-     {
-        if (strncasecmp(h, "image/", 6)) goto dummy;
-     }
-   i->valid = !i->dummy;
-
-   return ECORE_CALLBACK_RENEW;
-dummy:
-   ui_eet_dummy_add(i->addr);
-   i->dummy = EINA_TRUE;
-   if (i->buf) eina_binbuf_free(i->buf);
-   i->buf = NULL;
-   if (i->client) azy_client_free(i->client);
-   i->client = NULL;
-   return ECORE_CALLBACK_RENEW;
-}
-
 void
-chat_conv_image_show(void *data, Evas_Object *obj, Elm_Entry_Anchor_Info *ev)
+chat_conv_image_show(void *data, Evas_Object *obj EINA_UNUSED, Elm_Entry_Anchor_Info *ev)
 {
-   Image *i = NULL;
+   Link *i;
    Contact *c = data;
-   Contact_List *cl = data;
-   const char *url;
+   int x, y;
 
-   if (obj)
-     {
-        if (!c) return;
-        cl = c->list;
-     }
-   else
-     obj = cl->win;
+   if (!c) return;
 
-   if (cl->dbus_image)
-     {
-        url = ev->name;
-        ev->name = cl->dbus_image->addr;
-        chat_conv_image_hide(NULL, cl->win, ev);
-        ev->name = url;
-     }
    DBG("anchor in: '%s' (%i, %i)", ev->name, ev->x, ev->y);
-   i = eina_hash_find(cl->images, ev->name);
-   if (i && i->buf)
-     elm_object_tooltip_content_cb_set(obj, (Elm_Tooltip_Content_Cb)_chat_conv_image_provider, i, NULL);
-   else
-     {
-        char *buf;
-        size_t len;
-
-        len = strlen(ev->name) + (cl->settings->browser ? strlen(cl->settings->browser) : 0) + 64;
-        if (len > 32000)
-          buf = malloc(len);
-        else
-          buf = alloca(len);
-        snprintf(buf, len, "%s<ps>"
-                 "%s%s%s"
-                 "Right click link to copy to clipboard",
-                 ev->name,
-                 cl->settings->browser ? "Left click link to open with \"" : "",
-                 cl->settings->browser ?: "",
-                 cl->settings->browser ? "\"<ps>" : "");
-        elm_object_tooltip_text_set(obj, buf);
-        if (len > 32000) free(buf);
-     }
-   elm_object_tooltip_window_mode_set(obj, EINA_TRUE);
-   elm_object_tooltip_show(obj);
+#ifdef HAVE_DBUS
+   i = eina_hash_find(c->list->images, ev->name);
+   if (!i) return;
+   elm_win_screen_position_get(c->chat_window->win, &x, &y);
+   ui_dbus_link_mousein(i, ev->x + x, ev->y + y);
+#endif
 }
 
 void
-chat_conv_image_hide(Contact *c EINA_UNUSED, Evas_Object *obj, Elm_Entry_Anchor_Info *ev)
+chat_conv_link_hide(Contact *c, Evas_Object *obj EINA_UNUSED, Elm_Entry_Anchor_Info *ev)
 {
+   int x, y;
+   Link *i;
+
    if (ev) DBG("anchor out: '%s' (%i, %i)", ev->name, ev->x, ev->y);
-   elm_object_tooltip_unset(obj);
+#ifdef HAVE_DBUS
+   i = eina_hash_find(c->list->images, ev->name);
+   if (!i) return;
+   elm_win_screen_position_get(c->chat_window->win, &x, &y);
+   ui_dbus_link_mouseout(i, ev->x + x, ev->y + y);
+#endif
+   
 }
 
 void
-chat_image_add(Contact_List *cl, const char *url)
+chat_link_add(Contact_List *cl, const char *url)
 {
-   Image *i;
+   Link *i;
    unsigned long long t;
 
    t = (unsigned long long)ecore_time_unix_get();
@@ -257,91 +55,29 @@ chat_image_add(Contact_List *cl, const char *url)
    i = eina_hash_find(cl->images, url);
    if (i)
      {
-        if (i->buf)
-          {
-             i->timestamp = t;
-             ui_eet_image_ping(url, i->timestamp);
-          }
-        else
-          {
-             /* randomly deleted during cache pruning */
-             i->buf = ui_eet_image_get(url, t);
-             cl->image_size += eina_binbuf_length_get(i->buf);
-          }
+        i->timestamp = t;
         cl->image_list = eina_inlist_promote(cl->image_list, EINA_INLIST_GET(i));
-        chat_image_cleanup(i->cl);
         return;
      }
-   if (ui_eet_dummy_check(url)) return;
-   if (cl->settings->disable_image_fetch) return;
-   i = calloc(1, sizeof(Image));
-   i->buf = ui_eet_image_get(url, t);
-   if (i->buf)
-     cl->image_size += eina_binbuf_length_get(i->buf);
-   else
-     {
-        i->client = azy_client_util_connect(url);
-        if (i->client)
-          {
-             Azy_Client_Call_Id id;
-
-             azy_client_data_set(i->client, i);
-             id = azy_client_blank(i->client, AZY_NET_TYPE_GET, NULL, NULL, NULL);
-             if (!id)
-               {
-                  azy_client_free(i->client);
-                  i->client = NULL;
-               }
-          }
-        if (!i->client)
-          {
-             /* don't even know how to deal with this */
-             ERR("IMAGE FETCHING FAILURE: %s", url);
-             free(i);
-             return;
-          }
-     }
+   i = calloc(1, sizeof(Link));
+   i->timestamp = t;
    i->cl = cl;
    i->addr = url;
    eina_hash_add(cl->images, url, i);
    cl->image_list = eina_inlist_sorted_insert(cl->image_list, EINA_INLIST_GET(i), (Eina_Compare_Cb)_chat_image_sort_cb);
-   chat_image_cleanup(i->cl);
+#ifdef HAVE_DBUS
+   ui_dbus_link_detect(i);
+#endif
 }
 
 void
-chat_image_free(Image *i)
+chat_link_free(Link *i)
 {
    if (!i) return;
    i->cl->image_list = eina_inlist_remove(i->cl->image_list, EINA_INLIST_GET(i));
-   if (i->cl->dbus_image == i)
-     {
-        chat_conv_image_hide(NULL, i->cl->win, NULL);
-        i->cl->dbus_image = NULL;
-     }
-   if (i->client) azy_client_free(i->client);
-   if (i->buf) eina_binbuf_free(i->buf);
 #ifdef HAVE_DBUS
    ui_dbus_signal_link(i->cl, i->addr, EINA_TRUE, EINA_FALSE);
 #endif
    eina_stringshare_del(i->addr);
    free(i);
-}
-
-void
-chat_image_cleanup(Contact_List *cl)
-{
-   Image *i;
-
-   if (!cl->settings->allowed_image_size) return;
-   if (cl->settings->allowed_image_size < (cl->image_size / 1024 / 1024)) return;
-   EINA_INLIST_FOREACH(cl->image_list, i)
-     {
-        if (!i->buf) continue;
-        /* only free the buffers here to avoid having to deal with multiple list entries */
-        cl->image_size -= eina_binbuf_length_get(i->buf);
-        eina_binbuf_free(i->buf);
-        i->buf = NULL;
-        if (cl->settings->allowed_image_size < (cl->image_size / 1024 / 1024))
-          return;
-     }
 }

@@ -67,7 +67,6 @@ con(Contact_List *cl, int type EINA_UNUSED, Shotgun_Auth *auth)
           ecore_event_handler_data_set(dh, cl);
         ecore_event_handler_data_set(ch, cl);
         logging_dir_create(cl);
-        if (cl->settings->allowed_image_age) ui_eet_idler_start(cl);
 #ifdef HAVE_DBUS
         ui_dbus_init(cl);
 #endif
@@ -122,8 +121,6 @@ main(int argc, char *argv[])
    //eina_log_domain_level_set("ecore_con", EINA_LOG_LEVEL_DBG);
    ch = ecore_event_handler_add(SHOTGUN_EVENT_CONNECT, (Ecore_Event_Handler_Cb)con, NULL);
    ecore_event_handler_add(SHOTGUN_EVENT_CONNECTION_STATE, (Ecore_Event_Handler_Cb)con_state, NULL);
-   ecore_event_handler_add(AZY_EVENT_CLIENT_TRANSFER_PROGRESS, (Ecore_Event_Handler_Cb)chat_image_status, NULL);
-   ecore_event_handler_add(AZY_EVENT_CLIENT_TRANSFER_COMPLETE, (Ecore_Event_Handler_Cb)chat_image_complete, NULL);
 //   eina_log_abort_on_critical_level_set(EINA_LOG_LEVEL_CRITICAL);
 //   eina_log_abort_on_critical_set(EINA_TRUE);
 

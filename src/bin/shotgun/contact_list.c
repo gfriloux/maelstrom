@@ -1120,7 +1120,7 @@ contact_list_init(UI_WIN *ui, Shotgun_Auth *auth)
 
    cl->users = eina_hash_string_superfast_new(NULL);
 //   cl->users = eina_hash_string_superfast_new((Eina_Free_Cb)contact_free);
-   cl->images = eina_hash_string_superfast_new((Eina_Free_Cb)chat_image_free);
+   cl->images = eina_hash_string_superfast_new((Eina_Free_Cb)chat_link_free);
 
    cl->event_handlers.iq = ecore_event_handler_add(SHOTGUN_EVENT_IQ,
                                                        (Ecore_Event_Handler_Cb)event_iq_cb, cl);

@@ -72,7 +72,7 @@ extern Eina_Bool ssl_verify;
 typedef struct Login_Window Login_Window;
 typedef struct Contact_List Contact_List;
 typedef struct Contact Contact;
-typedef struct Image Image;
+typedef struct Link Link;
 
 #ifndef MODULE_BUILD
 typedef void (*Contact_List_Item_Tooltip_Cb)(void *item, Elm_Tooltip_Item_Content_Cb func, const void *data, Evas_Smart_Cb del_cb);
@@ -93,7 +93,6 @@ typedef struct Shotgun_Settings
    Eina_Bool enable_last_account;
    Eina_Bool enable_logging;
    Eina_Bool enable_illume;
-   Eina_Bool disable_image_fetch;
    Eina_Bool disable_reconnect;
    Eina_Bool enable_presence_save;
    Eina_Bool disable_list_status;
@@ -102,8 +101,6 @@ typedef struct Shotgun_Settings
    Eina_Bool disable_window_on_message;
    Eina_Bool enable_global_otr;
    Eina_Bool enable_mail_notifications;
-   unsigned int allowed_image_age;
-   unsigned int allowed_image_size;
    int chat_w;
    int chat_h;
    double chat_panes;
@@ -180,7 +177,7 @@ struct Contact_List
    Eina_List *users_list; /* list of all contacts */
    Eina_List *chat_wins; /* list of all chat windows */
    Eina_Hash *users; /* hash of jid<->Contact */
-   Eina_Hash *images; /* hash of img_url<->Image */
+   Eina_Hash *images; /* hash of img_url<->Link */
    Eina_Inlist *image_list; /* list of Images sorted by timestamp */
    size_t image_size; /* current total size of images in memory (in bytes) */
 
@@ -188,8 +185,6 @@ struct Contact_List
 
    Eina_Bool mode : 1; /* 0 for list, 1 for grid */
    Eina_Bool view : 1; /* 0 for regular, 1 for offlines */
-
-   Image *dbus_image;
 
    Ecore_Idler *image_cleaner;
    Ecore_Timer *logs_refresh;
@@ -281,17 +276,12 @@ struct Contact
    Eina_Bool dead : 1; /* if deletion attempt during thread */
 };
 
-struct Image
+struct Link
 {
    EINA_INLIST;
-   Azy_Client *client;
-   Eina_Binbuf *buf;
    const char *addr;
    unsigned long long timestamp;
    Contact_List *cl;
-   unsigned int tries;
-   Eina_Bool dummy : 1;
-   Eina_Bool valid : 1;
 };
 
 Contact_List *contact_list_init(UI_WIN *ui, Shotgun_Auth *auth);
@@ -310,13 +300,10 @@ void chat_message_insert(Contact *c, const char *from, const char *msg, Eina_Boo
 
 void chat_link_open(Contact_List *cl, const char *url);
 void chat_link_copy(Contact_List *c, const char *url);
-void chat_image_add(Contact_List *cl, const char *url);
-void chat_image_free(Image *i);
-void chat_image_cleanup(Contact_List *cl);
-Eina_Bool chat_image_complete(void *data EINA_UNUSED, int type EINA_UNUSED, Azy_Event_Client_Transfer_Complete *ev);
-Eina_Bool chat_image_status(void *data EINA_UNUSED, int type, Azy_Event_Client_Transfer_Progress *ev);
+void chat_link_add(Contact_List *cl, const char *url);
+void chat_link_free(Link *i);
 void chat_conv_image_show(void *data, Evas_Object *obj, Elm_Entry_Anchor_Info *ev);
-void chat_conv_image_hide(Contact *c, Evas_Object *obj, Elm_Entry_Anchor_Info *ev);
+void chat_conv_link_hide(Contact *c, Evas_Object *obj, Elm_Entry_Anchor_Info *ev);
 
 Shotgun_Event_Presence *contact_presence_get(Contact *c);
 void contact_presence_set(Contact *c, Shotgun_Event_Presence *cur);
@@ -338,12 +325,6 @@ void contact_chat_window_typing(Contact *c, Evas_Object *obj, void *event_info);
 const char *contact_jid_send_get(Contact *c);
 
 Eina_Bool ui_eet_init(Shotgun_Auth *auth);
-void ui_eet_dummy_add(const char *url);
-Eina_Bool ui_eet_dummy_check(const char *url);
-int ui_eet_image_add(const char *url, Eina_Binbuf *buf, unsigned long long timestamp);
-void ui_eet_image_del(const char *url);
-Eina_Binbuf *ui_eet_image_get(const char *url, unsigned long long timestamp);
-void ui_eet_image_ping(const char *url, unsigned long long timestamp);
 void ui_eet_shutdown(Shotgun_Auth *auth);
 Shotgun_Auth *ui_eet_auth_get(const char *name, const char *domain);
 void ui_eet_auth_set(Shotgun_Auth *auth, Shotgun_Settings *ss, Eina_Bool use_auth);
@@ -351,7 +332,6 @@ void ui_eet_userinfo_fetch(Contact *c, Eina_Bool new);
 void ui_eet_userinfo_update(Shotgun_Auth *auth, const char *jid, Contact_Info *ci);
 Shotgun_Settings *ui_eet_settings_get(Shotgun_Auth *auth);
 void ui_eet_settings_set(Shotgun_Auth *auth, Shotgun_Settings *ss);
-Eina_Bool ui_eet_idler_start(Contact_List *cl);
 void ui_eet_presence_set(Shotgun_Auth *auth);
 Eina_Bool ui_eet_presence_get(Shotgun_Auth *auth);
 
@@ -363,6 +343,9 @@ void ui_dbus_signal_status_self(Contact_List *cl);
 void ui_dbus_signal_link(Contact_List *cl, const char *link, Eina_Bool del, Eina_Bool self);
 void ui_dbus_init(Contact_List *cl);
 void ui_dbus_notify(Contact_List *cl, Evas_Object *img, const char *from, const char *msg);
+void ui_dbus_link_detect(Link *i);
+void ui_dbus_link_mousein(Link *i, int x, int y);
+void ui_dbus_link_mouseout(Link *i, int x, int y);
 #endif
 
 #ifdef HAVE_AZY

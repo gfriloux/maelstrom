@@ -8,6 +8,7 @@
 
 static Eldbus_Connection *ui_dbus_conn = NULL;
 static Eldbus_Service_Interface *ui_core_iface = NULL;
+static Eldbus_Object *ui_e_object = NULL;
 
 typedef enum
 {
@@ -182,7 +183,7 @@ static Eldbus_Message *
 _dbus_link_list_cb(const Eldbus_Service_Interface *iface, const Eldbus_Message *msg)
 {
    Contact_List *cl = eldbus_service_object_data_get(iface, "contact_list");
-   Image *i;
+   Link *i;
    Eldbus_Message *reply;
    Eldbus_Message_Iter *iter, *arr;
 
@@ -205,38 +206,6 @@ _dbus_link_open_cb(const Eldbus_Service_Interface *iface, const Eldbus_Message *
    if (eldbus_message_arguments_get(msg, "s", &url))
      {
         if (url && url[0]) chat_link_open(cl, url);
-     }
-   return eldbus_message_method_return_new(msg);
-}
-
-static Eldbus_Message *
-_dbus_link_show_cb(const Eldbus_Service_Interface *iface, const Eldbus_Message *msg)
-{
-   Contact_List *cl = eldbus_service_object_data_get(iface, "contact_list");
-   const char *url;
-   Image *i;
-   Elm_Entry_Anchor_Info ev;
-
-   memset(&ev, 0, sizeof(Elm_Entry_Anchor_Info));
-   ev.name = "";
-   chat_conv_image_hide(NULL, cl->win, &ev);
-   cl->dbus_image = NULL;
-   
-   while (eldbus_message_arguments_get(msg, "s", &url))
-     {
-        if (!url[0]) break;
-        i = eina_hash_find(cl->images, url);
-        if (!i) break; // not gonna let people use us as wget
-        if (!i->dummy) chat_image_add(cl, url); // update timestamp
-        if (i->client)
-          {
-             cl->dbus_image = i;
-             break;
-          }
-        ev.name = url;
-        chat_conv_image_show(cl, NULL, &ev);
-        cl->dbus_image = i;
-        break;
      }
    return eldbus_message_method_return_new(msg);
 }
@@ -514,7 +483,6 @@ static const Eldbus_Method core_methods[] =
 static const Eldbus_Method link_methods[] =
 {
       { "list", NULL, ELDBUS_ARGS({"as", "urls"}), _dbus_link_list_cb, 0},
-      { "show", ELDBUS_ARGS({"s", "url_to_show"}), NULL, _dbus_link_show_cb, 0},
       { "open", ELDBUS_ARGS({"s", "url_to_open"}), NULL, _dbus_link_open_cb, 0},
       {NULL, NULL, NULL, NULL, 0}
 };
@@ -584,6 +552,8 @@ ui_dbus_init(Contact_List *cl)
    eldbus_service_object_data_set(iface, "contact_list", cl);
    eldbus_name_owner_changed_callback_add(ui_dbus_conn, NOTIFY_BUS, _notify_nameowner_change_cb, NULL, EINA_FALSE);
    eldbus_name_owner_get(ui_dbus_conn, NOTIFY_BUS, _notify_nameowner_cb, NULL);
+
+   ui_e_object = eldbus_object_get(ui_dbus_conn, "org.enlightenment.wm.service", "/org/enlightenment/wm/RemoteObject");
 }
 
 void
@@ -612,12 +582,47 @@ ui_dbus_notify(Contact_List *cl, Evas_Object *img, const char *from, const char 
 }
 
 void
+ui_dbus_link_detect(Link *i)
+{
+   Eldbus_Message *msg;
+
+   msg = eldbus_message_method_call_new("org.enlightenment.wm.service", "/org/enlightenment/wm/RemoteObject", "org.enlightenment.wm.Teamwork", "LinkDetect");
+
+   eldbus_message_arguments_append(msg, "su", i->addr, i->timestamp);
+   eldbus_object_send(ui_e_object, msg, NULL, NULL, -1);
+}
+
+void
+ui_dbus_link_mousein(Link *i, int x, int y)
+{
+   Eldbus_Message *msg;
+
+   msg = eldbus_message_method_call_new("org.enlightenment.wm.service", "/org/enlightenment/wm/RemoteObject", "org.enlightenment.wm.Teamwork", "LinkMouseIn");
+
+   eldbus_message_arguments_append(msg, "suii", i->addr, i->timestamp, x, y);
+   eldbus_object_send(ui_e_object, msg, NULL, NULL, -1);
+}
+
+void
+ui_dbus_link_mouseout(Link *i, int x, int y)
+{
+   Eldbus_Message *msg;
+
+   msg = eldbus_message_method_call_new("org.enlightenment.wm.service", "/org/enlightenment/wm/RemoteObject", "org.enlightenment.wm.Teamwork", "LinkMouseOut");
+
+   eldbus_message_arguments_append(msg, "suii", i->addr, i->timestamp, x, y);
+   eldbus_object_send(ui_e_object, msg, NULL, NULL, -1);
+}
+
+void
 ui_dbus_shutdown(Contact_List *cl)
 {
    if (!cl) return;
    if (ui_dbus_conn) eldbus_connection_unref(ui_dbus_conn);
    ui_dbus_conn = NULL;
    ui_core_iface = NULL;
+   ui_e_object = NULL;
    eldbus_shutdown();
 }
+
 #endif

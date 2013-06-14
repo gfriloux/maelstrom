@@ -59,7 +59,7 @@ chat_message_insert(Contact *c, const char *from, const char *msg, Eina_Bool me)
    Evas_Object *e = c->chat_buffer;
    const char *color;
    Eina_Inlist *l = NULL;
-   Image *i;
+   Link *i;
 
    len = strftime(timebuf, sizeof(timebuf), "[%H:%M:%S]",
             localtime((time_t[]){ ecore_time_unix_get() }));
@@ -145,7 +145,7 @@ chat_message_insert(Contact *c, const char *from, const char *msg, Eina_Bool me)
 #ifdef HAVE_DBUS
    if (l)
      {
-        for (l = l->prev, i = EINA_INLIST_CONTAINER_GET(l, Image); l; l = l->prev, i = EINA_INLIST_CONTAINER_GET(l, Image))
+        for (l = l->prev, i = EINA_INLIST_CONTAINER_GET(l, Link); l; l = l->prev, i = EINA_INLIST_CONTAINER_GET(l, Link))
           ui_dbus_signal_link(c->list, i->addr, EINA_FALSE, me);
      }
    else
@@ -335,7 +335,7 @@ _chat_conv_filter_helper(Contact_List *cl, int d, Eina_Strbuf **sbuf, const char
         eina_strbuf_free(buf);
         *sbuf = NULL;
      }
-   chat_image_add(cl, eina_stringshare_add_length(http, *len));
+   chat_link_add(cl, eina_stringshare_add_length(http, *len));
    *len += skip;
 }
 
@@ -512,7 +512,7 @@ chat_status_entry_toggle(Contact *c)
    WEIGHT(status, EVAS_HINT_EXPAND, 0);
    elm_entry_markup_filter_append(status, (Elm_Entry_Filter_Cb)_chat_conv_filter, c->list);
    evas_object_smart_callback_add(status, "anchor,in", (Evas_Smart_Cb)chat_conv_image_show, c);
-   evas_object_smart_callback_add(status, "anchor,out", (Evas_Smart_Cb)chat_conv_image_hide, c);
+   evas_object_smart_callback_add(status, "anchor,out", (Evas_Smart_Cb)chat_conv_link_hide, c);
    evas_object_smart_callback_add(status, "anchor,clicked", (Evas_Smart_Cb)_chat_conv_anchor_click, c);
    if (c->description)
      {
@@ -700,7 +700,7 @@ chat_window_chat_new(Contact *c, Chat_Window *cw, Eina_Bool focus)
    elm_entry_line_wrap_set(convo, ELM_WRAP_MIXED);
    elm_entry_markup_filter_append(convo, (Elm_Entry_Filter_Cb)_chat_conv_filter, c->list);
    evas_object_smart_callback_add(convo, "anchor,in", (Evas_Smart_Cb)chat_conv_image_show, c);
-   evas_object_smart_callback_add(convo, "anchor,out", (Evas_Smart_Cb)chat_conv_image_hide, c);
+   evas_object_smart_callback_add(convo, "anchor,out", (Evas_Smart_Cb)chat_conv_link_hide, c);
    evas_object_smart_callback_add(convo, "anchor,clicked", (Evas_Smart_Cb)_chat_conv_anchor_click, c);
    EXPAND(convo);
    FILL(convo);
