@@ -596,10 +596,13 @@ void
 ui_dbus_link_mousein(Link *i, int x, int y)
 {
    Eldbus_Message *msg;
+   int64_t win;
+   Chat_Window *cw = eina_list_data_get(i->cl->chat_wins);
 
    msg = eldbus_message_method_call_new("org.enlightenment.wm.service", "/org/enlightenment/wm/RemoteObject", "org.enlightenment.wm.Teamwork", "LinkMouseIn");
 
-   eldbus_message_arguments_append(msg, "suii", i->addr, i->timestamp, x, y);
+   win = elm_win_xwindow_get(cw->win);
+   eldbus_message_arguments_append(msg, "suxii", i->addr, i->timestamp, win, x, y);
    eldbus_object_send(ui_e_object, msg, NULL, NULL, -1);
 }
 
@@ -607,10 +610,13 @@ void
 ui_dbus_link_mouseout(Link *i, int x, int y)
 {
    Eldbus_Message *msg;
+   int64_t win;
+   Chat_Window *cw = eina_list_data_get(i->cl->chat_wins);
 
    msg = eldbus_message_method_call_new("org.enlightenment.wm.service", "/org/enlightenment/wm/RemoteObject", "org.enlightenment.wm.Teamwork", "LinkMouseOut");
 
-   eldbus_message_arguments_append(msg, "suii", i->addr, i->timestamp, x, y);
+   win = elm_win_xwindow_get(cw->win);
+   eldbus_message_arguments_append(msg, "suxii", i->addr, i->timestamp, win, x, y);
    eldbus_object_send(ui_e_object, msg, NULL, NULL, -1);
 }
 

@@ -15,7 +15,6 @@ chat_conv_image_show(void *data, Evas_Object *obj EINA_UNUSED, Elm_Entry_Anchor_
 {
    Link *i;
    Contact *c = data;
-   int x, y;
 
    if (!c) return;
 
@@ -23,23 +22,20 @@ chat_conv_image_show(void *data, Evas_Object *obj EINA_UNUSED, Elm_Entry_Anchor_
 #ifdef HAVE_DBUS
    i = eina_hash_find(c->list->images, ev->name);
    if (!i) return;
-   elm_win_screen_position_get(c->chat_window->win, &x, &y);
-   ui_dbus_link_mousein(i, ev->x + x, ev->y + y);
+   ui_dbus_link_mousein(i, ev->x, ev->y);
 #endif
 }
 
 void
 chat_conv_link_hide(Contact *c, Evas_Object *obj EINA_UNUSED, Elm_Entry_Anchor_Info *ev)
 {
-   int x, y;
    Link *i;
 
    if (ev) DBG("anchor out: '%s' (%i, %i)", ev->name, ev->x, ev->y);
 #ifdef HAVE_DBUS
    i = eina_hash_find(c->list->images, ev->name);
    if (!i) return;
-   elm_win_screen_position_get(c->chat_window->win, &x, &y);
-   ui_dbus_link_mouseout(i, ev->x + x, ev->y + y);
+   ui_dbus_link_mouseout(i, ev->x, ev->y);
 #endif
    
 }
