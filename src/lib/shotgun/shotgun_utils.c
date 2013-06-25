@@ -189,5 +189,6 @@ shotgun_strtohtml(const char *s)
         s1[j] = s[i];
         c_len++;
      }
+   s1[c_len] = 0;
    return s1;
 }
