@@ -181,7 +181,7 @@ shotgun_strtohtml(const char *s)
         if (found)
           continue;
 
-        if ((c_len - s1_len) < 2)
+        if ((s1_len - c_len) < 2)
           {
              s1 = realloc(s1, s1_len + block);
              s1_len += block;
