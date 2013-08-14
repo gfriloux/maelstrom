@@ -36,6 +36,7 @@ extern int email_log_dom;
 #define EMAIL_POP3S_PORT 995
 
 #define EMAIL_SMTP_PORT 25
+#define EMAIL_SMTPS_PORT 465
 
 #define EMAIL_IMAP4_PORT 143
 #define EMAIL_IMAPS_PORT 993

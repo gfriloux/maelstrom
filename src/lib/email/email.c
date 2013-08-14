@@ -314,7 +314,7 @@ email_connect(Email *e, const char *host, Eina_Bool secure)
         e->protocol.imap.state = -1;
         break;
       case EMAIL_TYPE_SMTP:
-        port = EMAIL_SMTP_PORT;
+        port = e->secure ? EMAIL_SMTPS_PORT : EMAIL_SMTP_PORT;
         data_cb = (Ecore_Event_Handler_Cb)data_smtp;
         error_cb = (Ecore_Event_Handler_Cb)error_smtp;
         upgrade_cb = (Ecore_Event_Handler_Cb)upgrade_smtp;
