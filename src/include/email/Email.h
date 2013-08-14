@@ -278,6 +278,7 @@ EAPI extern int EMAIL_EVENT_DISCONNECTED;
 EAPI extern int EMAIL_EVENT_MAILBOX_STATUS; /**< sends Email_Imap4_Mailbox_Info */
 
 EAPI int email_init(void);
+EAPI void email_shutdown(void);
 EAPI Email *email_new(const char *username, const char *password, void *data);
 EAPI void email_free(Email *e);
 EAPI void email_data_set(Email *e, const void *data);

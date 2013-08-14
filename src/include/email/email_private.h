@@ -60,6 +60,7 @@ extern int email_log_dom;
 #define EMAIL_SMTP_DATA "DATA\r\n"
 
 #define EMAIL_STARTTLS "STARTTLS\r\n"
+#define EMAIL_AUTHLOGIN "AUTH LOGIN\r\n"
 #define CRLF "\r\n"
 #define CRLFLEN 2
 

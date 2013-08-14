@@ -19,7 +19,7 @@ _struct_reset(Email *e)
      }
    else if (email_is_pop(e))
      {
-        if (e->features.pop.apop_str) eina_binbuf_free(e->features.pop.apop_str);      
+        if (e->features.pop.apop_str) eina_binbuf_free(e->features.pop.apop_str);
      }
    else if (email_is_imap(e))
      {
@@ -123,7 +123,6 @@ void
 email_op_free(Email_Operation *op)
 {
    if (!op) return;
-   free(op->opdata);
    free(op->mbox);
    free(op);
 }
@@ -326,7 +325,7 @@ email_connect(Email *e, const char *host, Eina_Bool secure)
    e->svr = ecore_con_server_connect(ECORE_CON_REMOTE_CORK | e->flags, host, port, e);
    EINA_SAFETY_ON_NULL_GOTO(e->svr, error);
    if (e->secure) ecore_con_ssl_server_verify_basic(e->svr);
-   else e->state = EMAIL_STATE_USER;
+   else e->state = EMAIL_STATE_INIT;
    e->h_del = ecore_event_handler_add(ECORE_CON_EVENT_SERVER_DEL, (Ecore_Event_Handler_Cb)disc, e);
    e->h_data = ecore_event_handler_add(ECORE_CON_EVENT_SERVER_DATA, data_cb, e);
    e->h_error = ecore_event_handler_add(ECORE_CON_EVENT_SERVER_ERROR, error_cb, e);

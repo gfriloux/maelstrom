@@ -97,8 +97,20 @@ email_login_smtp(Email *e, Ecore_Con_Event_Server_Data *ev)
           }
         if (((char*)ev->data)[1] == '5')
           {
-             email_write(e, EMAIL_STARTTLS, sizeof(EMAIL_STARTTLS) - 1);
+             /* We're loosing perfs here, but we cant limit strstr's range */
+             char *s = strndup(ev->data, ev->size);
+             s[ev->size - 1] = 0;
+
+             if (strstr(s, "STARTTLS"))
+               email_write(e, EMAIL_STARTTLS, sizeof(EMAIL_STARTTLS) - 1);
+             else
+               {
+                  email_write(e, EMAIL_AUTHLOGIN, sizeof(EMAIL_AUTHLOGIN) -1);
+                  e->state++;
+               }
+
              features_detect_smtp(e, ev->data, ev->size);
+             free(s);
           }
         else
           {/* 220 Go ahead\r\n */
@@ -162,7 +174,7 @@ email_login_smtp(Email *e, Ecore_Con_Event_Server_Data *ev)
              else if (e->features.smtp.login)
                {
                   INF("Beginning AUTH LOGIN");
-                  email_write(e, "AUTH LOGIN\r\n", sizeof("AUTH LOGIN\r\n") - 1);
+                  email_write(e, EMAIL_AUTHLOGIN, sizeof(EMAIL_AUTHLOGIN) - 1);
                }
           }
         else if (!memcmp(ev->data, "235", 3))
@@ -205,7 +217,6 @@ email_login_smtp(Email *e, Ecore_Con_Event_Server_Data *ev)
              ecore_con_server_send(e->svr, b64, bsize);
              ecore_con_server_send(e->svr, "\r\n", 2);
              free(b64);
-             e->state++;
           }
         else if (!memcmp(ev->data, "235", 3))
           {

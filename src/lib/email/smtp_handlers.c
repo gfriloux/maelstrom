@@ -62,7 +62,12 @@ send_smtp(Email *e)
         if ((!msg->from) && (!msg->sender))
           {
              char buf2[1024];
-             snprintf(buf2, sizeof(buf2), "%s@%s", e->username, e->features.smtp.domain);
+
+             /* Do not concat smtp domain name if its already in username */
+             if (strstr(e->username, e->features.smtp.domain))
+               snprintf(buf2, sizeof(buf2), "%s", e->username);
+             else
+               snprintf(buf2, sizeof(buf2), "%s@%s", e->username, e->features.smtp.domain);
              msg->sender = eina_list_append(msg->sender, email_contact_new(buf2));
           }
         ec = eina_list_data_get(msg->sender);

@@ -35,6 +35,10 @@ if BUILD_SHOTGUN
 pkgconfig_DATA += shotgun.pc
 endif
 
+if BUILD_EMAIL
+pkgconfig_DATA += email.pc
+endif
+
 CLEANFILES = \
 maelstrom-*.tar.bz2 \
 maelstrom-*.tar.gz
