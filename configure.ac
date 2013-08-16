@@ -249,28 +249,28 @@ AC_ARG_WITH([edje-cc],
    ],[edje_cc=$(pkg-config --variable=prefix edje)/bin/edje_cc])
 AC_SUBST(edje_cc)
 
-have_edbus=
-want_edbus=
-AC_ARG_ENABLE([edbus],
-   [AC_HELP_STRING([--disable-edbus], [disable edbus support. @<:@default=detect@:>@])],
-   [want_edbus=$enableval], [])
+have_eldbus=
+want_eldbus=
+AC_ARG_ENABLE([eldbus],
+   [AC_HELP_STRING([--disable-eldbus], [disable eldbus support. @<:@default=detect@:>@])],
+   [want_eldbus=$enableval], [])
 
 if test -n "$build_shotgun_gui" ; then
-   if test "x$want_edbus" != "xno"; then
-      PKG_CHECK_MODULES([EDBUS],
-         [edbus2],
+   if test "x$want_eldbus" != "xno"; then
+      PKG_CHECK_MODULES([ELDBUS],
+         [eldbus],
          [
           AC_DEFINE(HAVE_DBUS, 1, [DBUS support])
-          have_edbus="yes"
+          have_eldbus="yes"
          ],
-         [have_edbus=]
+         [have_eldbus=]
       )
    else
-       have_edbus=
+       have_eldbus=
    fi
-   if test "x$want_edbus" = "xyes" ; then
-       if test -n "$have_edbus" ; then
-          AC_MSG_ERROR([edbus support requested, but not found by pkg-config.])
+   if test "x$want_eldbus" = "xyes" ; then
+       if test -n "$have_eldbus" ; then
+          AC_MSG_ERROR([eldbus support requested, but not found by pkg-config.])
        fi
    fi
 fi
@@ -436,7 +436,7 @@ SUMMARY_EOF
 echo
 cat << FEATURES_EOF
 Features:
- * dbus................: $have_edbus
+ * dbus................: $have_eldbus
  * notify..............: $have_enotify
  * Shotgun GUI.........: $build_shotgun_gui
 FEATURES_EOF

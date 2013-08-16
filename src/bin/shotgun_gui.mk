@@ -7,7 +7,7 @@ $(BIN_CPPFLAGS) \
 @SHOTGUN_CFLAGS@ \
 @AZY_CFLAGS@ \
 @SHOTGUN_GUI_CFLAGS@ \
-@EDBUS_CFLAGS@ \
+@ELDBUS_CFLAGS@ \
 -DDATA_DIR=\"$(datadir)\" \
 -DPACKAGE_DATA_DIR=\"$(datadir)/shotgun\" \
 -DPACKAGE_LIB_DIR=\"$(libdir)\" \
@@ -17,7 +17,7 @@ src_bin_shotgun_gui_LDADD = \
 @SHOTGUN_LIBS@ \
 @AZY_LIBS@ \
 @SHOTGUN_GUI_LIBS@ \
-@EDBUS_LIBS@ \
+@ELDBUS_LIBS@ \
 -lm \
 $(top_builddir)/src/lib/libmaelstrom.la
 
