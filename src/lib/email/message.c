@@ -1,7 +1,7 @@
 #include "email_private.h"
 #include <math.h>
 
-#define MESSAGE_BOUNDARY "--ASDF8AYWE0G8H31_//123R"
+#define MESSAGE_BOUNDARY "ASDF8AYWE0G8H31_//123R"
 
 static int
 part_sort_cb(const Email_Message_Part *a, const Email_Message_Part *b)
@@ -45,7 +45,7 @@ _message_part_serialize(Eina_Strbuf *buf, const Email_Message_Part *part, Eina_B
         eina_strbuf_append_printf(buf, "--"MESSAGE_BOUNDARY "%p" CRLF, part);
         _message_part_serialize(buf, subpart, 0);
      }
-   eina_strbuf_append_printf(buf, MESSAGE_BOUNDARY"%p--" CRLF, part);
+   eina_strbuf_append_printf(buf, "--"MESSAGE_BOUNDARY"%p--" CRLF, part);
 }
 
 Eina_Strbuf *
@@ -146,7 +146,7 @@ email_message_serialize(const Email_Message *msg)
              eina_strbuf_append_printf(buf, "--"MESSAGE_BOUNDARY "%p" CRLF, msg);
              _message_part_serialize(buf, part, 0);
           }
-        eina_strbuf_append_printf(buf, MESSAGE_BOUNDARY"%p--" CRLF, msg);
+        eina_strbuf_append_printf(buf, "--"MESSAGE_BOUNDARY"%p--" CRLF, msg);
      }
    else if (msg->content)
      _message_part_serialize(buf, msg->content, 0);
