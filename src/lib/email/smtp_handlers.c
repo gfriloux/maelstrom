@@ -105,7 +105,7 @@ send_smtp(Email *e)
              eina_strbuf_free(bbuf);
           }
         else
-             return EINA_FALSE;
+          return EINA_FALSE;
      }
    return EINA_TRUE;
 }
