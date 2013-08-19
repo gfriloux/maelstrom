@@ -42,7 +42,7 @@ _message_part_serialize(Eina_Strbuf *buf, const Email_Message_Part *part, Eina_B
    eina_strbuf_append_printf(buf, "Content-Type: multipart/%s; boundary=\""MESSAGE_BOUNDARY"%p\"\r\n\r\n", part->attachments ? "mixed" : "alternative", part);
    EINA_LIST_FOREACH(part->parts, l, subpart)
      {
-        eina_strbuf_append_printf(buf, MESSAGE_BOUNDARY "%p" CRLF, part);
+        eina_strbuf_append_printf(buf, "--"MESSAGE_BOUNDARY "%p" CRLF, part);
         _message_part_serialize(buf, subpart, 0);
      }
    eina_strbuf_append_printf(buf, MESSAGE_BOUNDARY"%p--" CRLF, part);
@@ -138,12 +138,12 @@ email_message_serialize(const Email_Message *msg)
         eina_strbuf_append_printf(buf, "Content-Type: multipart/%s; boundary=\""MESSAGE_BOUNDARY"%p\"\r\n\r\n", msg->attachments ? "mixed" : "alternative", msg);
         if (msg->content)
           {
-             eina_strbuf_append_printf(buf, MESSAGE_BOUNDARY "%p" CRLF, msg);
+             eina_strbuf_append_printf(buf, "--"MESSAGE_BOUNDARY "%p" CRLF, msg);
              _message_part_serialize(buf, msg->content, 1);
           }
         EINA_LIST_FOREACH(msg->parts, l, part)
           {
-             eina_strbuf_append_printf(buf, MESSAGE_BOUNDARY "%p" CRLF, msg);
+             eina_strbuf_append_printf(buf, "--"MESSAGE_BOUNDARY "%p" CRLF, msg);
              _message_part_serialize(buf, part, 0);
           }
         eina_strbuf_append_printf(buf, MESSAGE_BOUNDARY"%p--" CRLF, msg);
