@@ -53,10 +53,10 @@ send_smtp(Email *e)
    e->current = EMAIL_SMTP_OP_SEND;
    op = eina_list_data_get(e->ops);
    msg = op->opdata;
-   msg->sending++;
    switch (e->protocol.smtp.state)
      {
       case EMAIL_SMTP_STATE_NONE:
+        msg->sending++;
         e->protocol.smtp.state++;
       case EMAIL_SMTP_STATE_FROM:
         if ((!msg->from) && (!msg->sender))
@@ -105,7 +105,7 @@ send_smtp(Email *e)
              eina_strbuf_free(bbuf);
           }
         else
-          return EINA_FALSE;
+             return EINA_FALSE;
      }
    return EINA_TRUE;
 }

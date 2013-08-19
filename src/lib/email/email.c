@@ -227,7 +227,6 @@ email_free(Email *e)
         ecore_con_server_del(e->svr);
         e->svr = NULL;
         e->deleted = EINA_TRUE;
-        return;
      }
    _struct_reset(e);
    EINA_LIST_FREE(e->certs, str)
