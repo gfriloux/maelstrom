@@ -25,6 +25,7 @@ event_iq_cb(Contact_List *cl, int type EINA_UNUSED, Shotgun_Event_Iq *ev)
                 free(feature);
              }
            if (test == 2) c->xhtml_im = EINA_TRUE;
+           break;
         }
       case SHOTGUN_IQ_EVENT_TYPE_ROSTER:
         {
