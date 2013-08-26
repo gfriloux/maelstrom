@@ -75,142 +75,152 @@ MAELSTROM_REQUIRES=
 
 #############################
 
-want_email=
-build_email=
 AC_ARG_ENABLE([email],
-   [AC_HELP_STRING([--disable-email], [disable building email @<:@default=detect@:>@])],
-   [want_email=$enableval]
+   [AC_HELP_STRING([--disable-email], [disable building email @<:@default=yes@:>@])],
+   [want_email=$enableval],
+   [want_email="yes"]
 )
 
-if test "x$want_email" != "xno" ; then
-   EMAIL_REQUIRES="ecore-con >= $min_efl_version ecore >= $min_efl_version eina >= $min_efl_version"
-   PKG_CHECK_MODULES(EMAIL, [$EMAIL_REQUIRES], [build_email=email], [build_email=])
-fi
-AM_CONDITIONAL(BUILD_EMAIL, [test "x${build_email}" != "x"])
+EMAIL_REQUIRES="ecore-con >= $min_efl_version ecore >= $min_efl_version eina >= $min_efl_version"
+build_email="no"
 
-if test -n "$build_email" ; then
+if test "x$want_email" = "xyes" ; then
+   PKG_CHECK_EXISTS([$EMAIL_REQUIRES], [build_email="yes"], [build_email="no"])
+fi
+
+if test "x$build_email" = "xyes" ; then
+   PKG_CHECK_MODULES([EMAIL], [$EMAIL_REQUIRES])
    MAELSTROM_REQUIRES="$EMAIL_REQUIRES"
 fi
 
+AM_CONDITIONAL([BUILD_EMAIL], [test "x${build_email}" = "xyes"])
+
 #################################
 
-want_shotgun=
-build_shotgun=
 AC_ARG_ENABLE([shotgun],
-   [AC_HELP_STRING([--disable-shotgun], [disable building shotgun @<:@default=detect@:>@])],
-   [want_shotgun=$enableval]
+   [AC_HELP_STRING([--disable-shotgun], [disable building shotgun @<:@default=yes@:>@])],
+   [want_shotgun=$enableval],
+   [want_shotgun="yes"]
 )
 
-if test "x$want_shotgun" != "xno" ; then
-   SHOTGUN_REQUIRES="ecore-con >= $min_efl_version ecore >= $min_efl_version eina >= $min_efl_version"
-   if test -n "$EMAIL_LIBS" ; then
-     SHOTGUN_CFLAGS="$EMAIL_CFLAGS"
-     SHOTGUN_LIBS="$EMAIL_LIBS"
-     build_shotgun=shotgun
-   else
-      PKG_CHECK_MODULES(SHOTGUN, [$SHOTGUN_REQUIRES], [build_shotgun=shotgun], [build_shotgun=])
-   fi
+SHOTGUN_REQUIRES="ecore-con >= $min_efl_version ecore >= $min_efl_version eina >= $min_efl_version"
+build_shotgun="no"
+
+if test "x$want_shotgun" = "xyes" ; then
+   PKG_CHECK_EXISTS([$SHOTGUN_REQUIRES], [build_shotgun="yes"], [build_shotgun="no"])
 fi
-AM_CONDITIONAL(BUILD_SHOTGUN, [test "x${build_shotgun}" != "x"])
-if test -n "$build_shotgun" ; then
-   if test -z "$build_email" ; then
-      MAELSTROM_REQUIRES="$SHOTGUN_REQUIRES"
-   fi
+
+if test "x$build_shotgun" = "xyes" ; then
+   PKG_CHECK_MODULES([SHOTGUN], [$SHOTGUN_REQUIRES])
+   MAELSTROM_REQUIRES="$SHOTGUN_REQUIRES"
 fi
+
+AM_CONDITIONAL([BUILD_SHOTGUN], [test "x${build_shotgun}" = "xyes"])
 
 #############################
 
-want_azy=
-build_azy=
 AC_ARG_ENABLE([azy],
    [AC_HELP_STRING([--disable-azy], [disable building azy @<:@default=detect@:>@])],
-   [want_azy=$enableval]
+   [want_azy=$enableval],
+   [want_azy="auto"]
 )
 
-if test "x$want_azy" != "xno" ; then
+AZY_REQUIRES="ecore-con >= $min_efl_version ecore >= $min_efl_version eina >= $min_efl_version eet >= $min_efl_version"
+build_azy="no"
+
+if test "x$want_azy" = "xyes" || test "x$want_azy" = "xauto" ; then
    if test -z "$YACC" ; then
-      AC_ERROR([yacc not found])
-   fi
-   AZY_REQUIRES="ecore-con >= $min_efl_version ecore >= $min_efl_version eina >= $min_efl_version eet >= $min_efl_version"
-   if test -n "$EMAIL_LIBS" ; then
-     PKG_CHECK_MODULES(EET, [eet >= $min_efl_version], [build_azy=azy], [build_azy=])
-     AZY_CFLAGS="$EMAIL_CFLAGS $EET_CFLAGS"
-     AZY_LIBS="$EMAIL_LIBS $EET_LIBS"
-   elif test -n "$SHOTGUN_LIBS" ; then
-     PKG_CHECK_MODULES(EET, [eet >= $min_efl_version], [build_azy=azy], [build_azy=])
-     AZY_CFLAGS="$SHOTGUN_CFLAGS $EET_CFLAGS"
-     AZY_LIBS="$SHOTGUN_LIBS $EET_LIBS"
+      if test "x$want_azy" = "xyes" ; then
+         AC_MSG_ERROR([yacc not found])
+      else
+         AC_MSG_WARN([yacc not found, azy disabled])
+      fi
    else
-     PKG_CHECK_MODULES(AZY, [$AZY_REQUIRES], [build_azy=azy], [build_azy=])
+      PKG_CHECK_EXISTS([$AZY_REQUIRES], [build_azy="yes"], [build_azy="no"])
    fi
 fi
-AM_CONDITIONAL(BUILD_AZY, [test "x${build_azy}" != "x"])
 
-want_mysql=
+if test "x$build_azy" = "xyes" ; then
+   PKG_CHECK_MODULES([AZY], [$AZY_REQUIRES])
+fi
+
+AM_CONDITIONAL([BUILD_AZY], [test "x${build_azy}" = "xyes"])
+
 AC_ARG_ENABLE([mysql-tests],
-   [AC_HELP_STRING([--disable-mysql-tests], [disable code for mysql in tests @<:@default=detect@:>@])],
-   [want_mysql=$enableval]
+   [AC_HELP_STRING([--disable-mysql-tests], [disable code for mysql in tests @<:@default=yes@:>@])],
+   [want_mysql=$enableval],
+   [want_mysql="yes"]
 )
 
-if test -n "$build_azy" ; then
-   if test -z "$build_email" && test -z "$build_shotgun" ; then
-      MAELSTROM_REQUIRES="$AZY_REQUIRES"
-   else
-      MAELSTROM_REQUIRES+=" eet >= $min_efl_version"
-   fi
-   if test "x$want_mysql" != "xno" ; then
-      AC_PATH_PROG([mysql_config], [mysql_config])
-      if test "x$mysql_config" != "x";then
-         AC_CHECK_HEADERS([mysql.h mysql/mysql.h])
-         if test "x$ac_cv_header_mysql_h" != "xno" -o "x$ac_cv_header_mysql_mysql_h" != "xno" ; then
-            MYSQL_CFLAGS="$($mysql_config --cflags)"
-            MYSQL_LIBS="$($mysql_config --libs_r)"
-            AC_DEFINE_UNQUOTED(HAVE_MYSQL, 1, "enable some mysql code in tests")
-         fi
+if test "x$want_mysql" = "xyes" && test "x$build_azy" = "xyes" ; then
+   AC_PATH_PROG([mysql_config], [mysql_config])
+   if test "x$mysql_config" != "x" ; then
+      AC_CHECK_HEADERS([mysql.h mysql/mysql.h], [have_mysql="yes"], [have_mysql="no"])
+      if test "x$have_mysql" = "xyes" ; then
+         MYSQL_CFLAGS="$($mysql_config --cflags)"
+         MYSQL_LIBS="$($mysql_config --libs_r)"
+         AC_DEFINE_UNQUOTED([HAVE_MYSQL], [1], ["enable some mysql code in tests"])
       fi
    fi
 fi
-AM_CONDITIONAL(HAVE_MYSQL, [test -n "$MYSQL_LIBS"])
-AC_SUBST(MYSQL_CFLAGS)
-AC_SUBST(MYSQL_LIBS)
 
-want_extern_rec=
+AC_MSG_CHECKING([whether mysql tests are compiled])
+AC_MSG_RESULT([$have_mysql])
+
+AM_CONDITIONAL([HAVE_MYSQL], [test "x$have_mysql" = "xyes"])
+
+AC_SUBST([MYSQL_CFLAGS])
+AC_SUBST([MYSQL_LIBS])
+
 AC_ARG_ENABLE([external-re2c],
-   [AC_HELP_STRING([--disable-external-re2c], [disable use of external re2c @<:@default=detect@:>@])],
-   [want_extern_rec=$enableval]
+   [AC_HELP_STRING([--disable-external-re2c], [disable use of external re2c @<:@default=yes@:>@])],
+   [want_extern_rec=$enableval],
+   [want_extern_rec="yes"]
 )
 
-if test -n "$build_azy" ; then
-   if test "x$want_extern_rec" != "xno" ; then
-      AC_PATH_PROG([RE2C], [re2c])
-   fi
-   AM_CONDITIONAL([NEED_RE2C], [test -z $RE2C])
-else
-   AM_CONDITIONAL([NEED_RE2C], [false])
+if test "x$want_extern_rec" = "xyes" && test "x$build_azy" = "xyes" ; then
+   AC_PATH_PROG([RE2C], [re2c])
 fi
+
+have_re2c="yes"
+if test -z $ac_cv_path_RE2C ; then
+   have_re2c="no"
+fi
+
+AC_MSG_CHECKING([whether external re2cc is used])
+AC_MSG_RESULT([$have_re2c])
+
+AM_CONDITIONAL([NEED_RE2C], [test "x$have_re2c" = "xyes"])
 
 #################################
 
-build_shotgun_gui=
-want_shotgun_gui=
 AC_ARG_ENABLE([shotgun-gui],
    [AC_HELP_STRING([--disable-shotgun-gui], [disable building shotgun gui executable. @<:@default=detect@:>@])],
-   [want_shotgun_gui=$enableval], [])
+   [want_shotgun_gui=$enableval],
+   [want_shotgun_gui="auto"]
+)
 
-if test "x$want_shotgun_gui" = "xyes" ; then
-   if test -z "$build_azy" ; then
-      AC_ERROR([azy is required to build shotgun gui])
-   fi
-   if test -z "$build_shotgun" ; then
-      AC_ERROR([shotgun lib is required to build shotgun gui])
-   fi
-elif test -z "$want_shotgun_gui" ; then
-   if test -z "$build_azy" || test -z "$build_shotgun" ; then
-      want_shotgun_gui=no
+build_shotgun_gui="no"
+
+if test "x$want_shotgun_gui" = "xyes" || test "x$want_shotgun_gui" = "xauto" ; then
+   if test "x$want_shotgun_gui" = "xyes" ; then
+      if test "x$build_azy" = "xno" || test "x$build_shotgun" = "xno" ; then
+         AC_MSG_ERROR([azy and shotgun are required to build shotgun gui])
+      else
+         build_shotgun_gui="yes"
+      fi
+   else
+      if test "x$build_azy" = "xno" || test "x$build_shotgun" = "xno" ; then
+         AC_MSG_WARN([azy and shotgun are required to build shotgun gui])
+      else
+         build_shotgun_gui="yes"
+      fi
    fi
 fi
 
-if test "x$want_shotgun_gui" != "xno" ; then
+AC_MSG_CHECKING([whether shotgun gui is build])
+
+if test "x$buid_shotgun_gui" = "xyes" ; then
    PKG_CHECK_MODULES([SHOTGUN_GUI],
       [
        eet >= $min_efl_version
@@ -222,9 +232,10 @@ if test "x$want_shotgun_gui" != "xno" ; then
        efx
       ],
       [build_shotgun_gui=yes],
-      [build_shotgun_gui=]
+      [build_shotgun_gui=no]
    )
 fi
+
 AM_CONDITIONAL([BUILD_SHOTGUN_GUI], [test "x${build_shotgun_gui}" != "x"])
 
 ##############################
@@ -232,61 +243,75 @@ AM_CONDITIONAL([BUILD_SHOTGUN_GUI], [test "x${build_shotgun_gui}" != "x"])
 AC_ARG_WITH([edje-cc],
    [AC_HELP_STRING([--with-edje-cc=PATH],
                    [specify a specific path to edje_cc])],
-   [edje_cc=$withval;
+   [
+    edje_cc=$withval;
     AC_MSG_NOTICE([edje_cc explicitly set to $edje_cc])
-   ],[edje_cc=$(pkg-config --variable=prefix edje)/bin/edje_cc])
-AC_SUBST(edje_cc)
+   ],
+   [edje_cc=$($PKG_CONFIG --variable=prefix edje)/bin/edje_cc])
 
-have_eldbus=
-want_eldbus=
+AC_SUBST([edje_cc])
+
 AC_ARG_ENABLE([eldbus],
    [AC_HELP_STRING([--disable-eldbus], [disable eldbus support. @<:@default=detect@:>@])],
-   [want_eldbus=$enableval], [])
+   [want_eldbus=$enableval],
+   [want_eldbus="auto"]
+)
 
-if test -n "$build_shotgun_gui" ; then
-   if test "x$want_eldbus" != "xno"; then
+have_eldbus=no
+if test "x$build_shotgun_gui" = "xyes" ; then
+   if test "x$want_eldbus" = "xyes" || test "x$want_eldbus" = "xauto" ; then
       PKG_CHECK_MODULES([ELDBUS],
          [eldbus],
          [
-          AC_DEFINE(HAVE_DBUS, 1, [DBUS support])
+          AC_DEFINE([HAVE_DBUS], [1], [DBUS support])
           have_eldbus="yes"
          ],
-         [have_eldbus=]
+         [have_eldbus="no"]
       )
    else
-       have_eldbus=
+       have_eldbus="no"
    fi
    if test "x$want_eldbus" = "xyes" ; then
-       if test -n "$have_eldbus" ; then
-          AC_MSG_ERROR([eldbus support requested, but not found by pkg-config.])
-       fi
+      if test "x$have_eldbus" = "xno" ; then
+         AC_MSG_ERROR([eldbus support requested, but not found by pkg-config.])
+      fi
+   else
+      if test "x$have_eldbus" = "xno" ; then
+         AC_MSG_WARN([eldbus not found by pkg-config. dbus support disabled])
+      fi
    fi
 fi
 
-build_sawedoff=
-want_sawedoff=
 AC_ARG_ENABLE([sawedoff],
-   [AC_HELP_STRING([--disable-sawedoff], [disable sawed-off shotgun module for enlightenment. @<:@default=detect@:>@])],
-   [want_sawedoff=$enableval], [])
+   [AC_HELP_STRING([--disable-sawedoff], [disable sawed-off shotgun module for enlightenment. @<:@default=yes@:>@])],
+   [want_sawedoff=$enableval],
+   [want_sawedoff="yes"]
+)
 
-if test "x$want_sawedoff" != "xno"; then
-   PKG_CHECK_MODULES([E], [enlightenment eldbus], [build_sawedoff="yes"], [build_sawedoff=])
-   MODULE_DIR=$(pkg-config --variable=modules enlightenment)
-   release=$(pkg-config --variable=release enlightenment)
-   MODULE_ARCH="$host_os-$host_cpu-$release"
-   AC_DEFINE_UNQUOTED(MODULE_ARCH, "$MODULE_ARCH", "Module architecture")
+build_sawedoff="no"
+if test "x$want_sawedoff" = "xyes" ; then
+   PKG_CHECK_MODULES([E], [enlightenment eldbus],
+      [
+       build_sawedoff="yes"
+       MODULE_DIR=$(${PKG_CONFIG} --variable=modules enlightenment)
+       release=$(${PKG_CONFIG} --variable=release enlightenment)
+       MODULE_ARCH="$host_os-$host_cpu-$release"
+       AC_DEFINE_UNQUOTED([MODULE_ARCH], [$MODULE_ARCH], ["Module architecture"])
+       sawedoff_desktop="src/modules/sawed-off/module.desktop"
+      ],
+      [build_sawedoff="no"])
 fi
-AC_SUBST(MODULE_ARCH)
-AM_CONDITIONAL([BUILD_SAWEDOFF], [test -n "$build_sawedoff"])
-if test -n "$build_sawedoff" ; then
-   sawedoff_desktop="src/modules/sawed-off/module.desktop"
-fi
+
+AC_SUBST([MODULE_ARCH])
+
+AM_CONDITIONAL([BUILD_SAWEDOFF], [test "x$build_sawedoff" = "xyes"])
 
 AC_ARG_ENABLE(sawedoff-homedir-install,
   AS_HELP_STRING([--enable-sawedoff-homedir-install], [Install modules in homedir]),
-  [ MODULE_DIR="${HOME}/.e/e/modules" ]
+  [MODULE_DIR="${HOME}/.e/e/modules"]
 )
-AC_SUBST(MODULE_DIR)
+
+AC_SUBST([MODULE_DIR])
 
 
 ## SSE
@@ -416,7 +441,10 @@ echo
 cat << SUMMARY_EOF
 Summary:
  * project.........: $PACKAGE $VERSION
- * libraries.......: $build_azy $build_shotgun $build_email
+ * libraries.......:
+     Email.........: $build_email
+     AZY...........: $build_azy
+     Shotgun.......: $build_shotgun
  * prefix..........: $(txt_strip $prefix)
  * CFLAGS..........: $(txt_strip $CFLAGS)
  * LDFLAGS.........: $(txt_strip $LDFLAGS)
@@ -424,9 +452,7 @@ SUMMARY_EOF
 echo
 cat << FEATURES_EOF
 Features:
- * dbus................: $have_eldbus
- * notify..............: $have_enotify
- * Shotgun GUI.........: $build_shotgun_gui
+ * Shotgun GUI.........: $build_shotgun_gui (dbus: $have_eldbus)
 FEATURES_EOF
 echo
 
