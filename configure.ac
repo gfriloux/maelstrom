@@ -23,8 +23,7 @@ AC_CONFIG_SRCDIR([Makefile.am])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADER([config.h])
 
-AC_GNU_SOURCE
-AC_ISC_POSIX
+AC_USE_SYSTEM_EXTENSIONS
 
 ##--##--##--##--##--##--##--##--##--##--##--##--##--##--##--##--##
 ##--##--##--##--##--##--##--##--##--##--##--##--##--##--##--##--##
@@ -53,14 +52,11 @@ AC_PROG_INSTALL
 AC_PROG_CC
 AM_PROG_CC_C_O
 AC_PROG_MAKE_SET
-AC_HEADER_STDC
 AC_TYPE_SIZE_T
 
 AC_HEADER_STDBOOL
-AC_C_CONST
 AC_C_INLINE
 AC_TYPE_SIZE_T
-AC_FUNC_MEMCMP
 
 AC_CHECK_SIZEOF([char])
 AC_CHECK_SIZEOF([short])
