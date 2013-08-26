@@ -52,7 +52,6 @@ AC_PROG_INSTALL
 AC_PROG_CC
 AM_PROG_CC_C_O
 AC_PROG_MAKE_SET
-AC_TYPE_SIZE_T
 
 AC_HEADER_STDBOOL
 AC_C_INLINE
@@ -68,10 +67,6 @@ AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_FUNC_STRTOD
 AC_CHECK_FUNCS([strdup strndup])
-CC_PIC="$lt_prog_compiler_pic"
-CXX_PIC="$lt_prog_compiler_pic_CXX"
-AC_SUBST([CC_PIC])
-AC_SUBST([CXX_PIC])
 
 PKG_PROG_PKG_CONFIG
 
@@ -95,7 +90,6 @@ AM_CONDITIONAL(BUILD_EMAIL, [test "x${build_email}" != "x"])
 
 if test -n "$build_email" ; then
    MAELSTROM_REQUIRES="$EMAIL_REQUIRES"
-   email_pc=email.pc
 fi
 
 #################################
@@ -122,7 +116,6 @@ if test -n "$build_shotgun" ; then
    if test -z "$build_email" ; then
       MAELSTROM_REQUIRES="$SHOTGUN_REQUIRES"
    fi
-   shotgun_pc=shotgun.pc
 fi
 
 #############################
@@ -165,7 +158,6 @@ if test -n "$build_azy" ; then
    else
       MAELSTROM_REQUIRES+=" eet >= $min_efl_version"
    fi
-   azy_pc=azy.pc
    if test "x$want_mysql" != "xno" ; then
       AC_PATH_PROG([mysql_config], [mysql_config])
       if test "x$mysql_config" != "x";then
@@ -406,12 +398,12 @@ AC_CHECK_HEADERS([Rpcdce.h])
 EFL_CHECK_DOXYGEN([build_doc="yes"], [build_doc="no"])
 # write output
 AC_CONFIG_FILES([
-  Makefile
-  doc/azy.dox
-  $azy_pc
-  $shotgun_pc
-  $email_pc
-  $sawedoff_desktop
+Makefile
+doc/azy.dox
+azy.pc
+email.pc
+shotgun.pc
+$sawedoff_desktop
 ])
 AC_OUTPUT
 
