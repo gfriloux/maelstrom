@@ -64,6 +64,6 @@ src/bin/shotgun/theme/default.edc \
 $(images)
 
 src/bin/shotgun/default.edj: $(images) src/bin/shotgun/theme/default.edc
-	@edje_cc $(EDJE_FLAGS) \
+	@edje_cc@ $(EDJE_FLAGS) \
 	$(top_srcdir)/src/bin/shotgun/theme/default.edc \
 	$(top_builddir)/src/bin/shotgun/default.edj
