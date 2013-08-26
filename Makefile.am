@@ -15,6 +15,7 @@ THANKS-SHOTGUN \
 TODO-AZY \
 TODO-SHOTGUN \
 azy.pc.in \
+email.pc.in \
 shotgun.pc.in
 
 pkgconfigdir = $(libdir)/pkgconfig
