@@ -87,7 +87,7 @@ extern int azy_rpc_log_dom;
 #define RPC_CRI(...)        if (azy_rpc_log_dom != -1) EINA_LOG_DOM_CRIT(azy_rpc_log_dom, __VA_ARGS__)
 
 #ifndef strdupa
-# define strdupa(str)       strcpy(alloca(strlen(str) + 1), str)
+# define strdupa(str)       strcpy((char *)alloca(strlen(str) + 1), str)
 #endif
 
 #ifndef strndupa
