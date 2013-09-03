@@ -236,7 +236,7 @@ if test "x$buid_shotgun_gui" = "xyes" ; then
    )
 fi
 
-AM_CONDITIONAL([BUILD_SHOTGUN_GUI], [test "x${build_shotgun_gui}" != "x"])
+AM_CONDITIONAL([BUILD_SHOTGUN_GUI], [test "x${build_shotgun_gui}" != "xno"])
 
 ##############################
 
