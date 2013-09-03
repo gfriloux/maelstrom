@@ -1,5 +1,24 @@
 #include "email_private.h"
 
+static inline Eina_Bool
+_email_smtp_recipients(Email *e, Eina_List *to)
+{
+   char *buf;
+   size_t size;
+   Email_Contact *ec;
+   ec = eina_list_nth(to, e->protocol.smtp.internal_state++);
+   if (!ec)
+     {
+        e->protocol.smtp.state++;
+        e->protocol.smtp.internal_state = 0;
+        return EINA_FALSE;
+     }
+   size = sizeof(char) * (sizeof(EMAIL_SMTP_TO) + strlen(ec->address)) - 2;
+   buf = alloca(size);
+   snprintf(buf, size, EMAIL_SMTP_TO, ec->address);
+   email_write(e, buf, size - 1);
+   return EINA_TRUE;
+}
 
 static void
 next_smtp(Email *e)
@@ -79,17 +98,16 @@ send_smtp(Email *e)
         e->protocol.smtp.internal_state = 0;
         break;
       case EMAIL_SMTP_STATE_TO:
-        ec = eina_list_nth(msg->to, e->protocol.smtp.internal_state++);
-        if (!ec)
-          {
-             e->protocol.smtp.state++;
-             e->protocol.smtp.internal_state = 0;
-             return send_smtp(e);
-          }
-        size = sizeof(char) * (sizeof(EMAIL_SMTP_TO) + strlen(ec->address)) - 2;
-        buf = alloca(size);
-        snprintf(buf, size, EMAIL_SMTP_TO, ec->address);
-        email_write(e, buf, size - 1);
+        if (!_email_smtp_recipients(e, msg->to))
+          return send_smtp(e);
+        break;
+      case EMAIL_SMTP_STATE_CC:
+        if (!_email_smtp_recipients(e, msg->cc))
+          return send_smtp(e);
+        break;
+      case EMAIL_SMTP_STATE_BCC:
+        if (!_email_smtp_recipients(e, msg->bcc))
+          return send_smtp(e);
         break;
       case EMAIL_SMTP_STATE_DATA:
         email_write(e, EMAIL_SMTP_DATA, sizeof(EMAIL_SMTP_DATA) - 1);

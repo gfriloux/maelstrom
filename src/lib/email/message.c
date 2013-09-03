@@ -119,13 +119,6 @@ email_message_serialize(const Email_Message *msg)
         else
           eina_strbuf_append_printf(buf, "Cc: %s%s", ec->address, l->next ? "," : "\r\n");
      }
-   EINA_LIST_FOREACH(msg->bcc, l, ec)
-     {
-        if (ec->name)
-          eina_strbuf_append_printf(buf, "Bcc: %s <%s>%s", ec->name, ec->address, l->next ? "," : "\r\n");
-        else
-          eina_strbuf_append_printf(buf, "Bcc: %s%s", ec->address, l->next ? "," : "\r\n");
-     }
    if (msg->subject) eina_strbuf_append_printf(buf, "Subject: %s\r\n", msg->subject);
    if (msg->in_reply_to) eina_strbuf_append_printf(buf, "In-Reply-To: %s\r\n", msg->in_reply_to);
    if (msg->msgid) eina_strbuf_append_printf(buf, "Message-Id: %s\r\n", msg->msgid);
@@ -224,10 +217,10 @@ email_message_contact_add(Email_Message *msg, Email_Contact *ec, Email_Message_C
         msg->to = eina_list_append(msg->to, email_contact_ref(ec));
         break;
       case EMAIL_MESSAGE_CONTACT_TYPE_CC:
-        msg->cc = eina_list_append(msg->to, email_contact_ref(ec));
+        msg->cc = eina_list_append(msg->cc, email_contact_ref(ec));
         break;
       case EMAIL_MESSAGE_CONTACT_TYPE_BCC:
-        msg->bcc = eina_list_append(msg->to, email_contact_ref(ec));
+        msg->bcc = eina_list_append(msg->bcc, email_contact_ref(ec));
         break;
       default: break;
      }
@@ -247,10 +240,10 @@ email_message_contact_del(Email_Message *msg, Email_Contact *ec, Email_Message_C
         msg->to = eina_list_remove(msg->to, ec);
         break;
       case EMAIL_MESSAGE_CONTACT_TYPE_CC:
-        msg->cc = eina_list_remove(msg->to, ec);
+        msg->cc = eina_list_remove(msg->cc, ec);
         break;
       case EMAIL_MESSAGE_CONTACT_TYPE_BCC:
-        msg->bcc = eina_list_remove(msg->to, ec);
+        msg->bcc = eina_list_remove(msg->bcc, ec);
         break;
       default:
         l = eina_list_data_find_list(msg->to, ec);
