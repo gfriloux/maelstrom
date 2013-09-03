@@ -57,17 +57,17 @@ src/lib/extras/cdecode.c
 if BUILD_SHOTGUN
 extra_source += src/lib/extras/md5.c
 else
-	if BUILD_EMAIL
-	extra_source += src/lib/extras/md5.c
-	endif
+if BUILD_EMAIL
+extra_source += src/lib/extras/md5.c
+endif
 endif
 
 if BUILD_AZY
 extra_source += src/lib/extras/pugixml.cpp
 else
-	if BUILD_SHOTGUN
-	extra_source += src/lib/extras/pugixml.cpp
-	endif
+if BUILD_SHOTGUN
+extra_source += src/lib/extras/pugixml.cpp
+endif
 endif
 
 azy_source =
