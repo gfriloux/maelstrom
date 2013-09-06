@@ -190,7 +190,7 @@ fi
 AC_MSG_CHECKING([whether external re2cc is used])
 AC_MSG_RESULT([$have_re2c])
 
-AM_CONDITIONAL([NEED_RE2C], [test "x$have_re2c" = "xyes"])
+AM_CONDITIONAL([NEED_RE2C], [test "x$have_re2c" = "xno"])
 
 #################################
 
@@ -220,7 +220,7 @@ fi
 
 AC_MSG_CHECKING([whether shotgun gui is build])
 
-if test "x$buid_shotgun_gui" = "xyes" ; then
+if test "x$build_shotgun_gui" = "xyes" ; then
    PKG_CHECK_MODULES([SHOTGUN_GUI],
       [
        eet >= $min_efl_version
