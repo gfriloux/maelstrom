@@ -89,7 +89,7 @@ send_smtp(Email *e)
                snprintf(buf2, sizeof(buf2), "%s@%s", e->username, e->features.smtp.domain);
              msg->sender = eina_list_append(msg->sender, email_contact_new(buf2));
           }
-        ec = eina_list_data_get(msg->sender);
+        ec = (msg->sender) ? eina_list_data_get(msg->sender) : eina_list_data_get(msg->from);
         size = sizeof(char) * (sizeof(EMAIL_SMTP_FROM) + strlen(ec->address)) - 2;
         buf = alloca(size);
         snprintf(buf, size, EMAIL_SMTP_FROM, ec->address);
