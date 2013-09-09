@@ -364,7 +364,8 @@ email_quit(Email *e, Email_Cb cb, const void *data)
      optype = EMAIL_IMAP4_OP_LOGOUT;
    else if (email_is_pop(e))
      optype = EMAIL_POP_OP_QUIT;
-   else return NULL;
+   else
+     optype = EMAIL_SMTP_OP_QUIT;
    op = email_op_new(e, optype, cb, data);
    if (!email_is_blocked(e))
      {
@@ -373,9 +374,14 @@ email_quit(Email *e, Email_Cb cb, const void *data)
              email_operation_blocking_set(op); //logout always blocks (obviously)
              email_imap_write(e, op, EMAIL_IMAP4_LOGOUT, sizeof(EMAIL_IMAP4_LOGOUT) - 1);
           }
-        else
+        else if (email_is_pop(e))
           {
              email_write(e, EMAIL_POP3_QUIT, sizeof(EMAIL_POP3_QUIT) - 1);
+             e->current = optype;
+          }
+        else
+          {
+             email_write(e, EMAIL_SMTP_QUIT, sizeof(EMAIL_SMTP_QUIT) - 1);
              e->current = optype;
           }
      }

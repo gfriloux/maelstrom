@@ -59,6 +59,7 @@ extern int email_log_dom;
 #define EMAIL_SMTP_FROM "MAIL FROM: <%s>\r\n"
 #define EMAIL_SMTP_TO "RCPT TO: <%s>\r\n"
 #define EMAIL_SMTP_DATA "DATA\r\n"
+#define EMAIL_SMTP_QUIT "QUIT\r\n"
 
 #define EMAIL_STARTTLS "STARTTLS\r\n"
 #define EMAIL_AUTHLOGIN "AUTH LOGIN\r\n"
@@ -108,6 +109,7 @@ typedef enum
 typedef enum
 {
    EMAIL_SMTP_OP_SEND = 1,
+   EMAIL_SMTP_OP_QUIT
 } Email_Smtp_Op;
 
 typedef enum

@@ -52,8 +52,11 @@ next_smtp(Email *e)
              next_smtp(e);
           }
         break;
-      case EMAIL_POP_OP_QUIT:
-        email_write(e, EMAIL_POP3_QUIT, sizeof(EMAIL_POP3_QUIT) - 1);
+      case EMAIL_SMTP_OP_QUIT:
+        if (e->svr) ecore_con_server_del(e->svr);
+        e->svr = NULL;
+        email_op_pop(e);
+        break;
       default:
         break;
      }
