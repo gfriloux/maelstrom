@@ -55,7 +55,7 @@ next_smtp(Email *e)
       case EMAIL_SMTP_OP_QUIT:
         if (e->svr) ecore_con_server_del(e->svr);
         e->svr = NULL;
-        email_op_pop(e);
+        email_op_free(email_op_pop(e));
         break;
       default:
         break;
