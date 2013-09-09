@@ -50,6 +50,16 @@ _struct_reset(Email *e)
    eina_stringshare_replace(&e->addr, NULL);
    if (e->buf) eina_binbuf_free(e->buf);
    e->buf = NULL;
+
+   if (e->h_data) ecore_event_handler_del(e->h_data);
+   if (e->h_del) ecore_event_handler_del(e->h_del);
+   if (e->h_error) ecore_event_handler_del(e->h_error);
+   if (e->h_upgrade) ecore_event_handler_del(e->h_upgrade);
+
+   e->h_data = NULL;
+   e->h_del = NULL;
+   e->h_error = NULL;
+   e->h_upgrade = NULL;
 }
 
 static Eina_Bool
@@ -241,10 +251,11 @@ email_free(Email *e)
       default:
         break;
      }
-   ecore_event_handler_del(e->h_data);
-   ecore_event_handler_del(e->h_del);
-   ecore_event_handler_del(e->h_error);
-   ecore_event_handler_del(e->h_upgrade);
+
+   if (e->h_data) ecore_event_handler_del(e->h_data);
+   if (e->h_del) ecore_event_handler_del(e->h_del);
+   if (e->h_error) ecore_event_handler_del(e->h_error);
+   if (e->h_upgrade) ecore_event_handler_del(e->h_upgrade);
    free(e);
 }
 
@@ -297,6 +308,7 @@ email_connect(Email *e, const char *host, Eina_Bool secure)
    e->flags = secure ? ECORE_CON_USE_MIXED : 0;
    e->secure = !!secure;
    eina_stringshare_replace(&e->addr, host);
+
    switch (e->type)
      {
       case EMAIL_TYPE_POP3:
@@ -320,15 +332,17 @@ email_connect(Email *e, const char *host, Eina_Bool secure)
       default:
         break;
      }
+
+   e->h_del = ecore_event_handler_add(ECORE_CON_EVENT_SERVER_DEL, (Ecore_Event_Handler_Cb)disc, e);
+   e->h_data = ecore_event_handler_add(ECORE_CON_EVENT_SERVER_DATA, data_cb, e);
+   e->h_error = ecore_event_handler_add(ECORE_CON_EVENT_SERVER_ERROR, error_cb, e);
+   e->h_upgrade = ecore_event_handler_add(ECORE_CON_EVENT_SERVER_UPGRADE, upgrade_cb, e);
+
    /* set cork here to (ideally) reduce server parser ctx switching */
    e->svr = ecore_con_server_connect(ECORE_CON_REMOTE_CORK | e->flags, host, port, e);
    EINA_SAFETY_ON_NULL_GOTO(e->svr, error);
    if (e->secure) ecore_con_ssl_server_verify_basic(e->svr);
    else e->state = EMAIL_STATE_INIT;
-   e->h_del = ecore_event_handler_add(ECORE_CON_EVENT_SERVER_DEL, (Ecore_Event_Handler_Cb)disc, e);
-   e->h_data = ecore_event_handler_add(ECORE_CON_EVENT_SERVER_DATA, data_cb, e);
-   e->h_error = ecore_event_handler_add(ECORE_CON_EVENT_SERVER_ERROR, error_cb, e);
-   e->h_upgrade = ecore_event_handler_add(ECORE_CON_EVENT_SERVER_UPGRADE, upgrade_cb, e);
    return EINA_TRUE;
 error:
    eina_stringshare_replace(&e->addr, NULL);
