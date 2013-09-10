@@ -349,7 +349,7 @@ EAPI Eina_Bool email_message_part_content_manage(Email_Message_Part *at, void *c
 EAPI const Eina_Binbuf *email_message_part_content_get(Email_Message_Part *at);
 EAPI Eina_Binbuf *email_message_part_content_steal(Email_Message_Part *at);
 EAPI Eina_Stringshare *email_message_part_charset_get(const Email_Message_Part *part);
-EAPI void email_message_part_charset_set(Email_Message *msg, const char *charset);
+EAPI void email_message_part_charset_set(Email_Message_Part *msg, const char *charset);
 EAPI void email_message_part_part_add(Email_Message_Part *part, Email_Message_Part *subpart);
 EAPI void email_message_part_part_del(Email_Message_Part *part, Email_Message_Part *subpart);
 EAPI const Eina_List *email_message_part_parts_get(const Email_Message_Part *part);

@@ -93,6 +93,7 @@ email_message_part_free(Email_Message_Part *part)
 
    eina_stringshare_del(part->name);
    eina_stringshare_del(part->content_type);
+   eina_stringshare_del(part->charset);
    if (part->content) eina_binbuf_free(part->content);
    EINA_LIST_FREE(part->parts, subpart)
      email_message_part_free(subpart);
@@ -237,4 +238,18 @@ email_message_part_encoding_set(Email_Message_Part *part, Email_Message_Part_Enc
    EINA_SAFETY_ON_TRUE_RETURN(encoding >= EMAIL_MESSAGE_PART_ENCODING_LAST);
    EINA_SAFETY_ON_TRUE_RETURN(!encoding);
    part->encoding = encoding;
+}
+
+void
+email_message_part_charset_set(Email_Message_Part *part, const char *charset)
+{
+   EINA_SAFETY_ON_NULL_RETURN(part);
+   eina_stringshare_replace(&part->charset, charset);
+}
+
+Eina_Stringshare *
+email_message_part_charset_get(const Email_Message_Part *part)
+{
+   EINA_SAFETY_ON_NULL_RETURN_VAL(part, NULL);
+   return part->charset;
 }
