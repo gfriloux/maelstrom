@@ -69,6 +69,8 @@ features_detect_smtp(Email *e, const unsigned char *data, int size)
           }
         else if (!strncasecmp((char*)p, "8BITMIME", 8))
           e->features.smtp.eightbit = EINA_TRUE;
+        else if (!strncasecmp((char*)p, "STARTTLS", 8))
+          e->features.smtp.ssl = EINA_TRUE;
      }
 }
 
@@ -97,20 +99,15 @@ email_login_smtp(Email *e, Ecore_Con_Event_Server_Data *ev)
           }
         if (((char*)ev->data)[1] == '5')
           {
-             /* We're loosing perfs here, but we cant limit strstr's range */
-             char *s = strndup(ev->data, ev->size);
-             s[ev->size - 1] = 0;
+             features_detect_smtp(e, ev->data, ev->size);
 
-             if (strstr(s, "STARTTLS"))
+             if (e->features.smtp.ssl)
                email_write(e, EMAIL_STARTTLS, sizeof(EMAIL_STARTTLS) - 1);
              else
                {
                   email_write(e, EMAIL_AUTHLOGIN, sizeof(EMAIL_AUTHLOGIN) -1);
                   e->state++;
                }
-
-             features_detect_smtp(e, ev->data, ev->size);
-             free(s);
           }
         else
           {/* 220 Go ahead\r\n */
@@ -129,21 +126,17 @@ email_login_smtp(Email *e, Ecore_Con_Event_Server_Data *ev)
           }
         if (memcmp((char*)ev->data, "220", 3)) goto error;
         /* TODO: strncmp memchr(hostname, '.', len)+1 features.domain for MitM attacks? */
-        /* 220 heaven.af.mil ESMTP\r\n */
-        p = memchr(ev->data + 4, ' ', ev->size - 4);
-        if (p && (p - (unsigned char*)ev->data + 7 < ev->size))
-          {
-             if (!strncasecmp((char*)p + 1, "ESMTP", 5))
-               e->features.smtp.ssl = EINA_TRUE;
-          }
-
         size = sizeof(char) * (sizeof("EHLO \r\n") + strlen(e->features.smtp.domain));
 
         buf = alloca(size);
-        if (e->features.smtp.ssl)
-          snprintf(buf, size, "EHLO %s\r\n", e->features.smtp.domain);
-        else
+        /* Cannot use memchr since ESMTP can be located anywhere in welcome message */
+        /* 220 ns0.ovh.net ssl0.ovh.net. You connect to mail638.ha.ovh.net ESMTP */
+        p = (const unsigned char *)strstr(ev->data + 4, "ESMTP");
+        if (!p)
           snprintf(buf, size, "HELO %s\r\n", e->features.smtp.domain);
+        else
+          snprintf(buf, size, "EHLO %s\r\n", e->features.smtp.domain);
+
         if (e->upgrade && (!e->flags)) e->state++;
         else e->state = EMAIL_STATE_USER;
         email_write(e, buf, size - 1);
@@ -152,7 +145,6 @@ email_login_smtp(Email *e, Ecore_Con_Event_Server_Data *ev)
         if (ev->size < 3) goto error;
         if (!memcmp(ev->data, "250", 3))
           {
-             features_detect_smtp(e, ev->data, ev->size);
              if (e->features.smtp.cram)
                {
                   DBG("Beginning AUTH CRAM-MD5");
