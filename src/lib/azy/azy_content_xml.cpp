@@ -1036,7 +1036,16 @@ azy_content_deserialize_atom_xml_entry(xml_node &node)
         else SET(data.atom.icon, icon);
 #undef SET
         else if (!strcmp(name, "category"))
-          it->categories = eina_list_append(it->categories, eina_stringshare_add(n.attribute("term").value()));
+          {
+             Azy_Rss_Category *cat;
+
+             cat = azy_content_deserialize_rss_category(n);
+             if (cat)
+               {
+                  cat->category = eina_stringshare_add(n.attribute("term").value());
+                  it->categories = eina_list_append(it->categories, cat);
+               }
+          }
         else if (!strcmp(name, "contributor"))
           {
              c = azy_content_deserialize_atom_xml_contact(n);
