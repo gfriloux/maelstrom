@@ -217,6 +217,9 @@ gen_type_marshalizers(Azy_Typedef *t,
         EL(0, "{");
         EL(1, "%s azy_user_type_tmp = NULL;", t->ctype);
         EL(1, "Eina_Value val;");
+        /* hack to find eldbus-mangled struct members */
+        EL(1, "unsigned int arg = 0;");
+        EL(1, "Eina_Bool found = EINA_FALSE;");
         NL;
         EL(1, "EINA_SAFETY_ON_NULL_RETURN_VAL(azy_user_type, EINA_FALSE);");
         EL(1, "EINA_SAFETY_ON_NULL_RETURN_VAL(value_struct, EINA_FALSE);");
@@ -227,11 +230,34 @@ gen_type_marshalizers(Azy_Typedef *t,
 
         EINA_LIST_FOREACH(t->struct_members, l, m)
           {
-             EL(1, "if (eina_value_struct_value_get(value_struct, \"%s\", &val))", m->strname ? m->strname : m->name);
+             EL(1, "if ((!arg) && eina_value_struct_value_get(value_struct, \"%s\", &val))", m->strname ? m->strname : m->name);
+             EL(2, "found = EINA_TRUE;");
+             EL(1, "else");
              EL(1, "{");
-             EL(2, "%s(&val, &azy_user_type_tmp->%s);", m->type->demarch_name, m->name);
+             EL(2, "char buf[128];");
+             EL(2, "snprintf(buf, sizeof(buf), \"arg%%d\", arg++);");
+             EL(2, "if (eina_value_struct_value_get(value_struct, buf, &val))");
+             EL(3, "found = EINA_TRUE;");
+             EL(1, "}");
+             EL(1, "if (found)");
+             EL(1, "{");
+             if (m->type->ctype == c) //eldbus does NOT stringshare. bastard.
+               {
+                  EL(2, "if (arg)");
+                  EL(3, "{");
+                  EL(4, "char *str = NULL;");
+                  NL;
+                  EL(4, "if (eina_value_get(&val, &str))");
+                  EL(5, "azy_user_type_tmp->%s = eina_stringshare_add(str);", m->name);;
+                  EL(3, "}");
+                  EL(2, "else");
+                  EL(3, "%s(&val, &azy_user_type_tmp->%s);", m->type->demarch_name, m->name);
+               }
+             else
+               EL(2, "%s(&val, &azy_user_type_tmp->%s);", m->type->demarch_name, m->name);
              EL(2, "eina_value_flush(&val);");
              EL(1, "}");
+             EL(1, "found = EINA_FALSE;");
           }
 
         NL;
