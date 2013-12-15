@@ -1883,7 +1883,7 @@ main(int argc,
    i = eina_stringshare_add("int");
    b = eina_stringshare_add("Eina_Bool");
    d = eina_stringshare_add("double");
-   c = eina_stringshare_add("const char *");
+   c = eina_stringshare_add("Eina_Stringshare *");
    e = eina_stringshare_add("Eina_List *");
    ti = eina_stringshare_add("time_t");
    b64 = eina_stringshare_add("base64");
