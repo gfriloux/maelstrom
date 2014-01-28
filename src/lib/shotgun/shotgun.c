@@ -159,14 +159,14 @@ shotgun_data_detect(Shotgun_Auth *auth, Ecore_Con_Event_Server_Data *ev)
         if (eina_log_domain_level_check(shotgun_log_dom, EINA_LOG_LEVEL_DBG))
           {
              memcpy(buf, data + 1, sizeof(buf) - 1);
-             DBG("'%s' and '%s' match!", buf, tag + len - (tag - data));
+             DBG("'%s' and '%.*s' match!", buf, (int) (tag - data - 1), tag + len - (tag - data));
              DBG("Releasing buffered event!");
           }
         return EINA_TRUE;
      }
 
    memcpy(buf, data + 1, sizeof(buf) - 1);
-   DBG("'%s' and '%s' do not match!", buf, tag + len - (tag - data));
+   DBG("'%s' and '%.*s' do not match!", buf, (int) (tag - data - 1), tag + len - (tag - data));
    if (!auth->buf)
      {
         DBG("Creating event buffer");
