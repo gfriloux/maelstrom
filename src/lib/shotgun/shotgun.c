@@ -11,6 +11,10 @@ int SHOTGUN_EVENT_MESSAGE = 0;
 int SHOTGUN_EVENT_PRESENCE = 0;
 int SHOTGUN_EVENT_IQ = 0;
 
+void
+shotgun_fake_free(void *d EINA_UNUSED, void *d2 EINA_UNUSED)
+{}
+
 static Eina_Bool
 ev_write(Shotgun_Auth *auth, int type EINA_UNUSED, Ecore_Con_Event_Server_Write *ev)
 {

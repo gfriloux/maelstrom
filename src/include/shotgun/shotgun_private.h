@@ -153,9 +153,7 @@ shotgun_write(Ecore_Con_Server *svr, const void *data, size_t size)
    ecore_con_server_send(svr, data, size);
 }
 
-static inline void
-shotgun_fake_free(void *d EINA_UNUSED, void *d2 EINA_UNUSED)
-{}
+void shotgun_fake_free(void *d EINA_UNUSED, void *d2 EINA_UNUSED);
 
 void shotgun_message_feed(Shotgun_Auth *auth, char *data, size_t size);
 Shotgun_Event_Message *shotgun_message_new(Shotgun_Auth *auth);
