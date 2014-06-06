@@ -28,11 +28,11 @@ void *alloca (size_t);
 #include "md5.h"
 
 #ifndef strdupa
-# define strdupa(str)       strcpy(alloca(strlen(str) + 1), str)
+# define strdupa(str)       strcpy((char *)alloca(strlen(str) + 1), str)
 #endif
 
 #ifndef strndupa
-# define strndupa(str, len) strncpy(alloca(len + 1), str, len)
+# define strndupa(str, len) strncpy((char *)alloca(len + 1), str, len)
 #endif
 
 #define DBG(...)            EINA_LOG_DOM_DBG(shotgun_log_dom, __VA_ARGS__)
