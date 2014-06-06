@@ -330,7 +330,7 @@ email_connect(Email *e, const char *host, Eina_Bool secure)
         error_cb = (Ecore_Event_Handler_Cb)error_smtp;
         upgrade_cb = (Ecore_Event_Handler_Cb)upgrade_smtp;
       default:
-        break;
+        goto error;
      }
 
    e->h_del = ecore_event_handler_add(ECORE_CON_EVENT_SERVER_DEL, (Ecore_Event_Handler_Cb)disc, e);
