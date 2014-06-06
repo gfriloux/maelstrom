@@ -47,7 +47,7 @@ typedef struct Imap_String
 
 #define CS(X) { .string = X, .len = sizeof(X) - 1 }
 
-static const Imap_String const CAPS[] =
+static const Imap_String CAPS[] =
 {
    [CAP_UNSUPPORTED] = {"", 0},
    [CAP_ACL] = CS("ACL"),
@@ -86,7 +86,7 @@ typedef enum
    RESP_CODE_LAST,
 } Resp_Codes;
 
-static const Imap_String const RESP_CODES[] =
+static const Imap_String RESP_CODES[] =
 {
    [RESP_CODE_UNSUPPORTED] = {"", 0},
    [RESP_CODE_ALERT] = CS("ALERT"),
@@ -116,7 +116,7 @@ typedef enum
    MAILBOX_ATTRIBUTE_LAST
 } Mailbox_Attributes;
 
-static const Imap_String const MAILBOX_ATTRIBUTES[] =
+static const Imap_String MAILBOX_ATTRIBUTES[] =
 {
    [MAILBOX_ATTRIBUTE_UNSUPPORTED] = {"", 0},
    [MAILBOX_ATTRIBUTE_HASCHILDREN] = CS("\\HASCHILDREN"),
@@ -159,7 +159,7 @@ typedef enum
    MAIL_FLAG_LAST
 } Mail_Flags;
 
-static const Imap_String const MAIL_FLAGS[] =
+static const Imap_String MAIL_FLAGS[] =
 {
    [MAIL_FLAG_UNSUPPORTED] = CS(""),
    [MAIL_FLAG_ANSWERED] = CS("\\ANSWERED"),
@@ -186,7 +186,7 @@ typedef enum
 } Mail_Attributes;
 
 
-static const Imap_String const MAIL_ATTRIBUTES[] =
+static const Imap_String MAIL_ATTRIBUTES[] =
 {
    [MAIL_ATTRIBUTE_UNSUPPORTED] = CS(""),
    [MAIL_ATTRIBUTE_FLAGS] = CS("FLAGS ("),
