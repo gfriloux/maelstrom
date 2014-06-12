@@ -855,7 +855,7 @@ azy_events_recv_progress(Azy_Net *net, const void *data, size_t len)
      }
 }
 
-inline Eina_Bool
+Eina_Bool
 azy_events_length_overflows(int64_t current, int64_t max)
 {
    if (max < 1) return EINA_FALSE;
@@ -871,7 +871,7 @@ _azy_events_client_transfer_progress_event_free(void *d EINA_UNUSED, Azy_Event_C
    free(dse);
 }
 
-inline void
+void
 azy_events_client_transfer_progress_event(const Azy_Client_Handler_Data *hd, size_t size)
 {
    Azy_Event_Client_Transfer_Progress *dse;
@@ -925,7 +925,7 @@ azy_events_client_transfer_complete_event_free(Azy_Client *client, Azy_Event_Cli
    free(cse);
 }
 
-inline void
+void
 azy_events_client_transfer_complete_event(const Azy_Client_Handler_Data *hd, Azy_Content *content)
 {
    Azy_Event_Client_Transfer_Complete *cse;
