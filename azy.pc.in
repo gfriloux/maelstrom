@@ -7,5 +7,5 @@ Name: azy
 Description: A Lazy EFL Network Toolkit
 Version: @VERSION@
 Libs: -L${libdir} -lmaelstrom
-Requires.private: @MAELSTROM_REQUIRES@
+Requires.private: @AZY_REQUIRES@
 Cflags: -I${includedir}/@PACKAGE@-@VMAJ@

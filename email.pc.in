@@ -7,5 +7,5 @@ Name: email
 Description: An email protocol library
 Version: @VERSION@
 Libs: -L${libdir} -lmaelstrom
-Requires.private: @MAELSTROM_REQUIRES@
+Requires.private: @EMAIL_REQUIRES@
 Cflags: -I${includedir}/@PACKAGE@-@VMAJ@

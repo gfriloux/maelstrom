@@ -7,5 +7,5 @@ Name: shotgun
 Description: An EFL library for XMPP connections
 Version: @VERSION@
 Libs: -L${libdir} -lmaelstrom
-Requires.private: @MAELSTROM_REQUIRES@
+Requires.private: @SHOTGUN_REQUIRES@
 Cflags: -I${includedir}/@PACKAGE@-@VMAJ@
