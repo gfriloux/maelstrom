@@ -279,6 +279,9 @@ azy_value_deserialize_array_json(cJSON *object)
    cJSON *child;
 
    child = cJSON_GetArrayItem(object, 0);
+   if (!child)
+     return eina_value_array_new(EINA_VALUE_TYPE_STRING, 0);
+
    type = _azy_value_type_get(child);
    arr = eina_value_array_new(type, 0);
    for (; x < cJSON_GetArraySize(object); x++)
