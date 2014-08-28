@@ -362,6 +362,15 @@ azy_content_serialize_request_json(Azy_Content *content)
    return EINA_TRUE;
 }
 
+char *
+azy_content_serialize_json(Eina_Value *ev)
+{
+   cJSON *json;
+
+   json = azy_value_serialize_json(ev);
+   return cJSON_Print(json);
+}
+
 Eina_Bool
 azy_content_serialize_response_json(Azy_Content *content)
 {
