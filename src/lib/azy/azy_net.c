@@ -598,7 +598,6 @@ azy_net_header_set(Azy_Net *net, const char *name, const char *value)
 
    EINA_SAFETY_ON_NULL_RETURN(name);
    EINA_SAFETY_ON_TRUE_RETURN(!name[0]);
-   EINA_SAFETY_ON_TRUE_RETURN(value && (!value[0]));
 
    tmp = strdupa(name);
    eina_str_tolower(&tmp);
@@ -783,6 +782,25 @@ azy_net_transfer_encoding_get(const Azy_Net *net)
         return AZY_NET_TRANSFER_ENCODING_LAST;
      }
    return net->http.transfer_encoding;
+}
+
+void
+azy_net_transfer_encoding_set(Azy_Net *net,
+                              Azy_Net_Transfer_Encoding transfer_encoding)
+{
+   DBG("(net=%p)", net);
+   if (!AZY_MAGIC_CHECK(net, AZY_MAGIC_NET))
+     {
+        AZY_MAGIC_FAIL(net, AZY_MAGIC_NET);
+        return;
+     }
+   net->http.transfer_encoding = transfer_encoding;
+
+   if (transfer_encoding == AZY_NET_TRANSFER_ENCODING_CHUNKED)
+     {
+        azy_net_header_set(net, "Transfer-Encoding", "chunked");
+        azy_net_header_set(net, "content_length", NULL);
+     }
 }
 
 /**

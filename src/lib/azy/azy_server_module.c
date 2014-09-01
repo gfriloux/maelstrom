@@ -645,6 +645,8 @@ azy_server_module_send(Azy_Server_Module *module,
                        const Azy_Net_Data *data)
 {
    Eina_Strbuf *header;
+   char chunk_size[20];
+   Eina_Binbuf *chunk_data;
 
    if (!AZY_MAGIC_CHECK(module, AZY_MAGIC_SERVER_MODULE))
      {
@@ -654,13 +656,19 @@ azy_server_module_send(Azy_Server_Module *module,
 
    if (net)
      {
+        if (!module->client->current)
+          module->client->current = net;
+
+        if (net->headers_sent)
+          goto post_header;
+
         Eina_Bool s;
-        if (data) azy_net_content_length_set(net, data->size);
+        if ((data) && (net->http.transfer_encoding != AZY_NET_TRANSFER_ENCODING_CHUNKED))
+          azy_net_content_length_set(net, data->size);
         if (!net->http.res.http_code)
           azy_net_code_set(net, 200);  /* OK */
         azy_net_type_set(net, AZY_NET_TYPE_RESPONSE);
         EINA_SAFETY_ON_TRUE_RETURN_VAL(!(header = azy_net_header_create(net)), EINA_FALSE);
-
         s = !!ecore_con_client_send(module->client->current->conn, eina_strbuf_string_get(header), eina_strbuf_length_get(header));
         eina_strbuf_free(header);
         if (!s)
@@ -668,10 +676,34 @@ azy_server_module_send(Azy_Server_Module *module,
              ERR("Could not queue header for sending!");
              return EINA_FALSE;
           }
+        net->headers_sent = EINA_TRUE;
      }
-   if (data && data->data)
-     EINA_SAFETY_ON_TRUE_RETURN_VAL(!ecore_con_client_send(module->client->current->conn, data->data, data->size), EINA_FALSE);
 
+post_header:
+
+   if ((!net) || (net->http.transfer_encoding != AZY_NET_TRANSFER_ENCODING_CHUNKED))
+     {
+        if (!data || !data->data) return EINA_TRUE;
+
+        EINA_SAFETY_ON_TRUE_RETURN_VAL(!ecore_con_client_send(module->client->current->conn, data->data, data->size), EINA_FALSE);
+        return EINA_TRUE;
+     }
+
+   if (!data || !data->data)
+     {
+        EINA_SAFETY_ON_TRUE_RETURN_VAL(!ecore_con_client_send(module->client->current->conn, "0\r\n\r\n", 5), EINA_FALSE);
+        return EINA_TRUE;
+     }
+
+   net->refcount++;
+   sprintf((char *)chunk_size, "%" PRIx64 "\r\n", data->size);
+   chunk_data = eina_binbuf_new();
+   eina_binbuf_append_length(chunk_data, (unsigned char *)chunk_size, strlen(chunk_size));
+   eina_binbuf_append_length(chunk_data, data->data, data->size);
+   eina_binbuf_append_length(chunk_data, (unsigned char *)"\r\n", 2);
+   EINA_SAFETY_ON_TRUE_RETURN_VAL(!ecore_con_client_send(module->client->current->conn,
+                                  eina_binbuf_string_get(chunk_data), eina_binbuf_length_get(chunk_data)), EINA_FALSE);
+   eina_binbuf_free(chunk_data);
    return EINA_TRUE;
 }
 

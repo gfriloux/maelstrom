@@ -301,6 +301,7 @@ struct Azy_Net
    Eina_Bool         nodata : 1;
    Eina_Bool         buffer_stolen : 1;
    Eina_Bool headers_read : 1;
+   Eina_Bool headers_sent : 1;
    Eina_Bool need_chunk_size : 1; // waiting for size of next chunk for transfer encoding
 };
 

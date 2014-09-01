@@ -449,6 +449,7 @@ EAPI void                      azy_net_content_length_set(Azy_Net *net, int leng
 EAPI Eina_Strbuf              *azy_net_header_create(Azy_Net *net);
 EAPI const char               *azy_net_http_msg_get(int code);
 EAPI Azy_Net_Transfer_Encoding azy_net_transfer_encoding_get(const Azy_Net *net);
+EAPI void                      azy_net_transfer_encoding_set(Azy_Net *net, Azy_Net_Transfer_Encoding transfer_encoding);
 
 /* cookie */
 EAPI Azy_Net_Cookie           *azy_net_cookie_parse(const Azy_Net *net, char *txt);
