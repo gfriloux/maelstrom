@@ -647,6 +647,7 @@ azy_server_module_send(Azy_Server_Module *module,
    Eina_Strbuf *header;
    char chunk_size[20];
    Eina_Binbuf *chunk_data;
+   Eina_Bool nullify = EINA_FALSE;
 
    if (!AZY_MAGIC_CHECK(module, AZY_MAGIC_SERVER_MODULE))
      {
@@ -657,7 +658,10 @@ azy_server_module_send(Azy_Server_Module *module,
    if (net)
      {
         if (!module->client->current)
-          module->client->current = net;
+          {
+             module->client->current = net;
+             nullify = EINA_TRUE;
+          }
 
         if (net->headers_sent)
           goto post_header;
@@ -686,13 +690,13 @@ post_header:
         if (!data || !data->data) return EINA_TRUE;
 
         EINA_SAFETY_ON_TRUE_RETURN_VAL(!ecore_con_client_send(module->client->current->conn, data->data, data->size), EINA_FALSE);
-        return EINA_TRUE;
+        goto post_send;
      }
 
    if (!data || !data->data)
      {
         EINA_SAFETY_ON_TRUE_RETURN_VAL(!ecore_con_client_send(module->client->current->conn, "0\r\n\r\n", 5), EINA_FALSE);
-        return EINA_TRUE;
+        goto post_send;
      }
 
    net->refcount++;
@@ -704,6 +708,10 @@ post_header:
    EINA_SAFETY_ON_TRUE_RETURN_VAL(!ecore_con_client_send(module->client->current->conn,
                                   eina_binbuf_string_get(chunk_data), eina_binbuf_length_get(chunk_data)), EINA_FALSE);
    eina_binbuf_free(chunk_data);
+
+
+post_send:
+   if (nullify) module->client->current = NULL;
    return EINA_TRUE;
 }
 
