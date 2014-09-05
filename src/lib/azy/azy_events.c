@@ -163,6 +163,12 @@ _azy_events_valid_request(Azy_Net *net,
         else return 0;
         break;
 
+      case 'O':
+        if (strncmp((char *)start + 1, "PTIONS", 6)) return 0;
+        net->type = AZY_NET_TYPE_OPTIONS;
+        start += 7; len -= 7;
+        break;
+
       default:
         return 0;
      }
