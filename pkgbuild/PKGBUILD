@@ -1,0 +1,40 @@
+# Maintainer: Guillaume Friloux <guillaume@friloux.me>
+
+_pkgname=maelstrom
+pkgname=('maelstrom')
+pkgver=1.7.10
+pkgrel=1
+
+pkgdesc="Enlightenment Foundation Libraries - Maelstrom"
+arch=('i686' 'x86_64')
+url="https://github.com/gfriloux/maelstrom"
+license=('LGPL2.1' 'custom')
+depends=('')
+provides=("$_pkgname=$pkgver")
+conflicts=("$_pkgname")
+options=('debug')
+
+build()
+{
+  cd "../.."
+  export CFLAGS="$CFLAGS -fvisibility=hidden -fomit-frame-pointer"
+  export CXXFLAGS="$CXXFLAGS -fvisibility=hidden -fomit-frame-pointer"
+  [[ -e Makefile ]] && make clean distclean
+  [[ -e autogen.sh ]] && _configure=autogen.sh || _configure=configure
+  ./$_configure --prefix=/usr                                                   
+  make
+}
+
+package_maelstrom()
+{
+  cd "../.."
+  make -j1 DESTDIR="$pkgdir/" install
+  install -Dm644 README-AZY "$pkgdir/usr/share/doc/${pkgname%-git}/README-AZY"
+  install -Dm644 README-EMAIL "$pkgdir/usr/share/doc/${pkgname%-git}/README-EMAIL"
+  install -Dm644 README-SHOTGUN "$pkgdir/usr/share/doc/${pkgname%-git}/README-SHOTGUN"
+  install -Dm644 COPYING-AZY "$pkgdir/usr/share/doc/${pkgname%-git}/COPYING-AZY"
+  install -Dm644 COPYING-EMAIL "$pkgdir/usr/share/doc/${pkgname%-git}/COPYING-EMAIL"
+  install -Dm644 COPYING-SHOTGUN "$pkgdir/usr/share/doc/${pkgname%-git}/COPYING-SHOTGUN"
+  install -Dm644 COPYING-SHOTGUN-ICONS "$pkgdir/usr/share/doc/${pkgname%-git}/COPYING-SHOTGUN-ICONS"
+  install -Dm644 AUTHORS "$pkgdir/usr/share/doc/${pkgname%-git}/AUTHORS"
+}
