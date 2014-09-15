@@ -488,9 +488,6 @@ Eina_Bool        _azy_client_handler_upgrade(Azy_Client_Handler_Data *hd, int ty
 Eina_Bool        azy_server_client_handler_add(Azy_Server *server, int type, Ecore_Con_Event_Client_Add *ev);
 void _azy_event_handler_fake_free(Eina_Free_Cb cb, void *data);
 
-Eina_Bool
-                 azy_content_deserialize_json(Azy_Content *content, const char *buf, ssize_t len);
-
 Azy_Rss         *azy_rss_new(void);
 Azy_Rss_Item    *azy_rss_item_new(void);
 Azy_Rss_Category *azy_rss_category_new(void);

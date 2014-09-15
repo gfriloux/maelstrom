@@ -524,6 +524,7 @@ EAPI Eina_Bool                 azy_content_deserialize_request(Azy_Content *cont
 EAPI Eina_Bool                 azy_content_serialize_response(Azy_Content *content, Azy_Net_Transport type);
 EAPI Eina_Bool                 azy_content_deserialize_response(Azy_Content *content, Azy_Net_Transport type, char *buf, ssize_t len);
 EAPI char                     *azy_content_serialize_json(Eina_Value *ev);
+EAPI Eina_Bool                 azy_content_deserialize_json(Azy_Content *content, const char *buf, ssize_t len);
 
 /* client */
 EAPI void                     *azy_client_data_get(Azy_Client *client);
