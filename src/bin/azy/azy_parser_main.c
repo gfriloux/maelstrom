@@ -288,28 +288,31 @@ gen_type_marshalizers(Azy_Typedef *t,
         NL;
         EL(1, "EINA_LIST_FOREACH(azy_user_type, l, v)");
         EL(1, "{");
-
-        if (t->item_type->ctype == d)
-          EL(2, "Eina_Value *item_value = %s(*v);", t->item_type->march_name);
-        else if (!t->item_type->free_func)
-          EL(2, "Eina_Value *item_value = %s((long)(intptr_t)v);", t->item_type->march_name);
-        else
-          EL(2, "Eina_Value *item_value = %s((%s)v);", t->item_type->march_name, t->item_type->ctype);
+        if ((t->item_type->type == TD_ARRAY) || (t->item_type->type == TD_STRUCT))
+          {
+             if (t->item_type->ctype == d)
+               EL(2, "Eina_Value *item_value = %s(*v);", t->item_type->march_name);
+             else if (!t->item_type->free_func)
+               EL(2, "Eina_Value *item_value = %s((long)(intptr_t)v);", t->item_type->march_name);
+             else
+               EL(2, "Eina_Value *item_value = %s((%s)v);", t->item_type->march_name, t->item_type->ctype);
+          }
 
         NL;
         if (t->item_type->type == TD_ARRAY)
           {
              EL(2, "eina_value_get(item_value, &arr);");
              EL(2, "eina_value_array_append(value_array, arr);");
+             EL(2, "eina_value_free(item_value);");
           }
         else if (t->item_type->type == TD_STRUCT)
           {
              EL(2, "eina_value_get(item_value, &st);");
              EL(2, "eina_value_array_append(value_array, st);");
+             EL(2, "eina_value_free(item_value);");
           }
         else
-          EL(2, "eina_value_array_append(value_array, item_value);");
-        EL(2, "eina_value_free(item_value);");
+          EL(2, "eina_value_array_append(value_array, v);");
         EL(1, "}");
         NL;
         EL(1, "return value_array;");
