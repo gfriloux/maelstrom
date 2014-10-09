@@ -369,9 +369,13 @@ char *
 azy_content_serialize_json(Eina_Value *ev)
 {
    cJSON *json;
+   char *data;
 
    json = azy_value_serialize_json(ev);
-   return cJSON_Print(json);
+   data = cJSON_Print(json);
+
+   cJSON_Delete(json);
+   return data;
 }
 
 Eina_Bool
