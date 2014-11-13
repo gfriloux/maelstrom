@@ -786,6 +786,10 @@ _azy_server_client_rpc(Azy_Server_Client *client,
    Azy_Content *content;
 
    DBG("(client=%p)", client);
+
+   if ((!client->resume_rpc) && (!client->current->buffer))
+     return EINA_FALSE;
+
    if (client->resume_rpc)
      content = client->resume_rpc;
    else
@@ -860,6 +864,7 @@ _azy_server_client_handler_request(Azy_Server_Client *client)
           }
         return ECORE_CALLBACK_RENEW;
 
+      case AZY_NET_TYPE_RESPONSE:
       case AZY_NET_TYPE_POST:
         if (!client->current->transport)
           client->current->transport = azy_util_transport_get(azy_net_header_get(client->current, "content-type"));
