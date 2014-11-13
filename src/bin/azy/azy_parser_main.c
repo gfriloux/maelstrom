@@ -253,6 +253,17 @@ gen_type_marshalizers(Azy_Typedef *t,
                   EL(2, "else");
                   EL(3, "%s(&val, &azy_user_type_tmp->%s);", m->type->demarch_name, m->name);
                }
+             else if (m->type->ctype == d)
+               {
+                  EL(2, "if(eina_value_type_get(&val) == EINA_VALUE_TYPE_DOUBLE)");
+                  EL(3, "%s(&val, &azy_user_type_tmp->%s);", m->type->demarch_name, m->name);
+                  EL(2, "else");
+                  EL(3, "{");
+                  EL(4, "int int_to_double;");
+                  EL(4, "%s(&val, &int_to_double);", m->type->demarch_name);
+                  EL(4, "azy_user_type_tmp->%s = (double) int_to_double;", m->name);
+                  EL(3, "}");
+               }
              else
                EL(2, "%s(&val, &azy_user_type_tmp->%s);", m->type->demarch_name, m->name);
              EL(2, "eina_value_flush(&val);");
