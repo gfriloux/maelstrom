@@ -158,11 +158,13 @@ azy_server_module_param_get(Azy_Server_Module *module, const char *name)
 }
 
 /**
- * @brief Return the #Azy_Net object of the current module's
- * connection
+ * @brief Return the #Azy_Net object of the current or last
+ * module's connection
  *
  * This function is used to return the current module's network information,
  * allowing parsing of headers.
+ * If there is no current network information (Chunked transfer), then it will
+ * return last module's network structure.
  * @param module The server module (NOT NULL)
  * @return The #Azy_Net object
  */
@@ -176,7 +178,7 @@ azy_server_module_net_get(Azy_Server_Module *module)
      }
    EINA_SAFETY_ON_NULL_RETURN_VAL(module->client, NULL);
 
-   return module->client->current;
+   return module->client->current ? module->client->current : module->client->net;
 }
 
 /**
