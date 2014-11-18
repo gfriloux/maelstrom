@@ -51,8 +51,6 @@ _azy_client_handler_data_free(Azy_Client_Handler_Data *hd)
           {
              if (hd->client->recv)
                ecore_event_handler_data_set(hd->client->recv, NULL);
-             if (hd->client->net)
-               ecore_con_server_data_set(hd->client->net->conn, NULL);
           }
      }
 
@@ -483,7 +481,7 @@ _azy_client_handler_del(Azy_Client *client,
 {
    Azy_Client_Handler_Data *hd;
 
-   if (ev && (client != ecore_con_server_data_get(ev->server)) && (ecore_con_server_data_get(ev->server)))
+   if (ev && ((client != ecore_con_server_data_get(ev->server)) || (!ecore_con_server_data_get(ev->server))))
      return ECORE_CALLBACK_PASS_ON;
 
    DBG("(client=%p, net=%p)", client, client->net);
