@@ -1041,7 +1041,6 @@ _azy_server_client_handler_del(Azy_Server_Client *client,
         client->data = NULL;
      }
 
-   client->del = NULL;
    if ((!client->net->proto) && (!client->handled) && client->net->buffer)
      _azy_server_client_handler_request(client);
 
