@@ -8,6 +8,7 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+
 #ifdef STDC_HEADERS
 # include <stdlib.h>
 # include <stddef.h>
@@ -32,6 +33,10 @@ extern "C"
 #  endif
 void *alloca (size_t);
 # endif
+#endif
+
+#ifndef _XOPEN_SOURCE
+# define _XOPEN_SOURCE
 #endif
 
 #include <ctype.h>
