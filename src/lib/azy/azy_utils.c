@@ -64,8 +64,10 @@ static const char *const months[] =
 void
 azy_util_cleanup(void)
 {
+#ifndef _WIN32
    if (uuid_file) fclose(uuid_file);
    uuid_file = NULL;
+#endif
 }
 
 /**
