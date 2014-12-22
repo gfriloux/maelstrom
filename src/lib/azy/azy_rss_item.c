@@ -472,7 +472,7 @@ azy_rss_item_print(const char *pre,
    PRINT(title);
    PRINT(desc);
    t = localtime(&item->published);
-   strftime(buf, sizeof(buf), "%FT%TZ", t);
+   strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", t);
    for (i = 0; i < indent; i++)
      printf("%s", pre);
    printf("published: %s\n", buf);
@@ -499,7 +499,7 @@ azy_rss_item_print(const char *pre,
         PRINT(data.atom.icon);
 
         t = localtime(&item->data.atom.updated);
-        strftime(buf, sizeof(buf), "%FT%TZ", t);
+        strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", t);
         for (i = 0; i < indent; i++)
           printf("%s", pre);
         printf("updated: %s\n", buf);

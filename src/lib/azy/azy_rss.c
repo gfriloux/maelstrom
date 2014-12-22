@@ -806,7 +806,7 @@ azy_rss_print(const char *pre,
    PRINT(desc);
 
    t = localtime(&rss->updated);
-   strftime(buf, sizeof(buf), "%FT%TZ", t);
+   strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", t);
    for (i = 0; i < indent; i++)
      printf("%s", pre);
    printf("updated: %s\n", buf);
