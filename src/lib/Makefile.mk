@@ -47,6 +47,7 @@ src/lib/libstrmatch.la
 
 src_lib_libmaelstrom_la_LDFLAGS = -version-info @version_info@ -no-undefined
 src_lib_libmaelstrom_la_CPPFLAGS = \
+-DEFL_SHOTGUN_BUILD \
 $(LIB_CPPFLAGS) \
 $(SHOTGUN_CFLAGS)
 
