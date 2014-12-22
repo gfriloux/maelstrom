@@ -32,6 +32,10 @@ void *alloca (size_t);
 
 extern int email_log_dom;
 
+#ifndef MIN
+# define MIN(a, b)  (((a) < (b)) ? (a) : (b))
+#endif
+
 #define EMAIL_POP3_PORT 110
 #define EMAIL_POP3S_PORT 995
 
