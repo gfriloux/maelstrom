@@ -130,6 +130,7 @@ AZY_REQUIRES="ecore-con >= $min_efl_version ecore >= $min_efl_version eina >= $m
 case "$host_os" in
    mingw*)
       AZY_REQUIRES="${AZY_REQUIRES} evil >= $min_efl_version"
+      AC_DEFINE([HAVE_EVIL], [1], [Set to 1 if Evil package is installed])
    ;;
 esac
 

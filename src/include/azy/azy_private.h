@@ -42,6 +42,9 @@ void *alloca (size_t);
 #include <ctype.h>
 #include <inttypes.h>
 #include <time.h>
+#ifdef HAVE_EVIL
+# include <Evil.h>
+#endif
 #include <Ecore.h>
 #include <Ecore_Con.h>
 #include <Azy.h>
