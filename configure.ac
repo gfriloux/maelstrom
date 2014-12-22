@@ -126,6 +126,13 @@ AC_ARG_ENABLE([azy],
 )
 
 AZY_REQUIRES="ecore-con >= $min_efl_version ecore >= $min_efl_version eina >= $min_efl_version eet >= $min_efl_version"
+
+case "$host_os" in
+   mingw*)
+      AZY_REQUIRES="${AZY_REQUIRES} evil >= $min_efl_version"
+   ;;
+esac
+
 build_azy="no"
 
 if test "x$want_azy" = "xyes" || test "x$want_azy" = "xauto" ; then
