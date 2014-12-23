@@ -427,13 +427,15 @@ m4_ifdef([v_rev],
 
 if test x"$cross_compiling" = "xno"; then
   CC_FOR_BUILD="$CC"
-  AC_SUBST(CC_FOR_BUILD)
+else
+  CC_FOR_BUILD=cc
 fi
 
 AC_SUBST(MAELSTROM_REQUIRES)
 AC_SUBST(AZY_REQUIRES)
 AC_SUBST(EMAIL_REQUIRES)
 AC_SUBST(SHOTGUN_REQUIRES)
+AC_SUBST(CC_FOR_BUILD)
 
 AC_CHECK_HEADERS([Rpcdce.h])
 EFL_CHECK_DOXYGEN([build_doc="yes"], [build_doc="no"])
