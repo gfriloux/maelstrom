@@ -82,7 +82,7 @@ email_message_serialize(const Email_Message *msg)
    date = msg->date;
    if (!date) date = lround(ecore_time_unix_get());
    t = localtime(&date);
-   strftime(timebuf, sizeof(timebuf), "%a, %d %b %Y %T %z (%Z)", t);
+   strftime(timebuf, sizeof(timebuf), "%a, %d %b %Y %H:%M:%S %z (%Z)", t);
    eina_strbuf_append_printf(buf, "Date: %s\r\n", timebuf);
    EINA_LIST_FOREACH(msg->from, l, ec)
      {
