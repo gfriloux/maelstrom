@@ -42,7 +42,8 @@ endif
 
 CLEANFILES = \
 maelstrom-*.tar.bz2 \
-maelstrom-*.tar.gz
+maelstrom-*.tar.gz \
+src/bin/lemon
 
 DISTCLEANFILES =
 
