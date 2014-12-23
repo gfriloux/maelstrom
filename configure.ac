@@ -425,6 +425,11 @@ m4_ifdef([v_rev],
     EFL_COMPILER_FLAG([-Wextra])
    ])
 
+if test x"$cross_compiling" = "xno"; then
+  CC_FOR_BUILD="$CC"
+  AC_SUBST(CC_FOR_BUILD)
+fi
+
 AC_SUBST(MAELSTROM_REQUIRES)
 AC_SUBST(AZY_REQUIRES)
 AC_SUBST(EMAIL_REQUIRES)

@@ -82,13 +82,11 @@ $(AZY_LIBS) \
 $(top_builddir)/src/lib/libmaelstrom.la
 
 #lemon is uncontrollably loud and will never be fixed. stfu lemon!
-noinst_PROGRAMS += src/bin/lemon
-src_bin_lemon_CPPFLAGS = $(BIN_CPPFLAGS)
-src_bin_lemon_CFLAGS = -w
-src_bin_lemon_SOURCES = src/bin/azy/lemon.c
+src/bin/lemon$(EXEEXT_FOR_BUILD):
+	$(CC_FOR_BUILD) -o $@ -w src/bin/azy/lemon.c
 
-src/bin/azy_parser.y: src/bin/azy/azy_parser.yre $(NEED_REC) src/bin/lemon$(EXEEXT)
+src/bin/azy_parser.y: src/bin/azy/azy_parser.yre $(NEED_REC) src/bin/lemon$(EXEEXT_FOR_BUILD)
 	$(REC) $(RE2C_OPTS) $<
 
-src/bin/azy_parser.c: src/bin/azy_parser.y src/bin/lemon$(EXEEXT)
-	cp -f $(top_srcdir)/src/bin/azy/lempar.c . && src/bin/lemon$(EXEEXT) -q $<
+src/bin/azy_parser.c: src/bin/azy_parser.y src/bin/lemon$(EXEEXT_FOR_BUILD)
+	cp -f $(top_srcdir)/src/bin/azy/lempar.c . && src/bin/lemon$(EXEEXT_FOR_BUILD) -q $<
