@@ -83,7 +83,7 @@ $(top_builddir)/src/lib/libmaelstrom.la
 
 #lemon is uncontrollably loud and will never be fixed. stfu lemon!
 src/bin/lemon$(EXEEXT_FOR_BUILD):
-	$(CC_FOR_BUILD) -o $@ -w src/bin/azy/lemon.c
+	$(CC_FOR_BUILD) -o $@ -w $(CFLAGS_FOR_BUILD) $(LDFLAGS_FOR_BUILD) src/bin/azy/lemon.c
 
 src/bin/azy_parser.y: src/bin/azy/azy_parser.yre $(NEED_REC) src/bin/lemon$(EXEEXT_FOR_BUILD)
 	$(REC) $(RE2C_OPTS) $<

@@ -50,6 +50,7 @@ AC_PROG_YACC
 AC_PROG_CXX
 AC_PROG_INSTALL
 AC_PROG_CC
+AC_PROG_CC_FOR_BUILD
 AM_PROG_CC_C_O
 AC_PROG_MAKE_SET
 
@@ -425,17 +426,10 @@ m4_ifdef([v_rev],
     EFL_COMPILER_FLAG([-Wextra])
    ])
 
-if test x"$cross_compiling" = "xno"; then
-  CC_FOR_BUILD="$CC"
-else
-  CC_FOR_BUILD=cc
-fi
-
 AC_SUBST(MAELSTROM_REQUIRES)
 AC_SUBST(AZY_REQUIRES)
 AC_SUBST(EMAIL_REQUIRES)
 AC_SUBST(SHOTGUN_REQUIRES)
-AC_SUBST(CC_FOR_BUILD)
 
 AC_CHECK_HEADERS([Rpcdce.h])
 EFL_CHECK_DOXYGEN([build_doc="yes"], [build_doc="no"])
