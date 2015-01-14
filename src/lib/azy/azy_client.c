@@ -384,7 +384,11 @@ Eina_Bool
 azy_client_connect(Azy_Client *client)
 {
    Ecore_Con_Server *svr;
+#ifdef _WIN32
+   int flags = ECORE_CON_REMOTE_TCP;
+#else
    int flags = ECORE_CON_REMOTE_NODELAY;
+#endif
 
    DBG("(client=%p)", client);
    if (!AZY_MAGIC_CHECK(client, AZY_MAGIC_CLIENT))

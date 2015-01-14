@@ -277,7 +277,11 @@ azy_server_cert_add(Azy_Server *server,
 Eina_Bool
 azy_server_run(Azy_Server *server)
 {
+#ifdef _WIN32
+   int ecore = ECORE_CON_REMOTE_TCP;
+#else
    int ecore = ECORE_CON_REMOTE_NODELAY;
+#endif
    Eina_List *l;
    const char *f;
 
@@ -338,7 +342,12 @@ azy_server_basic_run(int port,
    Azy_Server *server;
    Azy_Server_Module_Def **mods;
    Eina_Bool secure = EINA_FALSE;
-   int az, ecore = ECORE_CON_REMOTE_NODELAY;
+   int az,
+#ifdef _WIN32
+       ecore = ECORE_CON_REMOTE_TCP;
+#else
+       ecore = ECORE_CON_REMOTE_NODELAY;
+#endif
 
    if ((port < 0) || (port > 65535) || (!modules) || !(*modules))
      return EINA_FALSE;
