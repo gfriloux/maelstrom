@@ -56,10 +56,14 @@ src/lib/extras/cencode.c \
 src/lib/extras/cdecode.c
 
 if BUILD_SHOTGUN
-extra_source += src/lib/extras/md5.c
+extra_source += \
+src/lib/extras/md5.c \
+src/lib/extras/memrchr.c
 else
 if BUILD_EMAIL
-extra_source += src/lib/extras/md5.c
+extra_source += \
+src/lib/extras/md5.c \
+src/lib/extras/memrchr.c
 endif
 endif
 
