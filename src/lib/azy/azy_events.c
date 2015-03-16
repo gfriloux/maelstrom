@@ -635,7 +635,7 @@ _azy_events_chunk_parse(Azy_Net *net, unsigned char *start, int64_t len)
    if (net->progress == net->http.chunk_size) return rlen;
    len -= rlen;
    if ((size_t)len < ESBUFLEN(net->separator)) return rlen;
-   p = _azy_events_skip_blank(start + rlen, &len);
+   p = _azy_events_skip_blank(p + rlen, &len);
    r = _azy_events_chunk_size_parser(net, p, &len);
    if (!r) return start - p;
    if ((size_t)len < ESBUFLEN(net->separator)) return start - p;
