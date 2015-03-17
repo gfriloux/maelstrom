@@ -3,7 +3,9 @@
 #endif
 
 #ifndef HAVE_MEMRCHR
-#include "string.h"
+# ifndef __WIN32__
+#  include "string.h"
 
 void *memrchr(const void *s, int c, size_t n);
+# endif
 #endif

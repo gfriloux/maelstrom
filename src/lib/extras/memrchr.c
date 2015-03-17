@@ -5,6 +5,7 @@
 #include "memrchr.h"
 
 #ifndef HAVE_MEMRCHR
+# ifndef __WIN32__
 void *memrchr(const void *s, int c, size_t n)
 {
    const unsigned char *cp;
@@ -20,4 +21,5 @@ void *memrchr(const void *s, int c, size_t n)
 
    return NULL;
 }
+# endif
 #endif
