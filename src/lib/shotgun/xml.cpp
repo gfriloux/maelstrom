@@ -357,9 +357,14 @@ S: <failure xmlns="urn:ietf:params:xml:ns:xmpp-sasl"><not-authorized/></failure
         for (key = b64; key && *key;)
           {
              const char *e, *next;
+             char *hkey;
 
              e = strchr(key, '=');
              if (!e) goto error;
+
+             hkey = strndupa(key, e - key);
+             hkey[e - key] = 0;
+
              if (e[1] == '"')
                {
                   next = strchr(e + 2, '"');
@@ -367,7 +372,7 @@ S: <failure xmlns="urn:ietf:params:xml:ns:xmpp-sasl"><not-authorized/></failure
                   while (next && (next[-1] == '\\')) next = strchr(next + 1, '"');
                   if ((!next) || (next[1] && (next[1] != ','))) goto error;
                   //INF("key: %s, val: %s", strndupa(key, e - key), strndupa(e + 2, next - (e + 2)));
-                  eina_hash_add(auth->features.auth_digestmd5, strndupa(key, e - key), strndup(e + 2, next - (e + 2)));
+                  eina_hash_add(auth->features.auth_digestmd5, hkey, strndup(e + 2, next - (e + 2)));
                   next++;
                }
              else
@@ -376,12 +381,12 @@ S: <failure xmlns="urn:ietf:params:xml:ns:xmpp-sasl"><not-authorized/></failure
                   if (!next)
                     {
                        //INF("key: %s, val: %s", strndupa(key, e - key), strdupa(e + 1));
-                       eina_hash_add(auth->features.auth_digestmd5, strndupa(key, e - key), strdup(e + 1));
+                       eina_hash_add(auth->features.auth_digestmd5, hkey, strdup(e + 1));
                     }
                   else
                     {
                        //INF("key: %s, val: %s", strndupa(key, e - key), strndupa(e + 1, next - (e + 1)));
-                       eina_hash_add(auth->features.auth_digestmd5, strndupa(key, e - key), strndup(e + 1, next - (e + 1)));
+                       eina_hash_add(auth->features.auth_digestmd5, hkey, strndup(e + 1, next - (e + 1)));
                     }
                }
              key = next ? next + 1 : NULL;
