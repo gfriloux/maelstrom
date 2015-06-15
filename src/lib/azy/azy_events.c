@@ -31,7 +31,7 @@ _azy_events_skip_blank(const unsigned char *p, int64_t *len)
    return (unsigned char *)p;
 }
 
-inline Eina_Bool
+Eina_Bool
 azy_events_chunks_done(const Azy_Net *net)
 {
    return (!net->http.chunk_size) && (!net->need_chunk_size);

@@ -481,7 +481,7 @@ void             azy_events_client_transfer_complete_event_free(Azy_Client *clie
 void             azy_events_client_transfer_complete_event(const Azy_Client_Handler_Data *hd, Azy_Content *content);
 Eina_Bool        azy_events_length_overflows(int64_t current, int64_t max);
 size_t           azy_events_transfer_decode(Azy_Net *net, unsigned char *start, int len);
-inline Eina_Bool azy_events_chunks_done(const Azy_Net *net);
+Eina_Bool        azy_events_chunks_done(const Azy_Net *net);
 Eina_Binbuf     *azy_events_overflow_add(Azy_Net *net, const unsigned char *data, size_t len);
 
 int              azy_net_cookie_init_(void);
