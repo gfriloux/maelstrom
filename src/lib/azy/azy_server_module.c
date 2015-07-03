@@ -675,6 +675,7 @@ azy_server_module_send(Azy_Server_Module *module,
           azy_net_code_set(net, 200);  /* OK */
         azy_net_type_set(net, AZY_NET_TYPE_RESPONSE);
         EINA_SAFETY_ON_TRUE_RETURN_VAL(!(header = azy_net_header_create(net)), EINA_FALSE);
+        EINA_SAFETY_ON_NULL_RETURN_VAL(module->client->current->conn, EINA_FALSE);
         s = !!ecore_con_client_send(module->client->current->conn, eina_strbuf_string_get(header), eina_strbuf_length_get(header));
         eina_strbuf_free(header);
         if (!s)
@@ -691,12 +692,14 @@ post_header:
      {
         if (!data || !data->data) return EINA_TRUE;
 
+        EINA_SAFETY_ON_NULL_RETURN_VAL(module->client->current->conn, EINA_FALSE);
         EINA_SAFETY_ON_TRUE_RETURN_VAL(!ecore_con_client_send(module->client->current->conn, data->data, data->size), EINA_FALSE);
         goto post_send;
      }
 
    if (!data || !data->data)
      {
+        EINA_SAFETY_ON_NULL_RETURN_VAL(module->client->current->conn, EINA_FALSE);
         EINA_SAFETY_ON_TRUE_RETURN_VAL(!ecore_con_client_send(module->client->current->conn, "0\r\n\r\n", 5), EINA_FALSE);
         goto post_send;
      }
@@ -707,6 +710,7 @@ post_header:
    eina_binbuf_append_length(chunk_data, (unsigned char *)chunk_size, strlen(chunk_size));
    eina_binbuf_append_length(chunk_data, data->data, data->size);
    eina_binbuf_append_length(chunk_data, (unsigned char *)"\r\n", 2);
+   EINA_SAFETY_ON_NULL_RETURN_VAL(module->client->current->conn, EINA_FALSE);
    EINA_SAFETY_ON_TRUE_RETURN_VAL(!ecore_con_client_send(module->client->current->conn,
                                   eina_binbuf_string_get(chunk_data), eina_binbuf_length_get(chunk_data)), EINA_FALSE);
    eina_binbuf_free(chunk_data);
