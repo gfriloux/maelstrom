@@ -26,6 +26,7 @@ azy_stringshare_toupper(const char *str)
 {
    char *tmp;
 
+   if(!str) return NULL;
    tmp = strdupa(str);
    eina_str_toupper(&tmp);
    return eina_stringshare_add(tmp);

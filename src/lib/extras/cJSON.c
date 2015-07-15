@@ -54,6 +54,8 @@ static char* cJSON_strdup(const char* str)
         size_t len;
         char* copy;
 
+        if(!str) return strdup("");
+
         len = strlen(str) + 1;
 
         if (!(copy = (char*)cJSON_malloc(len))) return 0;

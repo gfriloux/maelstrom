@@ -359,10 +359,16 @@ azy_content_serialize_request_json(Azy_Content *content)
      msg = cJSON_Print(object);
    else
      msg = cJSON_PrintUnformatted(object);
+
+   if(!msg) goto free_object;
    azy_content_buffer_set_(content, (unsigned char *)msg, strlen(msg));
 
    cJSON_Delete(object);
    return EINA_TRUE;
+
+free_object:
+   cJSON_Delete(object);
+   return EINA_FALSE;
 }
 
 char *
@@ -416,10 +422,16 @@ azy_content_serialize_response_json(Azy_Content *content)
      msg = cJSON_Print(object);
    else
      msg = cJSON_PrintUnformatted(object);
+
+   if(!msg) goto free_object;
    azy_content_buffer_set_(content, (unsigned char *)msg, strlen(msg));
 
    cJSON_Delete(object);
    return EINA_TRUE;
+
+free_object:
+   cJSON_Delete(object);
+   return EINA_FALSE;
 }
 
 Eina_Bool
