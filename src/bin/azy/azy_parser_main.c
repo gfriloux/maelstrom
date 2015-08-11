@@ -224,7 +224,12 @@ gen_type_marshalizers(Azy_Typedef *t,
         EL(1, "EINA_SAFETY_ON_NULL_RETURN_VAL(azy_user_type, EINA_FALSE);");
         EL(1, "EINA_SAFETY_ON_NULL_RETURN_VAL(value_struct, EINA_FALSE);");
         NL;
-        EL(1, "EINA_SAFETY_ON_TRUE_RETURN_VAL(eina_value_type_get(value_struct) != EINA_VALUE_TYPE_STRUCT, EINA_FALSE);");
+        EL(1, "if(eina_value_type_get(value_struct) != EINA_VALUE_TYPE_STRUCT)");
+        EL(1, "{");
+        EL(2, "*azy_user_type = %s_new();", t->cname);
+        EL(2, "EINA_LOG_ERR(\"eina_value_type_get(value_struct) != EINA_VALUE_TYPE_STRUCT is true\");");
+        EL(2, "return EINA_FALSE;");
+        EL(1, "}");
         NL;
         EL(1, "azy_user_type_tmp = %s_new();", t->cname);
 
