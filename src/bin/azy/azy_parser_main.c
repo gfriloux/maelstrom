@@ -198,7 +198,7 @@ gen_type_marshalizers(Azy_Typedef *t,
         EL(1, "st_desc->size = offset;");
         EL(1, "value_struct = eina_value_struct_new(st_desc);");
         NL;
-        
+
         EINA_LIST_FOREACH(t->struct_members, l, m)
           {
              EL(1, "val = %s(azy_user_type->%s);", m->type->march_name, m->name);
@@ -253,7 +253,7 @@ gen_type_marshalizers(Azy_Typedef *t,
                   EL(4, "char *str = NULL;");
                   NL;
                   EL(4, "if (eina_value_get(&val, &str))");
-                  EL(5, "azy_user_type_tmp->%s = eina_stringshare_add(str);", m->name);;
+                  EL(5, "azy_user_type_tmp->%s = eina_stringshare_add(str);", m->name);
                   EL(3, "}");
                   EL(2, "else");
                   EL(3, "%s(&val, &azy_user_type_tmp->%s);", m->type->demarch_name, m->name);
@@ -270,8 +270,15 @@ gen_type_marshalizers(Azy_Typedef *t,
                   EL(3, "}");
                }
              else
-               EL(2, "%s(&val, &azy_user_type_tmp->%s);", m->type->demarch_name, m->name);
+                EL(2, "%s(&val, &azy_user_type_tmp->%s);", m->type->demarch_name, m->name);
              EL(2, "eina_value_flush(&val);");
+             EL(1, "}");
+             EL(1, "else");
+             EL(1, "{");
+             if (m->type->ctype == c)
+                EL(2, "azy_user_type_tmp->%s = eina_stringshare_add(\"\");", m->name);
+             else if (m->type->type == TD_STRUCT)
+                EL(2, "%s(&val, &azy_user_type_tmp->%s);", m->type->demarch_name, m->name);
              EL(1, "}");
              EL(1, "found = EINA_FALSE;");
           }
