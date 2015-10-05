@@ -1,4 +1,3 @@
 debian/tmp/usr/include/*                                                                                                                                                                                                       
 debian/tmp/usr/lib/pkgconfig/*
-debian/tmp/usr/lib/libmaelstrom.a
 debian/tmp/usr/lib/libmaelstrom.so
