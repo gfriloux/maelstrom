@@ -1,0 +1,43 @@
+Source: maelstrom
+Section: libs
+Priority: extra
+Maintainer: Guillaume Friloux <guillaume.friloux@asp64.com>
+Build-Depends: debhelper (>= 7.0.50~), libeina-dev (>= 1.7.7~),
+ libecore-dev (>= 1.7.0~)
+Standards-Version: 3.8.4
+Homepage: http://enlightenment.org
+
+Package: libmaelstrom
+Provides: libmaelstrom
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends},
+ libeina1 (>= 1.7.7~),
+ libecore1 (>= 1.7.7~),
+ libecore-con1 (>= 1.7.7~)
+Replaces: libazy0, libshotgun
+Description: Maelstrom
+ Maelstrom contains :
+ Shotgun, an xmpp client/library which uses EFL.
+ Azy, a library which simplifies using HTTP RPC through XML/JSON.
+ It's cross-platform, providing an easy API to manage both
+ connecting to and hosting a server.
+ Email, an email library.
+ This package will only build the library
+
+Package: libmaelstrom-dev
+Section: libdevel
+Architecture: any
+Depends: ${misc:Depends}, libmaelstrom (= ${binary:Version}), pkg-config
+Description: Maelstrom headers and static libraries
+ This package contains headers and libraries for the Shotgun library.
+
+Package: libmaelstrom-dbg
+Architecture: any
+Section: debug
+Depends: ${misc:Depends}, libmaelstrom (= ${binary:Version})
+Priority: extra
+Description: Debugging symbols for libmaelstrom
+ This package contains unstripped shared libraries. It is provided primarily
+ to provide a backtrace with names in a debugger, this makes it somewhat easier
+ to interpret core dumps. The libraries are installed in /usr/lib/debug and
+ are automatically used by gdb.

@@ -1,0 +1,5 @@
+maelstrom (0.0.99-1) unstable; urgency=low
+
+  * first package for zmike's maelstrom lib (contains : shotgun, azy, email stuff)
+
+ -- Pierre-Olivier Huguet <pierre-olivier.huguet@asp64.com>  Wed, 21 Aug 2013 11:20:00 +0100

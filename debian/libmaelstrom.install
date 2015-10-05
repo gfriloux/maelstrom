@@ -1,0 +1,2 @@
+debian/tmp/usr/lib/libmaelstrom*.so.*
+debian/tmp/usr/bin/azy_parser
