@@ -8,6 +8,7 @@ src/include/extras/match.h \
 src/include/extras/md5.h \
 src/include/extras/pugixml.hpp \
 src/include/extras/pugiconfig.hpp \
+src/include/extras/memrchr.h \
 src/include/extras/sha1.h \
 src/include/shotgun/shotgun_private.h \
 src/include/shotgun/shotgun_xml.h
