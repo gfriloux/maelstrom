@@ -13,7 +13,6 @@ maelstrom-*.gz
 m4/l*
 Makefile
 Makefile.in
-*.spec
 aclocal.m4
 autom4te.cache/
 compile
