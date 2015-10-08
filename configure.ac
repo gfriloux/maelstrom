@@ -181,25 +181,12 @@ AM_CONDITIONAL([HAVE_MYSQL], [test "x$have_mysql" = "xyes"])
 AC_SUBST([MYSQL_CFLAGS])
 AC_SUBST([MYSQL_LIBS])
 
-AC_ARG_ENABLE([external-re2c],
-   [AC_HELP_STRING([--disable-external-re2c], [disable use of external re2c @<:@default=yes@:>@])],
-   [want_extern_rec=$enableval],
-   [want_extern_rec="yes"]
-)
-
-if test "x$want_extern_rec" = "xyes" && test "x$build_azy" = "xyes" ; then
-   AC_PATH_PROG([RE2C], [re2c])
-fi
+AC_PATH_PROG([RE2C], [re2c])
 
 have_re2c="yes"
 if test -z $ac_cv_path_RE2C ; then
-   have_re2c="no"
+   AC_MSG_ERROR([You need to install re2c to build azy files])
 fi
-
-AC_MSG_CHECKING([whether external re2cc is used])
-AC_MSG_RESULT([$have_re2c])
-
-AM_CONDITIONAL([NEED_RE2C], [test "x$have_re2c" = "xno"])
 
 #################################
 
