@@ -16,7 +16,8 @@ TODO-AZY \
 TODO-SHOTGUN \
 azy.pc.in \
 email.pc.in \
-shotgun.pc.in
+shotgun.pc.in \
+autogen.sh
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA =
