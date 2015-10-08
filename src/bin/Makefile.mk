@@ -8,9 +8,7 @@ $(SHOTGUN_CFLAGS) \
 EXTRA_DIST += \
 src/bin/azy/lempar.c \
 src/bin/azy/lemon.c \
-src/bin/azy/azy_parser.yre \
-src/bin/re2c/CHANGELOG \
-src/bin/re2c/re_parser.ypp
+src/bin/azy/azy_parser.yre
 
 AM_YFLAGS = -d
 
