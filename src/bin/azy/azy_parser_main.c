@@ -280,7 +280,7 @@ gen_type_marshalizers(Azy_Typedef *t,
              else if (m->type->type == TD_STRUCT)
                 EL(2, "%s(&val, &azy_user_type_tmp->%s);", m->type->demarch_name, m->name);
              EL(1, "}");
-             EL(1, "found = EINA_FALSE;");
+             if(eina_list_next(l)) EL(1, "found = EINA_FALSE;");
           }
 
         NL;
