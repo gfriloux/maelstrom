@@ -444,6 +444,7 @@ Summary:
      Email.........: $build_email
      AZY...........: $build_azy
      Shotgun.......: $build_shotgun
+ * doc.............: $build_doc
  * prefix..........: $(txt_strip $prefix)
  * CFLAGS..........: $(txt_strip $CFLAGS)
  * LDFLAGS.........: $(txt_strip $LDFLAGS)
