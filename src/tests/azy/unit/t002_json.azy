@@ -1,0 +1,47 @@
+Azy_Namespace T002;
+
+struct Integer
+{
+   int test_int;
+};
+
+struct Double
+{
+   double test_double;
+};
+
+struct String
+{
+   string test_string;
+};
+
+struct Array
+{
+   array<string> test_array_string;
+};
+
+struct Computer
+{
+   string name;
+   string ip;
+};
+
+struct Network
+{
+   string ip;
+   string gateway;
+   string netmask;
+   string dns;
+};
+
+struct Server
+{
+   string key;
+   boolean initialize;
+   int connexions;
+   string hash;
+   double volume;
+   Network network;
+   array<Computer> computers;
+   string licence;
+};
