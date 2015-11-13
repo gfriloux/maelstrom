@@ -286,7 +286,15 @@ azy_value_deserialize_array_json(cJSON *object)
    arr = eina_value_array_new(type, 0);
    for (; x < cJSON_GetArraySize(object); x++)
      {
-        if (x) child = cJSON_GetArrayItem(object, x);
+        if (x)
+          {
+             child = cJSON_GetArrayItem(object, x);
+             if(_azy_value_type_get(child) != type)
+               {
+                  EINA_LOG_ERR("We have different type of data in array.");
+                  continue;
+               }
+          }
         if (type == EINA_VALUE_TYPE_ARRAY)
           {
              Eina_Value_Array inner_array;

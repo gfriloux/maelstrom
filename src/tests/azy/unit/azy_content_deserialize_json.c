@@ -1,9 +1,14 @@
 #include "t002_json.h"
 
-#define ck_assert_double_eq(_a, _b) do { \
-  double epsilon = 0.00001; \
+#define ck_assert_double_eq(_a, _b) do {                                                          \
+  double epsilon = 0.00001;                                                                       \
   ck_assert_msg(_a >=  _b - epsilon && _a <= _b +  epsilon, "Assertion '%f==%f' failed", _a, _b); \
 } while (0)
+
+#define PRINT(_func, _test, _result) do {                                   \
+  printf("\n\n\e[4mFunction : %s, line : %d\e[24m\n- test : %s\n- result : %s\n", _func, __LINE__, _test, _result); \
+} while (0)
+
 
 START_TEST(_azy_content_deserialize_json_int1)
 {
@@ -12,6 +17,8 @@ START_TEST(_azy_content_deserialize_json_int1)
    const char *s = "{\"test_int\":3}";
    Eina_Value *ev;
    T002_Integer *ti;
+
+   PRINT("_azy_content_deserialize_json_int1", "correct int data.", "test_int = 3.");
 
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
@@ -32,9 +39,6 @@ START_TEST(_azy_content_deserialize_json_int1)
 }
 END_TEST
 
-// todo : when value is not the true type for exemple string in place of int,
-// int must be equal to 0.
-// In this case azy_value_to_T002_Integer must display a warning message.
 START_TEST(_azy_content_deserialize_json_int2)
 {
    Azy_Content *content;
@@ -42,6 +46,10 @@ START_TEST(_azy_content_deserialize_json_int2)
    const char *s = "{\"test_int\":\"3\"}";
    Eina_Value *ev;
    T002_Integer *ti;
+
+   PRINT("_azy_content_deserialize_json_int2",
+         "bad type of value for data test_int, string in place of int.",
+         "tests_int = 0.");
 
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
@@ -62,9 +70,6 @@ START_TEST(_azy_content_deserialize_json_int2)
 }
 END_TEST
 
-// todo : when value not exist in json ignore it.
-// When value of int is not found, it must be equal to 0.
-// In this case azy_value_to_T002_String must display a warning message.
 START_TEST(_azy_content_deserialize_json_int3)
 {
    Azy_Content *content;
@@ -72,6 +77,9 @@ START_TEST(_azy_content_deserialize_json_int3)
    const char *s = "{\"test_integer\":3}";
    Eina_Value *ev;
    T002_Integer *ti;
+
+   PRINT("_azy_content_deserialize_json_int3", "data test_int does not exit.",
+         "\n-- test_int = 0,\n-- test_integer is ignored.");
 
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
@@ -98,6 +106,10 @@ START_TEST(_azy_content_deserialize_json_int4)
    Eina_Bool r;
    const char *s = "";
 
+   PRINT("_azy_content_deserialize_json_int4",
+         "json is not a in valid format, equal to empty string.",
+         "azy_content_deserialize_json return an error.");
+
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
 
@@ -114,6 +126,9 @@ START_TEST(_azy_content_deserialize_json_int5)
    Eina_Bool r;
    const char *s = "{}";
    Eina_Value *ev;
+
+   PRINT("_azy_content_deserialize_json_int5", "json data is empty, equal to {}.",
+         "azy_content_retval_get return NULL.");
 
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
@@ -134,6 +149,10 @@ START_TEST(_azy_content_deserialize_json_int6)
    Eina_Bool r;
    const char *s = "{\"test_int\":}";
 
+   PRINT("_azy_content_deserialize_json_int6",
+         "json is not in a valid format, value of data is not set.",
+         "azy_content_deserialize_json return an error.");
+
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
 
@@ -151,6 +170,9 @@ START_TEST(_azy_content_deserialize_json_double)
    const char *s = "{\"test_double\":3.3}";
    Eina_Value *ev;
    T002_Double *td;
+
+   PRINT("_azy_content_deserialize_json_double", "correct double data.",
+         "test_double = 3.3.");
 
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
@@ -179,6 +201,9 @@ START_TEST(_azy_content_deserialize_json_string1)
    Eina_Value *ev;
    T002_String *ts;
 
+   PRINT("_azy_content_deserialize_json_string1", "correct string data.",
+         "test_string = damien.");
+
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
 
@@ -198,9 +223,6 @@ START_TEST(_azy_content_deserialize_json_string1)
 }
 END_TEST
 
-// todo : when value is not the true type for exemple int in place of string,
-// string must be equal to empty.
-// In this case azy_value_to_T002_String must display a warning message and not segfault...
 START_TEST(_azy_content_deserialize_json_string2)
 {
    Azy_Content *content;
@@ -208,6 +230,10 @@ START_TEST(_azy_content_deserialize_json_string2)
    const char *s = "{\"test_string\":3}";
    Eina_Value *ev;
    T002_String *ts;
+
+   PRINT("_azy_content_deserialize_json_string2",
+         "bad type of value for data test_string, int in place of string.",
+         "test_string = \"\".");
 
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
@@ -228,9 +254,6 @@ START_TEST(_azy_content_deserialize_json_string2)
 }
 END_TEST
 
-// todo : when value not exist in json ignore it.
-// When value of string is not found, it must be equal to "".
-// In this case azy_value_to_T002_String must display a warning message.
 START_TEST(_azy_content_deserialize_json_string3)
 {
    Azy_Content *content;
@@ -238,6 +261,9 @@ START_TEST(_azy_content_deserialize_json_string3)
    const char *s = "{\"test_stringshare\":\"damien\"}";
    Eina_Value *ev;
    T002_String *ts;
+
+   PRINT("_azy_content_deserialize_json_string3", "data test_string does not exist.",
+         "\n-- test_string = \"\",\n-- test_stringshare is ignored.");
 
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
@@ -264,6 +290,10 @@ START_TEST(_azy_content_deserialize_json_string4)
    Eina_Bool r;
    const char *s = "";
 
+   PRINT("_azy_content_deserialize_json_string4",
+         "json is not a in valid format, equal to empty string.",
+         "azy_content_deserialize_json return an error.");
+
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
 
@@ -280,6 +310,9 @@ START_TEST(_azy_content_deserialize_json_string5)
    Eina_Bool r;
    const char *s = "{}";
    Eina_Value *ev;
+
+   PRINT("_azy_content_deserialize_json_string5", "json data is empty, equal to {}.",
+         "azy_content_retval_get return NULL.");
 
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
@@ -300,6 +333,10 @@ START_TEST(_azy_content_deserialize_json_string6)
    Eina_Bool r;
    const char *s = "{\"test_string\":}";
 
+   PRINT("_azy_content_deserialize_json_string6",
+         "json is not in a valid format, value of data is not set.",
+         "azy_content_deserialize_json return an error.");
+
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
 
@@ -319,6 +356,10 @@ START_TEST(_azy_content_deserialize_json_array_string1)
    Eina_List *el = NULL,
              *el2;
    Eina_Stringshare *data;
+
+   PRINT("_azy_content_deserialize_json_array_string1", "correct array string.",
+         "\n-- eina_list_count = 2,\n-- first element = \"string1\","
+         "\n-- second element = \"string2\".");
 
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
@@ -341,18 +382,23 @@ START_TEST(_azy_content_deserialize_json_array_string1)
 }
 END_TEST
 
-// todo : when value is not the true type for exemple int in place of string,
-// string must be equal to empty.
-// In this case azy_value_to_Array_string must display a warning message and not segfault...
 START_TEST(_azy_content_deserialize_json_array_string2)
 {
    Azy_Content *content;
    Eina_Bool r;
-   const char *s = "[\"string1\",2]";
+   const char *s = "[\"string1\",2,\"string3\"]";
    Eina_Value *ev;
    Eina_List *el = NULL,
              *el2;
    Eina_Stringshare *data;
+
+   PRINT("_azy_content_deserialize_json_array_string2",
+         "array contain data with a different type (string and int).",
+         "\n-- eina_value must contain only one type, the reference type is the first "
+         "type found (here string),"
+         "\n-- data of type int is ignored,\n-- eina_list_count = 2,"
+         "\n-- first element = \"string1\","
+         "\n-- second element = \"string3\".");
 
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
@@ -368,7 +414,7 @@ START_TEST(_azy_content_deserialize_json_array_string2)
    ck_assert_msg(!!el, "Error, value of el is NULL.");
    ck_assert_int_eq(eina_list_count(el), 2);
    ck_assert_str_eq( (char *)eina_list_nth(el, 0), "string1");
-   ck_assert_str_eq( (char *)eina_list_nth(el, 1), "");
+   ck_assert_str_eq( (char *)eina_list_nth(el, 1), "string3");
 
    EINA_LIST_FOREACH(el, el2, data) eina_stringshare_del(data);
    azy_content_free(content);
@@ -380,6 +426,10 @@ START_TEST(_azy_content_deserialize_json_array_string3)
    Azy_Content *content;
    Eina_Bool r;
    const char *s = "";
+
+   PRINT("_azy_content_deserialize_json_array_string3",
+         "json is not a in valid format, equal to empty string.",
+         "azy_content_deserialize_json return an error.");
 
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
@@ -398,6 +448,9 @@ START_TEST(_azy_content_deserialize_json_array_string4)
    const char *s = "[]";
    Eina_Value *ev;
    Eina_List *el = NULL;
+
+   PRINT("_azy_content_deserialize_json_array_string4",
+         "array is empty.", "eina_list = NULL.");
 
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
@@ -424,6 +477,9 @@ START_TEST(_azy_content_deserialize_json_array_string5)
    Eina_Value *ev;
    Eina_List *el = NULL;
 
+   PRINT("_azy_content_deserialize_json_array_string5",
+         "json data is wrong, equal to {}.", "eina_list = NULL.");
+
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
 
@@ -446,6 +502,10 @@ START_TEST(_azy_content_deserialize_json_array_string6)
    Azy_Content *content;
    Eina_Bool r;
    const char *s = "[\"string1\",]";
+
+   PRINT("_azy_content_deserialize_json_array_string6",
+         "json is not in a valid format, value of one data is not set.",
+         "azy_content_deserialize_json return an error.");
 
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
@@ -489,6 +549,9 @@ START_TEST(_azy_content_deserialize_json_struct1)
    T002_Server *ts;
    T002_Computer *tc;
 
+   PRINT("_azy_content_deserialize_json_struct1", "correct struct data.",
+         "all values are correct (int, double, boolean, string, array, struct).");
+
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
 
@@ -511,7 +574,7 @@ START_TEST(_azy_content_deserialize_json_struct1)
    ck_assert_str_eq(ts->network->gateway, "192.168.4.1");
    ck_assert_str_eq(ts->network->netmask, "255.255.255.0");
    ck_assert_str_eq(ts->network->dns, "192.168.4.1");
-   ck_assert_msg(!!ts->computers, "Error while getting ts->network.");
+   ck_assert_msg(!!ts->computers, "Error while getting ts->computers.");
    ck_assert_int_eq(eina_list_count(ts->computers), 2);
    tc = eina_list_nth(ts->computers, 0);
    ck_assert_str_eq(tc->name, "sango");
@@ -532,6 +595,10 @@ START_TEST(_azy_content_deserialize_json_struct2)
    Eina_Bool r;
    const char *s = "";
 
+   PRINT("_azy_content_deserialize_json_struct2",
+         "json is not a in valid format, equal to empty string.",
+         "azy_content_deserialize_json return an error.");
+
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
 
@@ -548,6 +615,9 @@ START_TEST(_azy_content_deserialize_json_struct3)
    Eina_Bool r;
    const char *s = "{}";
    Eina_Value *ev;
+
+   PRINT("_azy_content_deserialize_json_struct3", "json data is empty, equal to {}.",
+         "azy_content_retval_get return NULL.");
 
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
@@ -570,6 +640,11 @@ START_TEST(_azy_content_deserialize_json_struct4)
    Eina_Value *ev;
    T002_Server *ts;
 
+   PRINT("_azy_content_deserialize_json_struct4",
+         "json data is an invalid array equal to [].",
+         "all values are set (int = 0, double = 0, boolean = EINA_FALSE, string = \"\","
+         "array = [], struct = {}).");
+
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
 
@@ -580,8 +655,21 @@ START_TEST(_azy_content_deserialize_json_struct4)
    ck_assert_msg(!!ev, "Error, azy_content_retval_get must return NULL.");
 
    r = azy_value_to_T002_Server(ev, &ts);
-   ck_assert_msg(!r, "Error, azy_value_to_Array_string must return EINA_FALSE.");
-   ck_assert_msg(!ts, "Error, value of ts isn't NULL.");
+   ck_assert_msg(r, "Error while getting value of ts.");
+   ck_assert_msg(!!ts, "Error, value of ts is NULL.");
+   ck_assert_str_eq(ts->key, "");
+   ck_assert_int_eq(ts->initialize, EINA_FALSE);
+   ck_assert_int_eq(ts->connexions, 0);
+   ck_assert_str_eq(ts->hash, "");
+   ck_assert_double_eq(ts->volume, 0);
+   ck_assert_msg(!!ts->network, "Error while getting ts->network.");
+   ck_assert_str_eq(ts->network->ip, "");
+   ck_assert_str_eq(ts->network->gateway, "");
+   ck_assert_str_eq(ts->network->netmask, "");
+   ck_assert_str_eq(ts->network->dns, "");
+   ck_assert_msg(!ts->computers, "Error, ts->computers must be empty list.");
+   ck_assert_int_eq(eina_list_count(ts->computers), 0);
+   ck_assert_str_eq(ts->licence, "");
 
    azy_content_free(content);
 }
@@ -633,6 +721,10 @@ START_TEST(_azy_content_deserialize_json_struct5)
    T002_Server *ts;
    T002_Computer *tc;
 
+   PRINT("_azy_content_deserialize_json_struct5", "data hash does not exist.",
+         "if a data does not exist in middle of json, this data must be init and the "
+         "next datas must be set to their values.");
+
    content = azy_content_new(NULL);
    ck_assert_msg(!!content, "Error while allocating content.");
 
@@ -655,7 +747,7 @@ START_TEST(_azy_content_deserialize_json_struct5)
    ck_assert_str_eq(ts->network->gateway, "192.168.4.1");
    ck_assert_str_eq(ts->network->netmask, "255.255.255.0");
    ck_assert_str_eq(ts->network->dns, "192.168.4.1");
-   ck_assert_msg(!!ts->computers, "Error while getting ts->network.");
+   ck_assert_msg(!!ts->computers, "Error while getting ts->computers.");
    ck_assert_int_eq(eina_list_count(ts->computers), 2);
    tc = eina_list_nth(ts->computers, 0);
    ck_assert_str_eq(tc->name, "sango");

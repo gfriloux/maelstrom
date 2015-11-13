@@ -224,18 +224,13 @@ gen_type_marshalizers(Azy_Typedef *t,
         EL(1, "EINA_SAFETY_ON_NULL_RETURN_VAL(azy_user_type, EINA_FALSE);");
         EL(1, "EINA_SAFETY_ON_NULL_RETURN_VAL(value_struct, EINA_FALSE);");
         NL;
-        EL(1, "if(eina_value_type_get(value_struct) != EINA_VALUE_TYPE_STRUCT)");
-        EL(1, "{");
-        EL(2, "*azy_user_type = %s_new();", t->cname);
-        EL(2, "EINA_LOG_ERR(\"eina_value_type_get(value_struct) != EINA_VALUE_TYPE_STRUCT is true\");");
-        EL(2, "return EINA_FALSE;");
-        EL(1, "}");
-        NL;
         EL(1, "azy_user_type_tmp = %s_new();", t->cname);
 
         EINA_LIST_FOREACH(t->struct_members, l, m)
           {
-             EL(1, "if ((!arg) && eina_value_struct_value_get(value_struct, \"%s\", &val))", m->strname ? m->strname : m->name);
+             NL;
+             EL(1, "if(eina_value_type_get(value_struct) != EINA_VALUE_TYPE_STRUCT) found = EINA_FALSE;");
+             EL(1, "else if ((!arg) && eina_value_struct_value_get(value_struct, \"%s\", &val))", m->strname ? m->strname : m->name);
              EL(2, "found = EINA_TRUE;");
              EL(1, "else");
              EL(1, "{");
@@ -243,43 +238,93 @@ gen_type_marshalizers(Azy_Typedef *t,
              EL(2, "snprintf(buf, sizeof(buf), \"arg%%d\", arg++);");
              EL(2, "if (eina_value_struct_value_get(value_struct, buf, &val))");
              EL(3, "found = EINA_TRUE;");
+             EL(2, "else arg--;");
              EL(1, "}");
-             EL(1, "if (found)");
-             EL(1, "{");
+
              if (m->type->ctype == c) //eldbus does NOT stringshare. bastard.
                {
+                  EL(1, "if (!found || eina_value_type_get(&val) != EINA_VALUE_TYPE_STRINGSHARE)");
+                  EL(1, "{");
+                  EL(2, "EINA_LOG_WARN(\"%s is not found or not in true type set to empty string.\");", m->name);
+                  EL(2, "azy_user_type_tmp->%s = eina_stringshare_add(\"\");", m->name);
+                  EL(1, "}");
+                  EL(1, "else");
+                  EL(1, "{");
                   EL(2, "if (arg)");
-                  EL(3, "{");
-                  EL(4, "char *str = NULL;");
+                  EL(2, "{");
+                  EL(3, "char *str = NULL;");
                   NL;
-                  EL(4, "if (eina_value_get(&val, &str))");
-                  EL(5, "azy_user_type_tmp->%s = eina_stringshare_add(str);", m->name);
-                  EL(3, "}");
+                  EL(3, "if (eina_value_get(&val, &str))");
+                  EL(4, "azy_user_type_tmp->%s = eina_stringshare_add(str);", m->name);
+                  EL(2, "}");
                   EL(2, "else");
                   EL(3, "%s(&val, &azy_user_type_tmp->%s);", m->type->demarch_name, m->name);
+                  EL(2, "eina_value_flush(&val);");
+                  EL(1, "}");
                }
              else if (m->type->ctype == d)
                {
-                  EL(2, "if(eina_value_type_get(&val) == EINA_VALUE_TYPE_DOUBLE)");
-                  EL(3, "%s(&val, &azy_user_type_tmp->%s);", m->type->demarch_name, m->name);
-                  EL(2, "else");
-                  EL(3, "{");
-                  EL(4, "int int_to_double;");
-                  EL(4, "%s(&val, &int_to_double);", m->type->demarch_name);
-                  EL(4, "azy_user_type_tmp->%s = (double) int_to_double;", m->name);
-                  EL(3, "}");
+                  EL(1, "if (!found)");
+                  EL(1, "{");
+                  EL(2, "EINA_LOG_WARN(\"%s is not found set to 0.\");", m->name);
+                  EL(2, "azy_user_type_tmp->%s = 0;", m->name);
+                  EL(1, "}");
+                  EL(1, "else if(eina_value_type_get(&val) == EINA_VALUE_TYPE_DOUBLE || "
+                                 "eina_value_type_get(&val) == EINA_VALUE_TYPE_FLOAT)");
+                  EL(2, "%s(&val, &azy_user_type_tmp->%s);", m->type->demarch_name, m->name);
+                  EL(1, "else if(eina_value_type_get(&val) == EINA_VALUE_TYPE_INT || "
+                                 "eina_value_type_get(&val) == EINA_VALUE_TYPE_LONG || "
+                                 "eina_value_type_get(&val) == EINA_VALUE_TYPE_INT64)");
+                  EL(1, "{");
+                  EL(2, "int int_to_double;");
+                  EL(2, "%s(&val, &int_to_double);", m->type->demarch_name);
+                  EL(2, "azy_user_type_tmp->%s = (double) int_to_double;", m->name);
+                  EL(1, "}");
+                  EL(1, "else");
+                  EL(1, "{");
+                  EL(2, "EINA_LOG_WARN(\"%s not in true type set to 0.\");", m->name);
+                  EL(2, "azy_user_type_tmp->%s = 0;", m->name);
+                  EL(1, "}");
+               }
+             else if (m->type->ctype == i)
+               {
+                  EL(1, "if (!found)");
+                  EL(1, "{");
+                  EL(2, "EINA_LOG_WARN(\"%s is not found set to 0.\");", m->name);
+                  EL(2, "azy_user_type_tmp->%s = 0;", m->name);
+                  EL(1, "}");
+                  EL(1, "else if(eina_value_type_get(&val) == EINA_VALUE_TYPE_INT || "
+                                 "eina_value_type_get(&val) == EINA_VALUE_TYPE_LONG || "
+                                 "eina_value_type_get(&val) == EINA_VALUE_TYPE_INT64)");
+                  EL(2, "%s(&val, &azy_user_type_tmp->%s);", m->type->demarch_name, m->name);
+                  EL(1, "else");
+                  EL(1, "{");
+                  EL(2, "EINA_LOG_WARN(\"%s not in true type set to 0.\");", m->name);
+                  EL(2, "azy_user_type_tmp->%s = 0;", m->name);
+                  EL(1, "}");
+               }
+             else if (m->type->ctype == b)
+               {
+                  EL(1, "if (!found)");
+                  EL(1, "{");
+                  EL(2, "EINA_LOG_WARN(\"%s is not found set to 0.\");", m->name);
+                  EL(2, "azy_user_type_tmp->%s = EINA_FALSE;", m->name);
+                  EL(1, "}");
+                  EL(1, "else if(eina_value_type_get(&val) == EINA_VALUE_TYPE_UCHAR)");
+                  EL(2, "%s(&val, &azy_user_type_tmp->%s);", m->type->demarch_name, m->name);
+                  EL(1, "else");
+                  EL(1, "{");
+                  EL(2, "EINA_LOG_WARN(\"%s not in true type set to 0.\");", m->name);
+                  EL(2, "azy_user_type_tmp->%s = EINA_FALSE;", m->name);
+                  EL(1, "}");
                }
              else
-                EL(2, "%s(&val, &azy_user_type_tmp->%s);", m->type->demarch_name, m->name);
-             EL(2, "eina_value_flush(&val);");
-             EL(1, "}");
-             EL(1, "else");
-             EL(1, "{");
-             if (m->type->ctype == c)
-                EL(2, "azy_user_type_tmp->%s = eina_stringshare_add(\"\");", m->name);
-             else if (m->type->type == TD_STRUCT)
-                EL(2, "%s(&val, &azy_user_type_tmp->%s);", m->type->demarch_name, m->name);
-             EL(1, "}");
+               {
+                  EL(1, "if(!found)");
+                  EL(2, "EINA_LOG_WARN(\"%s is not found.\");", m->name);
+                  EL(1, "%s(&val, &azy_user_type_tmp->%s);", m->type->demarch_name, m->name);
+               }
+
              if(eina_list_next(l)) EL(1, "found = EINA_FALSE;");
           }
 
