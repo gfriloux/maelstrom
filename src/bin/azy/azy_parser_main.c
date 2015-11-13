@@ -307,14 +307,14 @@ gen_type_marshalizers(Azy_Typedef *t,
                {
                   EL(1, "if (!found)");
                   EL(1, "{");
-                  EL(2, "EINA_LOG_WARN(\"%s is not found set to 0.\");", m->name);
+                  EL(2, "EINA_LOG_WARN(\"%s is not found set to EINA_FALSE.\");", m->name);
                   EL(2, "azy_user_type_tmp->%s = EINA_FALSE;", m->name);
                   EL(1, "}");
                   EL(1, "else if(eina_value_type_get(&val) == EINA_VALUE_TYPE_UCHAR)");
                   EL(2, "%s(&val, &azy_user_type_tmp->%s);", m->type->demarch_name, m->name);
                   EL(1, "else");
                   EL(1, "{");
-                  EL(2, "EINA_LOG_WARN(\"%s not in true type set to 0.\");", m->name);
+                  EL(2, "EINA_LOG_WARN(\"%s not in true type set to EINA_FALSE.\");", m->name);
                   EL(2, "azy_user_type_tmp->%s = EINA_FALSE;", m->name);
                   EL(1, "}");
                }

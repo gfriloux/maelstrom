@@ -45,3 +45,8 @@ struct Server
    array<Computer> computers;
    string licence;
 };
+
+struct Boolean
+{
+   boolean test_boolean;
+};

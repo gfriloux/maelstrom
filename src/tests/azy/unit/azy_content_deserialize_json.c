@@ -5,7 +5,7 @@
   ck_assert_msg(_a >=  _b - epsilon && _a <= _b +  epsilon, "Assertion '%f==%f' failed", _a, _b); \
 } while (0)
 
-#define PRINT(_func, _test, _result) do {                                   \
+#define PRINT(_func, _test, _result) do {                                                                           \
   printf("\n\n\e[4mFunction : %s, line : %d\e[24m\n- test : %s\n- result : %s\n", _func, __LINE__, _test, _result); \
 } while (0)
 
@@ -675,21 +675,6 @@ START_TEST(_azy_content_deserialize_json_struct4)
 }
 END_TEST
 
-// todo : when value is not present in json init it and continue parsing.
-// ->key: abc123
-// ->initialize: yes
-// ->connexions: 3
-// ->hash:
-// ->volume: 0
-// ->network:
-// ->->ip: (null)
-// ->->gateway: (null)
-// ->->netmask: (null)
-// ->->dns: (null)
-// ->computers:
-// ->licence:
-// Currently, the data after hash are not set.
-// In this case azy_value_to_T002_Struct must display a warning message.
 START_TEST(_azy_content_deserialize_json_struct5)
 {
    Azy_Content *content;
@@ -762,6 +747,159 @@ START_TEST(_azy_content_deserialize_json_struct5)
 }
 END_TEST
 
+START_TEST(_azy_content_deserialize_json_boolean1)
+{
+   Azy_Content *content;
+   Eina_Bool r;
+   const char *s = "{\"test_boolean\":true}";
+   Eina_Value *ev;
+   T002_Boolean *tb;
+
+   PRINT("_azy_content_deserialize_json_boolean1", "true boolean.",
+         "test_boolean = EINA_TRUE.");
+
+   content = azy_content_new(NULL);
+   ck_assert_msg(!!content, "Error while allocating content.");
+
+   r = azy_content_deserialize_json(content, s, strlen(s));
+   ck_assert_msg(r, "Error while deserializing json.");
+
+   ev = azy_content_retval_get(content);
+   ck_assert_msg(!!ev, "Error while getting retval.");
+
+   r = azy_value_to_T002_Boolean(ev, &tb);
+   ck_assert_msg(r, "Error while getting value of tb.");
+   ck_assert_msg(!!tb, "Error, value of tb is NULL.");
+   ck_assert_int_eq(tb->test_boolean, EINA_TRUE);
+
+   T002_Boolean_free(tb);
+   azy_content_free(content);
+}
+END_TEST
+
+START_TEST(_azy_content_deserialize_json_boolean2)
+{
+   Azy_Content *content;
+   Eina_Bool r;
+   const char *s = "{\"test_boolean\":false}";
+   Eina_Value *ev;
+   T002_Boolean *tb;
+
+   PRINT("_azy_content_deserialize_json_boolean2", "false boolean.",
+         "test_boolean = EINA_FALSE.");
+
+   content = azy_content_new(NULL);
+   ck_assert_msg(!!content, "Error while allocating content.");
+
+   r = azy_content_deserialize_json(content, s, strlen(s));
+   ck_assert_msg(r, "Error while deserializing json.");
+
+   ev = azy_content_retval_get(content);
+   ck_assert_msg(!!ev, "Error while getting retval.");
+
+   r = azy_value_to_T002_Boolean(ev, &tb);
+   ck_assert_msg(r, "Error while getting value of tb.");
+   ck_assert_msg(!!tb, "Error, value of tb is NULL.");
+   ck_assert_int_eq(tb->test_boolean, EINA_FALSE);
+
+   T002_Boolean_free(tb);
+   azy_content_free(content);
+}
+END_TEST
+
+START_TEST(_azy_content_deserialize_json_boolean3)
+{
+   Azy_Content *content;
+   Eina_Bool r;
+   const char *s = "{\"test_boolean\":2}";
+   Eina_Value *ev;
+   T002_Boolean *tb;
+
+   PRINT("_azy_content_deserialize_json_boolean3",
+         "bad type of value for data test_boolean, int in place of boolean.",
+         "test_boolean = EINA_FALSE.");
+
+   content = azy_content_new(NULL);
+   ck_assert_msg(!!content, "Error while allocating content.");
+
+   r = azy_content_deserialize_json(content, s, strlen(s));
+   ck_assert_msg(r, "Error while deserializing json.");
+
+   ev = azy_content_retval_get(content);
+   ck_assert_msg(!!ev, "Error while getting retval.");
+
+   r = azy_value_to_T002_Boolean(ev, &tb);
+   ck_assert_msg(r, "Error while getting value of tb.");
+   ck_assert_msg(!!tb, "Error, value of tb is NULL.");
+   ck_assert_int_eq(tb->test_boolean, EINA_FALSE);
+
+   T002_Boolean_free(tb);
+   azy_content_free(content);
+}
+END_TEST
+
+START_TEST(_azy_content_deserialize_json_boolean4)
+{
+   Azy_Content *content;
+   Eina_Bool r;
+   const char *s = "{\"test_boolean\":\"\"}";
+   Eina_Value *ev;
+   T002_Boolean *tb;
+
+   PRINT("_azy_content_deserialize_json_boolean4",
+         "bad type of value for data test_boolean, string in place of boolean.",
+         "test_boolean = EINA_FALSE.");
+
+   content = azy_content_new(NULL);
+   ck_assert_msg(!!content, "Error while allocating content.");
+
+   r = azy_content_deserialize_json(content, s, strlen(s));
+   ck_assert_msg(r, "Error while deserializing json.");
+
+   ev = azy_content_retval_get(content);
+   ck_assert_msg(!!ev, "Error while getting retval.");
+
+   r = azy_value_to_T002_Boolean(ev, &tb);
+   ck_assert_msg(r, "Error while getting value of tb.");
+   ck_assert_msg(!!tb, "Error, value of tb is NULL.");
+   ck_assert_int_eq(tb->test_boolean, EINA_FALSE);
+
+   T002_Boolean_free(tb);
+   azy_content_free(content);
+}
+END_TEST
+
+START_TEST(_azy_content_deserialize_json_boolean5)
+{
+   Azy_Content *content;
+   Eina_Bool r;
+   const char *s = "{\"test_bool\":true}";
+   Eina_Value *ev;
+   T002_Boolean *tb;
+
+   PRINT("_azy_content_deserialize_json_boolean5",
+         "data test_boolean does not exit.",
+         "\n--test_boolean = EINA_FALSE,\n--test_bool is ignored.");
+
+   content = azy_content_new(NULL);
+   ck_assert_msg(!!content, "Error while allocating content.");
+
+   r = azy_content_deserialize_json(content, s, strlen(s));
+   ck_assert_msg(r, "Error while deserializing json.");
+
+   ev = azy_content_retval_get(content);
+   ck_assert_msg(!!ev, "Error while getting retval.");
+
+   r = azy_value_to_T002_Boolean(ev, &tb);
+   ck_assert_msg(r, "Error while getting value of tb.");
+   ck_assert_msg(!!tb, "Error, value of tb is NULL.");
+   ck_assert_int_eq(tb->test_boolean, EINA_FALSE);
+
+   T002_Boolean_free(tb);
+   azy_content_free(content);
+}
+END_TEST
+
 TCase *
 azy_content_deserialize_json_init()
 {
@@ -795,6 +933,12 @@ azy_content_deserialize_json_init()
    tcase_add_test(tc_tests, _azy_content_deserialize_json_struct3);
    tcase_add_test(tc_tests, _azy_content_deserialize_json_struct4);
    tcase_add_test(tc_tests, _azy_content_deserialize_json_struct5);
+
+   tcase_add_test(tc_tests, _azy_content_deserialize_json_boolean1);
+   tcase_add_test(tc_tests, _azy_content_deserialize_json_boolean2);
+   tcase_add_test(tc_tests, _azy_content_deserialize_json_boolean3);
+   tcase_add_test(tc_tests, _azy_content_deserialize_json_boolean4);
+   tcase_add_test(tc_tests, _azy_content_deserialize_json_boolean5);
 
    return tc_tests;
 }
