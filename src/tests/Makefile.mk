@@ -5,7 +5,8 @@ src/tests/azy/stress_client.c \
 src/tests/azy/test.azy \
 src/tests/azy/type1.azy \
 src/tests/azy/type2.azy \
-src/tests/azy/server.pem
+src/tests/azy/server.pem \
+src/tests/azy/unit/t002_json.azy
 
 check_PROGRAMS =
 check_LTLIBRARIES =
