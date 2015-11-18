@@ -232,6 +232,9 @@ shotgun_login(Shotgun_Auth *auth, Ecore_Con_Event_Server_Data *ev)
              shotgun_write(ev->server, send_str, len);
 #else
              ecore_con_server_send(ev->server, send_str, len);
+#ifdef _WIN32
+             ecore_con_server_flush(ev->server);
+#endif
 #endif
              free(out);
              free(send_str);

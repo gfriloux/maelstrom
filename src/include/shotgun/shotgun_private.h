@@ -151,6 +151,9 @@ shotgun_write(Ecore_Con_Server *svr, const void *data, size_t size)
 {
    DBG("Sending %zu bytes:\n%s", size, (char*)data);
    ecore_con_server_send(svr, data, size);
+#ifdef _WIN32
+   ecore_con_server_flush(svr);
+#endif
 }
 
 void shotgun_fake_free(void *d EINA_UNUSED, void *d2 EINA_UNUSED);
