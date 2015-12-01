@@ -842,7 +842,7 @@ START_TEST(_azy_content_deserialize_json_boolean4)
 {
    Azy_Content *content;
    Eina_Bool r;
-   const char *s = "{\"test_boolean\":\"\"}";
+   const char *s = "{\"test_boolean\":\"0\"}";
    Eina_Value *ev;
    T002_Boolean *tb;
 
@@ -900,6 +900,38 @@ START_TEST(_azy_content_deserialize_json_boolean5)
 }
 END_TEST
 
+START_TEST(_azy_content_deserialize_json_boolean6)
+{
+   Azy_Content *content;
+   Eina_Bool r;
+   const char *s = "{\"test_boolean\":1}";
+   Eina_Value *ev;
+   T002_Boolean *tb;
+
+   PRINT("_azy_content_deserialize_json_boolean6",
+         "bad type of value for data test_boolean, int in place of boolean."
+         "But if int is 0 or 1 use it.",
+         "test_boolean = EINA_TRUE.");
+
+   content = azy_content_new(NULL);
+   ck_assert_msg(!!content, "Error while allocating content.");
+
+   r = azy_content_deserialize_json(content, s, strlen(s));
+   ck_assert_msg(r, "Error while deserializing json.");
+
+   ev = azy_content_retval_get(content);
+   ck_assert_msg(!!ev, "Error while getting retval.");
+
+   r = azy_value_to_T002_Boolean(ev, &tb);
+   ck_assert_msg(r, "Error while getting value of tb.");
+   ck_assert_msg(!!tb, "Error, value of tb is NULL.");
+   ck_assert_int_eq(tb->test_boolean, EINA_TRUE);
+
+   T002_Boolean_free(tb);
+   azy_content_free(content);
+}
+END_TEST
+
 TCase *
 azy_content_deserialize_json_init()
 {
@@ -939,6 +971,7 @@ azy_content_deserialize_json_init()
    tcase_add_test(tc_tests, _azy_content_deserialize_json_boolean3);
    tcase_add_test(tc_tests, _azy_content_deserialize_json_boolean4);
    tcase_add_test(tc_tests, _azy_content_deserialize_json_boolean5);
+   tcase_add_test(tc_tests, _azy_content_deserialize_json_boolean6);
 
    return tc_tests;
 }
