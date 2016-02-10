@@ -325,6 +325,7 @@ gen_type_marshalizers(Azy_Typedef *t,
                   EL(1, "if(!found)");
                   EL(2, "EINA_LOG_WARN(\"%s is not found.\");", m->name);
                   EL(1, "%s(&val, &azy_user_type_tmp->%s);", m->type->demarch_name, m->name);
+                  EL(1, "eina_value_flush(&val);");
                }
 
              if(eina_list_next(l)) EL(1, "found = EINA_FALSE;");
