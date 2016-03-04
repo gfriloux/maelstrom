@@ -381,6 +381,7 @@ EAPI void                      azy_server_free(Azy_Server *server);
 EAPI Eina_Bool                 azy_server_cert_add(Azy_Server *server, const char *cert_file);
 EAPI unsigned long int         azy_server_clients_count(Azy_Server *server);
 EAPI Eina_Hash                *azy_server_module_defs_get(Azy_Server *server);
+EAPI Eina_Bool                 azy_server_start(Azy_Server *server);
 EAPI Eina_Bool                 azy_server_run(Azy_Server *server);
 EAPI Eina_Bool                 azy_server_basic_run(int port, int type, const char *cert, Azy_Server_Module_Def **modules);
 EAPI Eina_Bool                 azy_server_addr_set(Azy_Server *server, const char *addr);

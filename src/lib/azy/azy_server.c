@@ -265,17 +265,16 @@ azy_server_cert_add(Azy_Server *server,
 }
 
 /**
- * @brief Run the specified server
+ * @brief Starts the specified server.
  *
- * This function starts the specified server, calling ecore_main_loop_begin.
+ * This function starts the specified server, <b>without calling ecore_main_loop_begin</b>.
  * If the server's listen address has been previously specified, @p type should be
  * #AZY_SERVER_NONE, otherwise it will be detected based on @p type.
  * @param server The server object (NOT NULL)
- * @return EINA_TRUE on success (after main loop exits), else the function will return
- * immediately with EINA_FALSE
+ * @return EINA_TRUE on success else the function will return EINA_FALSE
  */
 Eina_Bool
-azy_server_run(Azy_Server *server)
+azy_server_start(Azy_Server *server)
 {
 #ifdef _WIN32
    int ecore = ECORE_CON_REMOTE_TCP;
@@ -311,8 +310,26 @@ azy_server_run(Azy_Server *server)
           return EINA_FALSE;
      }
 
-   ecore_main_loop_begin();
+   return EINA_TRUE;
+}
 
+/**
+ * @brief Run the specified server
+ *
+ * This function starts the specified server, calling ecore_main_loop_begin.
+ * If the server's listen address has been previously specified, @p type should be
+ * #AZY_SERVER_NONE, otherwise it will be detected based on @p type.
+ * @param server The server object (NOT NULL)
+ * @return EINA_TRUE on success (after main loop exits), else the function will return
+ * immediately with EINA_FALSE
+ */
+Eina_Bool
+azy_server_run(Azy_Server *server)
+{
+   if (!azy_server_start(server))
+     return EINA_FALSE;
+
+   ecore_main_loop_begin();
    return EINA_TRUE;
 }
 
