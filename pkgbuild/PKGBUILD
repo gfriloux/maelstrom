@@ -2,7 +2,7 @@
 
 _pkgname=maelstrom
 pkgname=('maelstrom')
-pkgver=1.7.10
+pkgver=1.0.2
 pkgrel=1
 
 pkgdesc="Enlightenment Foundation Libraries - Maelstrom"
@@ -17,8 +17,6 @@ options=('debug')
 build()
 {
   cd "../.."
-  export CFLAGS="$CFLAGS -fvisibility=hidden -fomit-frame-pointer"
-  export CXXFLAGS="$CXXFLAGS -fvisibility=hidden -fomit-frame-pointer"
   [[ -e Makefile ]] && make clean distclean
   [[ -e autogen.sh ]] && _configure=autogen.sh || _configure=configure
   ./$_configure --prefix=/usr                                                   
