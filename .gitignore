@@ -57,3 +57,8 @@ src/tests/azy/unit/t001_content
 src/tests/email/test_pop3
 src/tests/email/test_imap
 src/tests/email/test_smtp
+*.tar.xz
+src/tests/azy/unit/T002_Common.c
+src/tests/azy/unit/T002_Common.h
+src/tests/azy/unit/T002_Common_Azy.c
+src/tests/azy/unit/T002_Common_Azy.h
