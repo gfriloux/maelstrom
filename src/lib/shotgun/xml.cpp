@@ -151,9 +151,6 @@ S: <stream:features>
     </stream:features>
 */
 
-   if (!stream.child("starttls").empty())
-      auth->features.starttls = EINA_TRUE;
-
    for (attr = node.first_attribute(); attr; attr = attr.next_attribute())
       if (!strcmp(attr.name(), "xmlns"))
         {
@@ -241,6 +238,9 @@ S: <stream:stream
         if (stream.first_child().empty()) return EINA_FALSE;
         stream = stream.first_child();
      }
+
+   if (!stream.child("starttls").empty())
+     auth->features.starttls = EINA_TRUE;
 
    node = stream.child("mechanisms");
    if (!node.empty())
