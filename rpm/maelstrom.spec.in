@@ -1,13 +1,13 @@
-Name         : maelstrom
-Version      : 0.0.99
+Name         : @PACKAGE@
+Version      : @VERSION@
 Release      : 1%{?dist}
 License      : LGPLv2.1 BSD
 Group        : System Environment/Libraries
-Provides     : maelstrom = %{version}, libmaelstrom0 = %{version}
+Provides     : %{name} = %{version}, lib%{name}0 = %{version}
 URL          : https://github.com/gfriloux/maelstrom
 Packager     : Guillaume Friloux <guillaume@friloux.me>
 Summary      : A whirling maelstrom of network libraries
-Source       : ~/rpmbuild/SOURCES/maelstrom-0.0.99.tar.gz
+Source       : %{name}-%{version}.tar.gz
 
 BuildRequires: pkgconfig subversion automake doxygen m4 autoconf gzip bzip2 tar
 BuildRequires: eina ecore
@@ -16,7 +16,7 @@ BuildRequires: eina ecore
 A whirling maelstrom of network libraries
 
 %package devel
-Provides     : libmaelstrom-dev libmaelstrom-devel
+Provides     : lib%{name}-dev lib%{name}-devel
 Summary      : Maelstrom headers, static libraries, documentation and test programs
 Group        : Development/Libraries
 Requires     : %{name} = %{version}
@@ -56,3 +56,4 @@ rm -rf "%{buildroot}"
 %{_libdir}/*.so
 %{_libdir}/*.la
 #%{_libdir}/*.a
+

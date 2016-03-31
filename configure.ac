@@ -428,6 +428,7 @@ azy.pc
 email.pc
 shotgun.pc
 $sawedoff_desktop
+rpm/$PACKAGE.spec
 ])
 AC_OUTPUT
 
