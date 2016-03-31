@@ -25,17 +25,16 @@ Requires     : %{name} = %{version}
 Headers, static libraries, test programs and documentation for maelstrom
 
 %prep
-rm -rf "%{buildroot}"
+%__rm -rf %{buildroot}
 %setup -q
 
 %build
-touch config.rpath
-./autogen.sh --prefix=/usr                                                     \
-             --libdir=/usr/lib64
+NOCONFIGURE=yes ./autogen.sh
+%configure
+%__make
 
 %install
-make %{?_smp_mflags}
-%makeinstall
+%make_install
 
 %clean
 rm -rf "%{buildroot}"
