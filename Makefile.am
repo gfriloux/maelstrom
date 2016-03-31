@@ -62,6 +62,7 @@ ltmain.sh \
 missing \
 compile \
 m4/l* \
+rpm/maelstrom.spec \
 ylwrap
 
 PHONY = doc
