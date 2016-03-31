@@ -17,6 +17,7 @@ TODO-SHOTGUN \
 azy.pc.in \
 email.pc.in \
 shotgun.pc.in \
+rpm/maelstrom.spec.in \
 autogen.sh
 
 pkgconfigdir = $(libdir)/pkgconfig
