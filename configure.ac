@@ -451,6 +451,9 @@ Summary:
  * prefix..........: $(txt_strip $prefix)
  * CFLAGS..........: $(txt_strip $CFLAGS)
  * LDFLAGS.........: $(txt_strip $LDFLAGS)
+ * AZY_CFLAGS......: $AZY_CFLAGS
+ * EMAIL_CFLAGS....: $EMAIL_CFLAGS
+ * SHOTGUN_CFLAGS..: $SHOTGUN_CFLAGS
 SUMMARY_EOF
 echo
 cat << FEATURES_EOF

@@ -15,11 +15,9 @@ src/bin/y.tab.h
 
 RE2C_OPTS = -bi -o src/bin/azy_parser.y
 
-azy_parser = src/bin/azy_parser$(EXEEXT_FOR_BUILD)
+bin_PROGRAMS += src/bin/azy_parser
 
-bin_PROGRAMS += azy_parser
-
-azy_parser_SOURCES = \
+src_bin_azy_parser_SOURCES = \
 src/bin/azy/azy.h \
 src/bin/azy/azy.c \
 src/bin/azy/azy_parser_main.c \
@@ -27,12 +25,12 @@ src/bin/azy/azy_parser_lib.h \
 src/bin/azy/azy_parser_lib.c \
 src/bin/azy_parser.y
 
-azy_parser_CPPFLAGS = \
+src_bin_azy_parser_CPPFLAGS = \
 $(BIN_CPPFLAGS) \
 $(AZY_CFLAGS) \
 -I$(top_srcdir)/src/bin/azy
 
-azy_parser_LDADD = \
+src_bin_azy_parser_LDADD = \
 $(AZY_LIBS) \
 $(top_builddir)/src/lib/libmaelstrom.la
 
