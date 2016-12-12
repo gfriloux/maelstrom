@@ -424,6 +424,7 @@ EAPI Eina_Bool                 azy_server_module_size_set(Azy_Server_Module_Def 
 EAPI double                    azy_server_module_version_get(Azy_Server_Module *m);
 EAPI void                      azy_server_module_def_version_set(Azy_Server_Module_Def *def, double version);
 EAPI Eina_Bool                 azy_server_module_upgrade(Azy_Server_Module *module);
+EAPI void                      azy_server_module_close(Azy_Server_Module *module);
 
 /* net */
 EAPI Azy_Net                  *azy_net_new(void *conn);

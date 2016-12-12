@@ -818,4 +818,18 @@ err:
    return NULL;
 }
 
+/**
+ * @brief Disconnect a client
+ *
+ * This function is used to terminate connection with the client.
+ * @param module The client's #Azy_Server_Module object (NOT NULL)
+ */
+void
+azy_server_module_close(Azy_Server_Module *module)
+{
+   EINA_SAFETY_ON_NULL_RETURN(module->client->net);
+   EINA_SAFETY_ON_NULL_RETURN(module->client->net->conn);
+
+   ecore_con_client_del(module->client->net->conn);
+}
 /** @} */
